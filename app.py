@@ -23,6 +23,7 @@ import cache
 import google_signals
 import history
 import inconsistencies
+import llm_visibility
 import matching
 import normalize
 import reputation
@@ -88,6 +89,25 @@ _GOOGLE_REVIEW_SUMMARY_ENABLED = os.environ.get('ENABLE_GOOGLE_REVIEW_SUMMARY', 
 # back to the scraper when there's no key (or DISABLE_GOOGLE_SIGNALS_API=1).
 _GOOGLE_SIGNALS_VIA_SERPAPI = bool(_SERPAPI_KEY) and os.environ.get('DISABLE_GOOGLE_SIGNALS_API', '').strip() != '1'
 
+# LLM visibility (Visibility Index) via Cloro.dev — checks whether the prospect
+# shows up in ChatGPT for local-intent prompts. Paid (Cloro credits) and OPT-IN
+# per audit (a checkbox in the input), so it only ever runs when the rep asks
+# for it AND a CLORO_KEY is configured. Bounded to the worst N venues × R runs.
+_CLORO_KEY = os.environ.get('CLORO_KEY', '').strip()
+_LLM_VISIBILITY_ENABLED = bool(_CLORO_KEY) and os.environ.get('DISABLE_LLM_VISIBILITY', '').strip() != '1'
+
+
+def _int_env(name, default):
+    try:
+        return max(1, int(os.environ.get(name, default)))
+    except ValueError:
+        return default
+
+
+_CLORO_RUNS = _int_env('CLORO_RUNS', 3)             # repeticiones por sede (consistencia)
+_CLORO_MAX_VENUES = _int_env('CLORO_MAX_VENUES', 5)  # tope de sedes comprobadas (coste)
+_CLORO_COUNTRY = os.environ.get('CLORO_COUNTRY', 'es').strip() or 'es'
+
 
 # ── Background jobs (live progress polling) ─────────────────────
 #
@@ -105,7 +125,7 @@ _jobs_lock = threading.Lock()
 _JOB_MAX_AGE_SECONDS = 3600  # prune finished jobs older than this on each new job creation
 
 
-_AUDIT_SOURCES = ('google', 'apple', 'azure', 'official')
+_AUDIT_SOURCES = ('google', 'apple', 'azure', 'official', 'llm')
 
 
 def _new_job():
@@ -180,13 +200,15 @@ def _job_cancel_check(job_id):
     return is_cancelled
 
 
-def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors, official_comment, mode):
+def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors, official_comment, mode,
+                   check_llm_visibility=False):
     emit = _job_progress_fn(job_id)
     set_status = _job_status_fn(job_id)
     is_cancelled = _job_cancel_check(job_id)
     try:
         results, audit = _run_audit(name, city, official_urls, csv_locations, csv_errors,
-                                    progress=emit, status=set_status, should_cancel=is_cancelled)
+                                    progress=emit, status=set_status, should_cancel=is_cancelled,
+                                    check_llm_visibility=check_llm_visibility)
 
         if mode == 'pdf':
             emit('Generando informe PDF…')
@@ -264,7 +286,7 @@ def assets(filename):
 
 
 def _run_audit(name, city, official_urls, csv_locations, csv_errors,
-               progress=None, status=None, should_cancel=None):
+               progress=None, status=None, should_cancel=None, check_llm_visibility=False):
     def emit(message):
         if progress:
             progress(message)
@@ -376,7 +398,38 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
 
     emit('Cruzando y comparando datos entre plataformas…')
     audit = _build_audit(results, has_official_data=bool(official_urls or csv_locations), city=city)
+
+    # Fase opcional (opt-in por checkbox) y de pago: visibilidad en IA vía Cloro.
+    if check_llm_visibility and _LLM_VISIBILITY_ENABLED:
+        check_cancel()
+        _attach_llm_visibility(audit, name, city, emit, set_status)
+    else:
+        set_status('llm', 'skipped')
+
     return results, audit
+
+
+def _attach_llm_visibility(audit, name, city, emit, set_status):
+    """Best-effort: rellena venue_metrics['llm_visibility'] por sede y
+    summary['llm_visibility'] (agregado). Acotado por _CLORO_MAX_VENUES/_RUNS."""
+    set_status('llm', 'running')
+    emit('Comprobando visibilidad en IA (ChatGPT vía Cloro)…')
+    try:
+        vis = llm_visibility.fetch_llm_visibility(
+            audit['clusters'], name, city,
+            runs=_CLORO_RUNS, max_venues=_CLORO_MAX_VENUES, country=_CLORO_COUNTRY)
+        audit['summary']['llm_visibility'] = vis
+        per_venue = vis.get('per_venue') or {}
+        for cluster in audit['clusters']:
+            if cluster['cluster_id'] in per_venue:
+                cluster['venue_metrics']['llm_visibility'] = per_venue[cluster['cluster_id']]
+        emit(f"Visibilidad en IA: aparece en {vis['hits_total']} de {vis['checks_total']} "
+             f"comprobaciones ({vis['calls']} llamadas a Cloro).")
+        set_status('llm', 'done', vis['venues_checked'])
+    except Exception as e:
+        app.logger.error(f'LLM visibility error: {e}')
+        emit(f'Visibilidad en IA: error ({e}).')
+        set_status('llm', 'error')
 
 
 def _google_coords(google_results):
@@ -498,8 +551,13 @@ def _apply_report_edits(audit, deleted_ids, comments):
     for cluster in kept:
         raw = comments.get(cluster.get('cluster_id'))
         cluster['presenter_comment'] = (str(raw).strip()[:_MAX_COMMENT_LEN] or None) if raw else None
+    # Preserve the LLM-visibility aggregate (computed in a separate phase, not
+    # by _audit_summary) across the recompute so the PDF keeps it.
+    prev_llm = (audit.get('summary') or {}).get('llm_visibility')
     audit['clusters'] = kept
     audit['summary'] = _audit_summary(kept)
+    if prev_llm:
+        audit['summary']['llm_visibility'] = prev_llm
     return audit
 
 
@@ -543,10 +601,13 @@ def _start_job(mode):
     if not name:
         return jsonify({'error': 'Falta el nombre del prospect'}), 400
 
+    check_llm = request.values.get('check_llm_visibility', '').strip().lower() in ('1', 'true', 'on', 'yes')
+
     job_id = _new_job()
     thread = threading.Thread(
         target=_run_audit_job,
         args=(job_id, name, city, official_urls, csv_locations, csv_errors, official_comment, mode),
+        kwargs={'check_llm_visibility': check_llm},
     )
     thread.start()
     return jsonify({'job_id': job_id})

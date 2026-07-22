@@ -169,6 +169,20 @@
   </ul>
 </section>
 
+{% if summary.llm_visibility and summary.llm_visibility.venues_checked %}
+<section>
+  <h2>Visibilidad en IA (ChatGPT)</h2>
+  <p class="narrative">
+    Sobre una muestra de {{ summary.llm_visibility.venues_checked }} sede(s) y
+    {{ summary.llm_visibility.runs }} repeticiones cada una, el prospecto aparece en
+    <strong>{{ summary.llm_visibility.hits_total }} de {{ summary.llm_visibility.checks_total }}</strong>
+    comprobaciones para consultas de intención local del tipo
+    «{{ summary.llm_visibility.prompt_template }}». El Visibility Index completo amplía
+    esta muestra a decenas de prompts por sede y categoría.
+  </p>
+</section>
+{% endif %}
+
 <section class="page-break">
   <h2>Tabla de venues</h2>
   <p class="narrative">Ordenada de peor a mejor calidad de datos. Presencia y accuracy pesan más que rating/reseñas en el orden; estas a su vez pesan más que las señales marcadas N/D.</p>
