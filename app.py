@@ -107,6 +107,7 @@ def _int_env(name, default):
 _CLORO_RUNS = _int_env('CLORO_RUNS', 3)             # repeticiones por sede (consistencia)
 _CLORO_MAX_VENUES = _int_env('CLORO_MAX_VENUES', 5)  # tope de sedes comprobadas (coste)
 _CLORO_COUNTRY = os.environ.get('CLORO_COUNTRY', 'es').strip() or 'es'
+_CLORO_WORKERS = _int_env('CLORO_WORKERS', 5)        # sedes comprobadas en paralelo
 
 
 # ── Background jobs (live progress polling) ─────────────────────
@@ -201,14 +202,14 @@ def _job_cancel_check(job_id):
 
 
 def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors, official_comment, mode,
-                   check_llm_visibility=False):
+                   check_llm_visibility=False, llm_category=''):
     emit = _job_progress_fn(job_id)
     set_status = _job_status_fn(job_id)
     is_cancelled = _job_cancel_check(job_id)
     try:
         results, audit = _run_audit(name, city, official_urls, csv_locations, csv_errors,
                                     progress=emit, status=set_status, should_cancel=is_cancelled,
-                                    check_llm_visibility=check_llm_visibility)
+                                    check_llm_visibility=check_llm_visibility, llm_category=llm_category)
 
         if mode == 'pdf':
             emit('Generando informe PDF…')
@@ -286,7 +287,7 @@ def assets(filename):
 
 
 def _run_audit(name, city, official_urls, csv_locations, csv_errors,
-               progress=None, status=None, should_cancel=None, check_llm_visibility=False):
+               progress=None, status=None, should_cancel=None, check_llm_visibility=False, llm_category=''):
     def emit(message):
         if progress:
             progress(message)
@@ -402,14 +403,14 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
     # Fase opcional (opt-in por checkbox) y de pago: visibilidad en IA vía Cloro.
     if check_llm_visibility and _LLM_VISIBILITY_ENABLED:
         check_cancel()
-        _attach_llm_visibility(audit, name, city, emit, set_status)
+        _attach_llm_visibility(audit, name, city, emit, set_status, category=llm_category)
     else:
         set_status('llm', 'skipped')
 
     return results, audit
 
 
-def _attach_llm_visibility(audit, name, city, emit, set_status):
+def _attach_llm_visibility(audit, name, city, emit, set_status, category=''):
     """Best-effort: rellena venue_metrics['llm_visibility'] por sede y
     summary['llm_visibility'] (agregado). Acotado por _CLORO_MAX_VENUES/_RUNS."""
     set_status('llm', 'running')
@@ -417,7 +418,8 @@ def _attach_llm_visibility(audit, name, city, emit, set_status):
     try:
         vis = llm_visibility.fetch_llm_visibility(
             audit['clusters'], name, city,
-            runs=_CLORO_RUNS, max_venues=_CLORO_MAX_VENUES, country=_CLORO_COUNTRY)
+            runs=_CLORO_RUNS, max_venues=_CLORO_MAX_VENUES, country=_CLORO_COUNTRY,
+            workers=_CLORO_WORKERS, progress=emit, category=category)
         audit['summary']['llm_visibility'] = vis
         per_venue = vis.get('per_venue') or {}
         for cluster in audit['clusters']:
@@ -602,12 +604,13 @@ def _start_job(mode):
         return jsonify({'error': 'Falta el nombre del prospect'}), 400
 
     check_llm = request.values.get('check_llm_visibility', '').strip().lower() in ('1', 'true', 'on', 'yes')
+    llm_category = request.values.get('llm_category', '').strip()
 
     job_id = _new_job()
     thread = threading.Thread(
         target=_run_audit_job,
         args=(job_id, name, city, official_urls, csv_locations, csv_errors, official_comment, mode),
-        kwargs={'check_llm_visibility': check_llm},
+        kwargs={'check_llm_visibility': check_llm, 'llm_category': llm_category},
     )
     thread.start()
     return jsonify({'job_id': job_id})
@@ -796,7 +799,7 @@ def _search_google(name, city, progress=None):
             params={
                 'place_id': place['place_id'],
                 'fields': 'place_id,name,formatted_address,formatted_phone_number,website,'
-                          'rating,user_ratings_total,opening_hours,geometry,reviews',
+                          'rating,user_ratings_total,opening_hours,geometry,reviews,types',
                 'reviews_sort': 'newest',
                 'language': 'es',
                 'key': key,

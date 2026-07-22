@@ -23,6 +23,7 @@ import hashlib
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
 import requests
@@ -39,6 +40,7 @@ _NAME_PARTIAL_MIN = 90  # umbral rapidfuzz para "la marca aparece en este texto"
 # Categoría (Google Places `types`) → frase de intención local en español.
 _CATEGORY_MAP = {
     'cell_phone_store': 'tienda de telefonía móvil',
+    'telecommunications_service_provider': 'tienda de telefonía móvil',
     'electronics_store': 'tienda de electrónica',
     'pharmacy': 'farmacia',
     'drugstore': 'farmacia',
@@ -139,12 +141,36 @@ def _detect(result, name_q):
     return {'appears': False, 'position': None, 'label': None}
 
 
-def _humanize_category(google_record):
-    raw = google_record.get('raw') or {}
-    for t in (raw.get('types') or []):
-        if t in _CATEGORY_MAP:
-            return _CATEGORY_MAP[t]
-    return google_record.get('category') or 'negocio'
+# Tipos de Google demasiado genéricos para un prompt de intención local.
+_GENERIC_TYPES = {'point_of_interest', 'establishment', 'premise', 'geocode', 'food'}
+
+
+def _category_for(cluster):
+    """Categoría para el prompt, priorizando la de Google Places:
+    1) `types` de Google mapeados a una frase ES (prefiere el más específico
+       sobre el genérico 'tienda');
+    2) categoría legible de Apple/Bing/oficial si Google no da nada;
+    3) un `type` específico de Google humanizado (guiones bajos → espacios);
+    4) 'negocio' como último recurso."""
+    by_source = cluster.get('by_source') or {}
+    types = ((by_source.get('google') or {}).get('raw') or {}).get('types') or []
+
+    mapped = [_CATEGORY_MAP[t] for t in types if t in _CATEGORY_MAP]
+    specific = [m for m in mapped if m != 'tienda']
+    if specific:
+        return specific[0]
+    if mapped:
+        return mapped[0]
+
+    for source in ('apple', 'azure', 'official'):
+        cat = (by_source.get(source) or {}).get('category')
+        if cat and cat.strip():
+            return cat.strip()
+
+    for t in types:
+        if t not in _GENERIC_TYPES:
+            return t.replace('_', ' ')
+    return 'negocio'
 
 
 def _area_from_address(address):
@@ -157,9 +183,9 @@ def _area_from_address(address):
     return first or None
 
 
-def _build_prompt(cluster, city):
-    google_record = (cluster.get('by_source') or {}).get('google') or {}
-    category = _humanize_category(google_record)
+def _build_prompt(cluster, city, category=None):
+    # `category` manual (del input) tiene prioridad; si no, se infiere de Places.
+    category = (category or '').strip() or _category_for(cluster)
     area = _area_from_address(cluster.get('canonical_address') or '')
     if area and normalize.name_norm(area) != normalize.name_norm(city):
         return f'{category} en {area}, {city}'
@@ -190,29 +216,58 @@ def _venue_visibility(prompt, name_q, runs, country, session):
 
 
 def fetch_llm_visibility(clusters, prospect_name, city, *, runs=3, max_venues=5,
-                         country='es', session=None):
+                         country='es', session=None, workers=5, progress=None, category=None):
     """Visibility Index (ChatGPT) para las `max_venues` peores sedes con ficha
-    en Google. Devuelve el agregado + por-sede. Never raises."""
+    en Google. Comprueba las sedes EN PARALELO (hasta `workers` a la vez) —
+    cada llamada a ChatGPT-con-web-search es lenta (~10–40s), así que el pool
+    recorta el tiempo de pared ~Nx. Emite progreso por sede vía `progress`.
+    `category` (opcional) fija a mano la categoría del prompt para todas las
+    sedes (p.ej. "tienda de móviles", "proveedor de internet"); si es vacía se
+    infiere de Google Places. Devuelve el agregado + por-sede. Never raises."""
     empty = {'engine': 'chatgpt', 'prompt_template': None, 'venues_checked': 0,
-             'runs': runs, 'checks_total': 0, 'hits_total': 0, 'per_venue': {}, 'calls': 0}
+             'runs': runs, 'checks_total': 0, 'hits_total': 0, 'per_venue': {}, 'calls': 0,
+             'category': (category or '').strip() or None}
     if not _key() or not clusters:
         return empty
 
     sess = session or requests
     name_q = normalize.name_norm(prospect_name)
+    manual_category = (category or '').strip() or None
     # Los clusters ya vienen ordenados peor→mejor (venue_metrics); las peores
     # sedes son las más accionables para la conversación de venta.
     targets = [c for c in clusters if 'google' in c.get('sources_present', [])][:max_venues]
+    total = len(targets)
+
+    def emit(done):
+        if progress:
+            progress(f'Visibilidad en IA: {done}/{total} sede(s) comprobadas…')
+
+    prompts = {c['cluster_id']: _build_prompt(c, city, manual_category) for c in targets}
+
+    def work(cluster):
+        return cluster['cluster_id'], _venue_visibility(prompts[cluster['cluster_id']], name_q, runs, country, sess)
+
+    results = {}
+    with ThreadPoolExecutor(max_workers=max(1, min(workers, total or 1))) as pool:
+        futures = [pool.submit(work, c) for c in targets]
+        for done, future in enumerate(as_completed(futures), start=1):
+            try:
+                cid, res = future.result()
+                results[cid] = res
+            except Exception:
+                pass
+            emit(done)
 
     per_venue, checks_total, hits_total, calls = {}, 0, 0, 0
     for cluster in targets:
-        prompt = _build_prompt(cluster, city)
-        res = _venue_visibility(prompt, name_q, runs, country, sess)
+        res = results.get(cluster['cluster_id']) or {'prompt': prompts[cluster['cluster_id']], 'runs': [], 'hits': 0}
         per_venue[cluster['cluster_id']] = {'prompt': res['prompt'], 'runs': res['runs'], 'hits': res['hits']}
         checks_total += len(res['runs'])
         hits_total += res['hits']
         calls += res.get('_calls', 0)
 
-    return {'engine': 'chatgpt', 'prompt_template': f'{{categoría}} en {{zona}}, {city}',
-            'venues_checked': len(targets), 'runs': runs, 'checks_total': checks_total,
-            'hits_total': hits_total, 'per_venue': per_venue, 'calls': calls}
+    cat_label = manual_category or '{categoría}'
+    return {'engine': 'chatgpt', 'prompt_template': f'{cat_label} en {{zona}}, {city}',
+            'category': manual_category, 'venues_checked': total, 'runs': runs,
+            'checks_total': checks_total, 'hits_total': hits_total,
+            'per_venue': per_venue, 'calls': calls}

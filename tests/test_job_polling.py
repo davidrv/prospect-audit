@@ -20,7 +20,7 @@ def test_search_start_without_name_returns_400():
 
 def test_search_start_runs_audit_in_background_and_reports_progress(monkeypatch):
     def fake_run_audit(name, city, official_urls, csv_locations, csv_errors,
-                       progress=None, status=None, should_cancel=None, check_llm_visibility=False):
+                       progress=None, status=None, should_cancel=None, check_llm_visibility=False, llm_category=""):
         progress('Buscando en Google Maps…')
         progress('Google Maps: 3 sede(s) encontradas.')
         return {'google': [], 'apple': [], 'azure': [], 'official': [],
@@ -83,7 +83,7 @@ def test_search_start_job_reports_error_status_on_exception(monkeypatch):
 
 def test_report_start_returns_pdf_as_base64_in_final_result(monkeypatch):
     def fake_run_audit(name, city, official_urls, csv_locations, csv_errors,
-                       progress=None, status=None, should_cancel=None, check_llm_visibility=False):
+                       progress=None, status=None, should_cancel=None, check_llm_visibility=False, llm_category=""):
         return {'google': [], 'apple': [], 'azure': [], 'official': [],
                 'official_errors': [], 'official_findings': [], 'site_analysis': []}, \
                {'clusters': [], 'summary': {'total_locations': 0}}

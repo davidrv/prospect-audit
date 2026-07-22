@@ -123,9 +123,13 @@
       <textarea id="official-comment" class="txt" rows="2" placeholder="Comentario general para el informe (opcional)…" style="resize:vertical; font-size:13px;"></textarea>
     </div>
     <label style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--tx-2); cursor:pointer;">
-      <input type="checkbox" id="check-llm" style="margin-top:2px; accent-color:var(--acc);">
+      <input type="checkbox" id="check-llm" onchange="toggleLlmCat()" style="margin-top:2px; accent-color:var(--acc);">
       <span>Auditar <strong style="color:var(--tx);">visibilidad en IA</strong> (ChatGPT vía Cloro) · <span class="muted">consume créditos · comprueba las 5 peores sedes</span></span>
     </label>
+    <div id="llm-cat-wrap" style="display:none; margin-left:26px; flex-direction:column; gap:4px;">
+      <input id="llm-category" class="txt" placeholder="Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)" style="width:100%; font-size:13px;">
+      <div class="muted" style="font-size:11.5px;">Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.</div>
+    </div>
     <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:12px; font-size:15px;"><span class="msr" style="font-size:20px;">search</span>Auditar presencia local</button>
     <p class="muted" style="font-size:12px; text-align:center; margin:0;">Suele tardar 1–3 minutos. Puedes ver el progreso en vivo.</p>
   </div>
@@ -294,6 +298,11 @@ function toggleOfficial() {
 function updateCsvLabel(input) {
   document.getElementById('csv-name').textContent = input.files.length ? input.files[0].name : '';
 }
+function toggleLlmCat() {
+  var on = document.getElementById('check-llm').checked;
+  document.getElementById('llm-cat-wrap').style.display = on ? 'flex' : 'none';
+  if (on) document.getElementById('llm-category').focus();
+}
 function buildFormData(name, city, officialUrls) {
   var fd = new FormData();
   fd.append('name', name);
@@ -302,7 +311,11 @@ function buildFormData(name, city, officialUrls) {
   var csvInput = document.getElementById('official-csv');
   if (csvInput.files.length) fd.append('official_csv', csvInput.files[0]);
   fd.append('official_comment', document.getElementById('official-comment').value.trim());
-  if (document.getElementById('check-llm').checked) fd.append('check_llm_visibility', '1');
+  if (document.getElementById('check-llm').checked) {
+    fd.append('check_llm_visibility', '1');
+    var cat = document.getElementById('llm-category').value.trim();
+    if (cat) fd.append('llm_category', cat);
+  }
   return fd;
 }
 function loadRecent() {
