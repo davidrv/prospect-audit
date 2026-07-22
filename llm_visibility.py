@@ -183,8 +183,9 @@ def _area_from_address(address):
     return first or None
 
 
-def _build_prompt(cluster, city):
-    category = _category_for(cluster)
+def _build_prompt(cluster, city, category=None):
+    # `category` manual (del input) tiene prioridad; si no, se infiere de Places.
+    category = (category or '').strip() or _category_for(cluster)
     area = _area_from_address(cluster.get('canonical_address') or '')
     if area and normalize.name_norm(area) != normalize.name_norm(city):
         return f'{category} en {area}, {city}'
@@ -215,19 +216,23 @@ def _venue_visibility(prompt, name_q, runs, country, session):
 
 
 def fetch_llm_visibility(clusters, prospect_name, city, *, runs=3, max_venues=5,
-                         country='es', session=None, workers=5, progress=None):
+                         country='es', session=None, workers=5, progress=None, category=None):
     """Visibility Index (ChatGPT) para las `max_venues` peores sedes con ficha
     en Google. Comprueba las sedes EN PARALELO (hasta `workers` a la vez) —
     cada llamada a ChatGPT-con-web-search es lenta (~10–40s), así que el pool
     recorta el tiempo de pared ~Nx. Emite progreso por sede vía `progress`.
-    Devuelve el agregado + por-sede. Never raises."""
+    `category` (opcional) fija a mano la categoría del prompt para todas las
+    sedes (p.ej. "tienda de móviles", "proveedor de internet"); si es vacía se
+    infiere de Google Places. Devuelve el agregado + por-sede. Never raises."""
     empty = {'engine': 'chatgpt', 'prompt_template': None, 'venues_checked': 0,
-             'runs': runs, 'checks_total': 0, 'hits_total': 0, 'per_venue': {}, 'calls': 0}
+             'runs': runs, 'checks_total': 0, 'hits_total': 0, 'per_venue': {}, 'calls': 0,
+             'category': (category or '').strip() or None}
     if not _key() or not clusters:
         return empty
 
     sess = session or requests
     name_q = normalize.name_norm(prospect_name)
+    manual_category = (category or '').strip() or None
     # Los clusters ya vienen ordenados peor→mejor (venue_metrics); las peores
     # sedes son las más accionables para la conversación de venta.
     targets = [c for c in clusters if 'google' in c.get('sources_present', [])][:max_venues]
@@ -237,7 +242,7 @@ def fetch_llm_visibility(clusters, prospect_name, city, *, runs=3, max_venues=5,
         if progress:
             progress(f'Visibilidad en IA: {done}/{total} sede(s) comprobadas…')
 
-    prompts = {c['cluster_id']: _build_prompt(c, city) for c in targets}
+    prompts = {c['cluster_id']: _build_prompt(c, city, manual_category) for c in targets}
 
     def work(cluster):
         return cluster['cluster_id'], _venue_visibility(prompts[cluster['cluster_id']], name_q, runs, country, sess)
@@ -261,6 +266,8 @@ def fetch_llm_visibility(clusters, prospect_name, city, *, runs=3, max_venues=5,
         hits_total += res['hits']
         calls += res.get('_calls', 0)
 
-    return {'engine': 'chatgpt', 'prompt_template': f'{{categoría}} en {{zona}}, {city}',
-            'venues_checked': total, 'runs': runs, 'checks_total': checks_total,
-            'hits_total': hits_total, 'per_venue': per_venue, 'calls': calls}
+    cat_label = manual_category or '{categoría}'
+    return {'engine': 'chatgpt', 'prompt_template': f'{cat_label} en {{zona}}, {city}',
+            'category': manual_category, 'venues_checked': total, 'runs': runs,
+            'checks_total': checks_total, 'hits_total': hits_total,
+            'per_venue': per_venue, 'calls': calls}

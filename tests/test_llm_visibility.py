@@ -120,6 +120,28 @@ def test_fetch_emits_progress_per_venue(monkeypatch):
     assert '3/3' in msgs[-1]
 
 
+def test_fetch_uses_manual_category_override(monkeypatch):
+    monkeypatch.setattr(lv, '_key', lambda: 'fake')
+    seen = []
+    monkeypatch.setattr(lv, '_get_result', lambda session, prompt, country: seen.append(prompt) or {'text': 'x'})
+    # types dirían "tienda", pero la categoría manual debe ganar
+    clusters = [_cluster('c1', address='Gran Via 10, Barcelona', types=('store',))]
+    out = lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=1, max_venues=1,
+                                  category='proveedor de internet')
+    assert out['category'] == 'proveedor de internet'
+    assert out['prompt_template'] == 'proveedor de internet en {zona}, Barcelona'
+    assert seen[0] == 'proveedor de internet en Gran Via, Barcelona'
+
+
+def test_fetch_infers_category_when_no_override(monkeypatch):
+    monkeypatch.setattr(lv, '_key', lambda: 'fake')
+    seen = []
+    monkeypatch.setattr(lv, '_get_result', lambda session, prompt, country: seen.append(prompt) or {'text': 'x'})
+    clusters = [_cluster('c1', address='Gran Via 10, Barcelona', types=('store',))]
+    lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=1, max_venues=1)  # sin category
+    assert seen[0] == 'tienda en Gran Via, Barcelona'
+
+
 def test_fetch_best_effort_on_http_failure(monkeypatch):
     monkeypatch.setattr(lv, '_key', lambda: 'fake')
     monkeypatch.setattr(lv, '_get_result', lambda *a, **k: None)  # every call fails
