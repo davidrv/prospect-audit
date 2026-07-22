@@ -107,6 +107,7 @@ def _int_env(name, default):
 _CLORO_RUNS = _int_env('CLORO_RUNS', 3)             # repeticiones por sede (consistencia)
 _CLORO_MAX_VENUES = _int_env('CLORO_MAX_VENUES', 5)  # tope de sedes comprobadas (coste)
 _CLORO_COUNTRY = os.environ.get('CLORO_COUNTRY', 'es').strip() or 'es'
+_CLORO_WORKERS = _int_env('CLORO_WORKERS', 5)        # sedes comprobadas en paralelo
 
 
 # ── Background jobs (live progress polling) ─────────────────────
@@ -417,7 +418,8 @@ def _attach_llm_visibility(audit, name, city, emit, set_status):
     try:
         vis = llm_visibility.fetch_llm_visibility(
             audit['clusters'], name, city,
-            runs=_CLORO_RUNS, max_venues=_CLORO_MAX_VENUES, country=_CLORO_COUNTRY)
+            runs=_CLORO_RUNS, max_venues=_CLORO_MAX_VENUES, country=_CLORO_COUNTRY,
+            workers=_CLORO_WORKERS, progress=emit)
         audit['summary']['llm_visibility'] = vis
         per_venue = vis.get('per_venue') or {}
         for cluster in audit['clusters']:
@@ -796,7 +798,7 @@ def _search_google(name, city, progress=None):
             params={
                 'place_id': place['place_id'],
                 'fields': 'place_id,name,formatted_address,formatted_phone_number,website,'
-                          'rating,user_ratings_total,opening_hours,geometry,reviews',
+                          'rating,user_ratings_total,opening_hours,geometry,reviews,types',
                 'reviews_sort': 'newest',
                 'language': 'es',
                 'key': key,

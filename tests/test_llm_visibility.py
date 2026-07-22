@@ -24,9 +24,26 @@ def test_build_prompt_falls_back_to_city_without_area():
     assert p == 'tienda de telefonía móvil en Barcelona'
 
 
-def test_humanize_category_falls_back():
-    rec = {'raw': {'types': ['point_of_interest', 'establishment']}}
-    assert lv._humanize_category(rec) == 'negocio'
+def test_category_prefers_specific_over_generic_store():
+    c = _cluster('c1', types=('store', 'cell_phone_store', 'point_of_interest'))
+    assert lv._category_for(c) == 'tienda de telefonía móvil'
+
+
+def test_category_falls_back_to_other_source_when_google_has_no_useful_type():
+    c = _cluster('c1', types=('point_of_interest', 'establishment'))
+    c['by_source']['apple'] = {'category': 'Telecomunicaciones'}
+    assert lv._category_for(c) == 'Telecomunicaciones'
+
+
+def test_category_humanizes_specific_type_before_negocio():
+    c = _cluster('c1', types=('point_of_interest', 'insurance_agency_XYZ'))
+    # not in map, no other source -> humanize the specific type (not 'negocio')
+    assert lv._category_for(c) == 'insurance agency XYZ'
+
+
+def test_category_last_resort_negocio():
+    c = _cluster('c1', types=('point_of_interest', 'establishment'))
+    assert lv._category_for(c) == 'negocio'
 
 
 # ── detection ────────────────────────────────────────────────────────
@@ -67,26 +84,40 @@ def test_fetch_no_key_returns_empty(monkeypatch):
 
 
 def test_fetch_aggregates_and_caps_venues(monkeypatch):
+    import threading
     monkeypatch.setattr(lv, '_key', lambda: 'fake')
+    lock = threading.Lock()
     calls = {'n': 0}
 
     def fake_get(session, prompt, country):
-        calls['n'] += 1
-        # aparece 2 de cada 3 veces (alterna)
-        appears = calls['n'] % 3 != 0
-        return {'sources': ([{'position': 2, 'url': 'https://movistar.es', 'label': 'Movistar'}] if appears else
-                            [{'position': 1, 'url': 'https://orange.es', 'label': 'Orange'}]),
-                'text': 'Movistar' if appears else 'Orange'}
+        with lock:
+            calls['n'] += 1
+        return {'sources': [{'position': 2, 'url': 'https://movistar.es', 'label': 'Movistar'}],
+                'text': 'Movistar'}
 
     monkeypatch.setattr(lv, '_get_result', fake_get)
-    clusters = [_cluster('c%d' % i) for i in range(8)]
-    out = lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=3, max_venues=5, country='es')
+    # direcciones distintas -> prompts distintos (evita colisión de clave de caché)
+    clusters = [_cluster('c%d' % i, address='Calle %d, Barcelona' % i) for i in range(8)]
+    out = lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=3, max_venues=5,
+                                  country='es', workers=5)
 
     assert out['venues_checked'] == 5           # capped at max_venues
     assert out['checks_total'] == 15            # 5 venues × 3 runs
     assert out['calls'] == 15
+    assert calls['n'] == 15
     assert len(out['per_venue']) == 5
     assert all('runs' in v and len(v['runs']) == 3 for v in out['per_venue'].values())
+
+
+def test_fetch_emits_progress_per_venue(monkeypatch):
+    monkeypatch.setattr(lv, '_key', lambda: 'fake')
+    monkeypatch.setattr(lv, '_get_result', lambda *a, **k: {'text': 'x'})
+    msgs = []
+    clusters = [_cluster('c%d' % i, address='Calle %d, Barcelona' % i) for i in range(3)]
+    lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=1, max_venues=3,
+                            workers=3, progress=lambda m: msgs.append(m))
+    assert len(msgs) == 3                        # una línea de progreso por sede
+    assert '3/3' in msgs[-1]
 
 
 def test_fetch_best_effort_on_http_failure(monkeypatch):
