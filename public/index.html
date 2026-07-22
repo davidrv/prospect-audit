@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prospect Audit · Localistico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0">
+<style>
+  :root {
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --bg: #FAF9F7; --surface: #FFFFFF; --surface-2: #F5F3F0; --border: #E7E4DF; --border-2: #D8D4CE;
+    --tx: #0F0F0F; --tx-2: #3A3A3A; --tx-3: #797979;
+    --acc: #FF5000; --acc-hover: #E64600; --acc-soft: #FFEDE4; --acc-on: #FFFFFF;
+    --ok: #0F6E56; --ok-soft: #E5F1ED; --warn: #854F0B; --warn-soft: #F8EFDD; --bad: #A32D2D; --bad-soft: #F8E9E9;
+  }
+  :root[data-theme="dark"] {
+    --bg: #161513; --surface: #201E1B; --surface-2: #2A2723; --border: #38342F; --border-2: #4A453F;
+    --tx: #F4F2EF; --tx-2: #C9C5BF; --tx-3: #8F8B84;
+    --acc: #FF6A26; --acc-hover: #FF8248; --acc-soft: rgba(255,80,0,0.16); --acc-on: #FFFFFF;
+    --ok: #55C29B; --ok-soft: rgba(85,194,155,0.14); --warn: #E0A34E; --warn-soft: rgba(224,163,78,0.14); --bad: #E07A7A; --bad-soft: rgba(224,122,122,0.14);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--tx-2); font-family: var(--font-sans); font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
+  a { color: var(--acc); text-decoration: none; }
+  a:hover { color: var(--acc-hover); text-decoration: underline; }
+  h1, h2, h3 { margin: 0; color: var(--tx); font-weight: 700; }
+  input, textarea, button { font-family: var(--font-sans); }
+  input::placeholder, textarea::placeholder { color: var(--tx-3); }
+  .msr { font-family: "Material Symbols Rounded"; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; line-height: 1; display: inline-block; user-select: none; font-size: 20px; vertical-align: middle; }
+  @keyframes paspin { to { transform: rotate(360deg); } }
+  @keyframes shake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+  .spin { animation: paspin 1s linear infinite; }
+  .shake { animation: shake .35s; }
+
+  header.topbar { display: flex; align-items: center; gap: 20px; padding: 0 24px; height: 56px; background: var(--surface); border-bottom: 2px solid var(--acc); position: sticky; top: 0; z-index: 30; }
+  .brand { display: flex; align-items: center; gap: 8px; }
+  .brand .word { font-weight: 700; font-size: 17px; color: var(--tx); letter-spacing: -0.01em; }
+  .brand .sep { width: 1px; height: 20px; background: var(--border-2); margin: 0 6px; }
+  .brand .sub { font-weight: 600; font-size: 14px; color: var(--tx); }
+  nav.nav { display: flex; gap: 4px; margin-left: auto; }
+  nav.nav button { border: none; cursor: pointer; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; background: transparent; color: var(--tx-3); }
+  nav.nav button.active { background: var(--acc); color: var(--acc-on); }
+  nav.nav button:not(.active):hover { background: var(--surface-2); }
+  nav.nav button:disabled { opacity: .4; cursor: default; }
+  .theme-btn { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface); color: var(--tx-2); border-radius: 8px; cursor: pointer; }
+  .theme-btn:hover { background: var(--surface-2); }
+
+  main { max-width: 1060px; margin: 0 auto; padding: 24px 24px 64px; display: flex; flex-direction: column; gap: 16px; }
+  main.narrow { max-width: 560px; padding-top: 48px; }
+  .eyebrow { font-size: 12px; color: var(--acc); font-weight: 600; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+  .pad { padding: 20px 22px; }
+  .btn-acc { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 700; font-size: 14px; cursor: pointer; }
+  .btn-acc:hover { background: var(--acc-hover); }
+  .btn-acc:disabled { opacity: .6; cursor: default; }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface); color: var(--tx-2); font-weight: 600; font-size: 12.5px; cursor: pointer; }
+  .btn-ghost:hover { background: var(--surface-2); }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--tx-3); }
+  label.field input, .txt { border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--bg); color: var(--tx); outline: none; }
+  label.field input { font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .txt:focus, label.field input:focus { border-color: var(--acc); }
+  .pill { min-width: 34px; text-align: center; padding: 3px 9px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
+  .badge-cap { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+  .muted { color: var(--tx-3); }
+  .row-sep { border-bottom: 1px solid var(--border); }
+  table { border-collapse: collapse; width: 100%; }
+
+  .toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; font-size: 13.5px; }
+  .toast.loading { background: var(--acc-soft); color: var(--acc); }
+  .toast.success { background: var(--ok-soft); color: var(--ok); }
+  .toast.warning { background: var(--warn-soft); color: var(--warn); }
+  .toast.error { background: var(--bad-soft); color: var(--bad); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="msr" style="color: var(--acc); font-size: 24px;">pin_drop</span>
+    <span class="word">localistico</span>
+    <span class="sep"></span>
+    <span class="sub">Prospect Audit</span>
+  </div>
+  <nav class="nav" id="nav">
+    <button data-screen="input" onclick="showScreen('input')">Input</button>
+    <button data-screen="progress" id="nav-progress" onclick="showScreen('progress')" disabled>Progreso</button>
+    <button data-screen="results" id="nav-results" onclick="showScreen('results')" disabled>Resultados</button>
+  </nav>
+  <button class="theme-btn" title="Cambiar tema" onclick="toggleTheme()"><span class="msr" id="theme-icon" style="font-size: 18px;">dark_mode</span></button>
+</header>
+
+<!-- ══════════ INPUT ══════════ -->
+<main class="narrow" id="screen-input" style="display:none;">
+  <div>
+    <div class="eyebrow">Herramienta interna · equipo comercial</div>
+    <h1 style="font-size: 28px; margin-top: 4px;">Auditar un prospecto</h1>
+  </div>
+  <div class="card pad" style="display:flex; flex-direction:column; gap:16px;">
+    <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:12px;">
+      <label class="field">Nombre del prospecto
+        <input id="prospect-name" placeholder="Ej.: Movistar" autofocus>
+      </label>
+      <label class="field">Ciudad
+        <input id="prospect-city" placeholder="Barcelona" value="Barcelona">
+      </label>
+    </div>
+    <button class="linkish" onclick="toggleOfficial()" style="display:flex; align-items:center; gap:8px; border:none; background:transparent; padding:0; cursor:pointer; font-size:13px; font-weight:600; color:var(--acc); align-self:flex-start;">
+      <span class="msr" id="official-chev" style="font-size:18px;">chevron_right</span>Datos oficiales del prospecto (opcional)
+    </button>
+    <div id="official-box" style="display:none; flex-direction:column; gap:12px; border:1px solid var(--border); border-radius:12px; padding:14px; background:var(--bg);">
+      <textarea id="official-urls" class="txt" rows="3" placeholder="Una URL de su store locator por línea. Ej.: https://tiendas.movistar.es" style="resize:vertical;"></textarea>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <label class="btn-ghost" style="margin:0;"><span class="msr" style="font-size:16px;">upload_file</span>Subir CSV de sedes
+          <input id="official-csv" type="file" accept=".csv" style="display:none;" onchange="updateCsvLabel(this)">
+        </label>
+        <span id="csv-name" class="muted" style="font-size:12px;"></span>
+        <a href="/template_oficial.csv" style="font-size:12.5px;">Descargar plantilla</a>
+      </div>
+      <textarea id="official-comment" class="txt" rows="2" placeholder="Comentario general para el informe (opcional)…" style="resize:vertical; font-size:13px;"></textarea>
+    </div>
+    <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:12px; font-size:15px;"><span class="msr" style="font-size:20px;">search</span>Auditar presencia local</button>
+    <p class="muted" style="font-size:12px; text-align:center; margin:0;">Suele tardar 1–3 minutos. Puedes ver el progreso en vivo.</p>
+  </div>
+
+  <div class="card pad" id="recent-card" style="padding:16px 20px; display:none;">
+    <div style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3); margin-bottom:6px;">Auditorías recientes</div>
+    <div id="recent-list"></div>
+  </div>
+</main>
+
+<!-- ══════════ PROGRESO ══════════ -->
+<main class="narrow" id="screen-progress" style="display:none;">
+  <div>
+    <div class="eyebrow" id="progress-eyebrow">Auditando…</div>
+    <h1 style="font-size:28px; margin-top:4px;" id="progress-title">Auditando</h1>
+  </div>
+  <div class="card pad" style="display:flex; flex-direction:column; gap:18px;">
+    <div style="height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden;"><div id="progress-bar" style="height:100%; width:0%; border-radius:999px; background:var(--acc); transition:width .4s;"></div></div>
+    <div id="progress-steps" style="display:flex; flex-direction:column; gap:2px;"></div>
+    <div>
+      <button onclick="toggleLog()" style="display:flex; align-items:center; gap:6px; border:none; background:transparent; padding:0; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--tx-3);"><span class="msr" id="log-chev" style="font-size:16px;">expand_more</span>Registro detallado</button>
+      <div id="log-wrap" style="margin-top:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-size:12px; color:var(--tx-3); display:flex; flex-direction:column; gap:5px; max-height:220px; overflow:auto;">
+        <div id="progress-log" style="display:flex; flex-direction:column; gap:5px;"></div>
+      </div>
+    </div>
+    <div id="progress-actions" style="display:flex; gap:8px;">
+      <button class="btn-acc" id="partial-btn" onclick="showScreen('results')" style="flex:1;" disabled>Ver resultados parciales</button>
+      <button class="btn-ghost" id="cancel-btn" onclick="cancelAudit()">Cancelar</button>
+    </div>
+  </div>
+</main>
+
+<!-- ══════════ RESULTADOS ══════════ -->
+<main id="screen-results" style="display:none;">
+  <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+    <div>
+      <div class="eyebrow" id="results-eyebrow">Auditoría completada</div>
+      <h1 style="font-size:28px; margin-top:4px;" id="results-title">—</h1>
+    </div>
+    <button class="btn-acc" id="pdf-btn" onclick="exportPDF()" style="margin-left:auto;"><span class="msr" style="font-size:18px;">download</span>Exportar informe PDF</button>
+  </div>
+
+  <!-- Resumen -->
+  <section class="card" style="padding:20px 24px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
+    <svg width="96" height="96" viewBox="0 0 110 110" style="flex-shrink:0;">
+      <circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"></circle>
+      <circle id="score-arc" cx="55" cy="55" r="46" fill="none" stroke="var(--acc)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 289" transform="rotate(-90 55 55)"></circle>
+      <text id="score-num" x="55" y="53" text-anchor="middle" style="font-size:30px; font-weight:700; fill:var(--tx);">—</text>
+      <text x="55" y="72" text-anchor="middle" style="font-size:10px; fill:var(--tx-3);">de 100</text>
+    </svg>
+    <div style="flex:1; min-width:240px;">
+      <div style="font-weight:700; color:var(--tx); font-size:15px;">Local Presence Score</div>
+      <p id="summary-desc" style="font-size:13.5px; color:var(--tx-2); margin-top:4px; max-width:460px;"></p>
+    </div>
+    <div id="summary-stats" style="display:flex; gap:28px;"></div>
+  </section>
+
+  <!-- Store locator -->
+  <section class="card" id="locator-card" style="padding:18px 22px; display:none; flex-direction:column; gap:12px;"></section>
+
+  <!-- Sedes -->
+  <section class="card" style="overflow:hidden;">
+    <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+      <h2 style="font-size:16px;">Sedes auditadas</h2>
+      <span class="muted" id="venues-subtitle" style="font-size:12.5px;"></span>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--bg);">
+        <span class="msr" style="font-size:16px; color:var(--tx-3);">search</span>
+        <input id="venue-search" placeholder="Buscar sede…" oninput="renderVenues()" style="border:none; outline:none; background:transparent; color:var(--tx); font-size:13px; width:140px;">
+      </div>
+    </div>
+    <div style="overflow-x:auto;"><div style="min-width:930px;">
+      <div style="display:grid; grid-template-columns:56px minmax(200px,1.2fr) minmax(170px,1fr) 128px 190px 76px; gap:14px; padding:8px 18px; border-bottom:1px solid var(--border); background:var(--surface-2); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);">
+        <span>Score</span><span>Sede</span><span>Qué falla</span><span>Reputación</span><span>Comprobar en</span><span></span>
+      </div>
+      <div id="venues-body"></div>
+    </div></div>
+
+    <button id="ghost-toggle" onclick="toggleGhost()" style="width:100%; display:none; align-items:center; gap:10px; padding:13px 18px; border:none; background:var(--surface-2); cursor:pointer; font-size:13px; color:var(--tx-2); text-align:left;">
+      <span class="msr" id="ghost-chev" style="font-size:18px; color:var(--acc);">chevron_right</span>
+      <span id="ghost-label" style="font-weight:600; color:var(--tx);"></span>
+      <span class="muted">sin ficha en Google — no auditadas (posibles duplicados o bajas)</span>
+      <span style="margin-left:auto; font-size:12px; font-weight:600; color:var(--acc);" id="ghost-action">Revisar</span>
+    </button>
+    <div id="ghost-body" style="display:none;"></div>
+  </section>
+
+  <div style="display:flex; gap:18px; font-size:13px; color:var(--tx-3); padding:0 4px; flex-wrap:wrap;">
+    <a href="#" onclick="toggleRaw(event)" style="font-weight:600;" id="raw-link">Ver datos crudos por fuente</a>
+    <span id="discarded-count"></span>
+  </div>
+
+  <!-- Datos crudos (secundario) -->
+  <section class="card" id="raw-card" style="overflow:hidden; display:none;">
+    <div id="raw-tabs" style="display:flex; gap:4px; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap;"></div>
+    <div style="overflow-x:auto;"><div id="raw-body" style="min-width:760px; padding:4px 0;"></div></div>
+  </section>
+</main>
+
+<script>
+/* ═══════════════ estado ═══════════════ */
+var lastResult = null;                 // full search result (or reopened snapshot)
+var lastQuery = { name: '', city: '' };
+var deletedClusterIds = {};            // cluster_id -> true (excluded from PDF)
+var openVenueId = null;                // expanded row
+var ghostOpen = false, rawTab = 'google';
+var currentJobId = null;
+
+/* ═══════════════ tema ═══════════════ */
+(function initTheme() {
+  var saved = null;
+  try { saved = localStorage.getItem('pa-theme'); } catch (e) {}
+  var dark = saved ? saved === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  applyTheme(dark);
+})();
+function applyTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('theme-icon').textContent = dark ? 'light_mode' : 'dark_mode';
+}
+function toggleTheme() {
+  var dark = document.documentElement.getAttribute('data-theme') !== 'dark';
+  applyTheme(dark);
+  try { localStorage.setItem('pa-theme', dark ? 'dark' : 'light'); } catch (e) {}
+}
+
+/* ═══════════════ router ═══════════════ */
+function showScreen(name) {
+  ['input', 'progress', 'results'].forEach(function(s) {
+    document.getElementById('screen-' + s).style.display = (s === name) ? 'flex' : 'none';
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#nav button'), function(b) {
+    b.classList.toggle('active', b.getAttribute('data-screen') === name);
+  });
+  if (name === 'input') loadRecent();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function enableNav(id) { document.getElementById(id).disabled = false; }
+
+/* ═══════════════ helpers ═══════════════ */
+function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(c) {
+  return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function safeHref(u) { u = u || ''; return /^https?:\/\//i.test(u) ? u : '#'; }
+function fmtNum(n) { return (n == null) ? '—' : Number(n).toLocaleString('es-ES'); }
+var SEV_COLOR = { critico: ['var(--bad)', 'var(--bad-soft)'], alto: ['var(--warn)', 'var(--warn-soft)'],
+                  medio: ['var(--warn)', 'var(--warn-soft)'], ok: ['var(--ok)', 'var(--ok-soft)'],
+                  sin_datos: ['var(--tx-3)', 'var(--surface-2)'] };
+function sevColor(sev) { return SEV_COLOR[sev] || SEV_COLOR.sin_datos; }
+
+function reviewRateDisplay(rr) {
+  if (!rr) return '—';
+  if (rr.source === 'scraped') return String(rr.value);
+  if (rr.value === 'N/D' || rr.value == null) return '—';
+  return rr.value + '/' + rr.sample_size + ' (aprox.)';
+}
+function replyRateDisplay(rr) { if (!rr || rr.value === 'N/D' || rr.value == null) return 'N/D'; return rr.value + '%'; }
+
+/* ═══════════════ input ═══════════════ */
+function toggleOfficial() {
+  var box = document.getElementById('official-box');
+  var open = box.style.display === 'none';
+  box.style.display = open ? 'flex' : 'none';
+  document.getElementById('official-chev').textContent = open ? 'expand_more' : 'chevron_right';
+}
+function updateCsvLabel(input) {
+  document.getElementById('csv-name').textContent = input.files.length ? input.files[0].name : '';
+}
+function buildFormData(name, city, officialUrls) {
+  var fd = new FormData();
+  fd.append('name', name);
+  fd.append('city', city);
+  officialUrls.forEach(function(u) { fd.append('official_url', u); });
+  var csvInput = document.getElementById('official-csv');
+  if (csvInput.files.length) fd.append('official_csv', csvInput.files[0]);
+  fd.append('official_comment', document.getElementById('official-comment').value.trim());
+  return fd;
+}
+function loadRecent() {
+  fetch('/audits/recent?limit=8').then(function(r) { return r.json(); }).then(function(d) {
+    var list = (d && d.audits) || [];
+    var card = document.getElementById('recent-card');
+    if (!list.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('recent-list').innerHTML = list.map(function(a) {
+      var sc = sevFromScore(a.score); var col = sevColor(sc);
+      var meta = esc(a.city || '') + ' · ' + relTime(a.created_at) + (a.total_locations != null ? ' · ' + a.total_locations + ' sedes' : '');
+      return '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; border-top:1px solid var(--border); background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
+        '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
+        '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
+        '<span class="muted">' + meta + '</span>' +
+        '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>';
+    }).join('');
+  }).catch(function() {});
+}
+function sevFromScore(s) { if (s == null) return 'sin_datos'; if (s < 33) return 'critico'; if (s < 50) return 'alto'; if (s < 70) return 'medio'; return 'ok'; }
+function relTime(ts) {
+  if (!ts) return '';
+  var d = new Date(ts * 1000), now = new Date();
+  var days = Math.floor((now - d) / 86400000);
+  if (days <= 0) return 'hoy'; if (days === 1) return 'ayer'; if (days < 7) return 'hace ' + days + ' días';
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+/* ═══════════════ auditar + progreso ═══════════════ */
+function startAudit() {
+  var name = document.getElementById('prospect-name').value.trim();
+  var city = document.getElementById('prospect-city').value.trim() || 'Barcelona';
+  var officialUrls = document.getElementById('official-urls').value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (!name) {
+    var inp = document.getElementById('prospect-name');
+    inp.classList.add('shake'); inp.focus();
+    setTimeout(function() { inp.classList.remove('shake'); }, 400);
+    return;
+  }
+  lastQuery = { name: name, city: city };
+  lastResult = null; deletedClusterIds = {}; openVenueId = null;
+
+  document.getElementById('progress-log').innerHTML = '';
+  document.getElementById('progress-eyebrow').textContent = 'Auditando…';
+  document.getElementById('progress-title').innerHTML = esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('partial-btn').disabled = true;
+  document.getElementById('cancel-btn').style.display = '';
+  renderSteps({ google: { state: 'pending' }, apple: { state: 'pending' }, azure: { state: 'pending' }, official: { state: 'pending' } });
+  enableNav('nav-progress');
+  showScreen('progress');
+
+  fetch('/search/start', { method: 'POST', body: buildFormData(name, city, officialUrls) })
+    .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Error ' + r.status); }); return r.json(); })
+    .then(function(s) { currentJobId = s.job_id; pollJob(s.job_id); })
+    .catch(function(err) { appendLog([['—', 'Error: ' + err.message, 'var(--bad)']]); });
+}
+
+function pollJob(jobId) {
+  var since = 0, intervalMs = 1200;
+  function tick() {
+    fetch('/jobs/' + jobId + '/status?since=' + since)
+      .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); }); return r.json(); })
+      .then(function(data) {
+        since = data.progress_count;
+        if (data.sources) renderSteps(data.sources);
+        if (typeof data.percent === 'number') document.getElementById('progress-bar').style.width = data.percent + '%';
+        if (data.progress && data.progress.length) {
+          appendLog(data.progress.map(function(m) { return [nowClock(), m, 'var(--tx-2)']; }));
+          document.getElementById('progress-eyebrow').textContent = data.progress[data.progress.length - 1];
+        }
+        if (data.status === 'done') { onDone(data.result); return; }
+        if (data.status === 'cancelled') { document.getElementById('progress-eyebrow').textContent = 'Auditoría cancelada.'; document.getElementById('cancel-btn').style.display = 'none'; return; }
+        if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || 'desconocido'), 'var(--bad)']]); return; }
+        setTimeout(tick, intervalMs);
+      })
+      .catch(function(err) { appendLog([['—', 'Error: ' + err.message, 'var(--bad)']]); });
+  }
+  tick();
+}
+function nowClock() { var d = new Date(); return d.toTimeString().slice(0, 8); }
+function appendLog(lines) {
+  var log = document.getElementById('progress-log');
+  lines.forEach(function(l) {
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:8px;';
+    row.innerHTML = '<span style="min-width:56px;">' + esc(l[0]) + '</span><span style="color:' + l[2] + ';">' + esc(l[1]) + '</span>';
+    log.appendChild(row);
+  });
+  var wrap = document.getElementById('log-wrap'); wrap.scrollTop = wrap.scrollHeight;
+}
+var STEP_META = {
+  pending: ['radio_button_unchecked', 'var(--tx-3)', 'en cola', false],
+  running: ['progress_activity', 'var(--acc)', 'en curso…', true],
+  done: ['check_circle', 'var(--ok)', '', false],
+  error: ['error', 'var(--bad)', 'error', false],
+  skipped: ['remove_circle', 'var(--tx-3)', 'omitido', false]
+};
+var SOURCE_LABEL = { google: 'Google Maps', apple: 'Apple Maps', azure: 'Bing Maps', official: 'Datos oficiales' };
+function renderSteps(sources) {
+  document.getElementById('progress-steps').innerHTML = ['google', 'apple', 'azure', 'official'].map(function(s) {
+    var st = (sources[s] || { state: 'pending' });
+    var meta = STEP_META[st.state] || STEP_META.pending;
+    var status = st.state === 'done' ? ((st.count != null ? st.count : '') + ' sedes') : meta[2];
+    return '<div style="display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;">' +
+      '<span class="msr ' + (meta[3] ? 'spin' : '') + '" style="font-size:20px; color:' + meta[1] + ';">' + meta[0] + '</span>' +
+      '<span style="font-weight:600; color:var(--tx);">' + SOURCE_LABEL[s] + '</span>' +
+      '<span style="margin-left:auto; font-weight:600; font-size:12.5px; color:' + meta[1] + ';">' + esc(status) + '</span></div>';
+  }).join('');
+}
+function toggleLog() {
+  var wrap = document.getElementById('log-wrap');
+  var open = wrap.style.display !== 'none';
+  wrap.style.display = open ? 'none' : 'flex';
+  document.getElementById('log-chev').textContent = open ? 'chevron_right' : 'expand_more';
+}
+function cancelAudit() {
+  if (!currentJobId) return;
+  document.getElementById('cancel-btn').style.display = 'none';
+  fetch('/jobs/' + currentJobId + '/cancel', { method: 'POST' }).catch(function() {});
+}
+
+function onDone(result) {
+  lastResult = result;
+  // Sedes sin ficha en Google se excluyen del informe por defecto (se revisan
+  // en el bloque "solo en Bing/Apple"); el comercial puede reincluirlas.
+  (result.audit && result.audit.clusters || []).forEach(function(c) {
+    if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
+  });
+  document.getElementById('partial-btn').disabled = false;
+  document.getElementById('cancel-btn').style.display = 'none';
+  enableNav('nav-results');
+  renderResults();
+  showScreen('results');
+}
+
+/* ═══════════════ resultados ═══════════════ */
+function renderResults() {
+  if (!lastResult || !lastResult.audit) return;
+  var audit = lastResult.audit, summary = audit.summary || {};
+  var ps = summary.presence_score || {};
+  var score = ps.score;
+
+  document.getElementById('results-eyebrow').textContent = 'Auditoría completada' + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
+  document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(lastQuery.city) + '</span>';
+
+  // Gauge
+  var circ = 289, dash = (score == null ? 0 : Math.max(0, Math.min(100, score)) / 100 * circ);
+  var arc = document.getElementById('score-arc');
+  arc.setAttribute('stroke-dasharray', dash.toFixed(0) + ' ' + circ);
+  arc.setAttribute('stroke', sevColor(sevFromScore(score))[0]);
+  document.getElementById('score-num').textContent = (score == null ? '—' : score);
+
+  // Descripción
+  var stats = summary.stats || {};
+  var audited = ps.venues_scored || 0;
+  document.getElementById('summary-desc').innerHTML =
+    'Auditadas las <strong style="color:var(--tx);">' + audited + ' sedes con ficha en Google Maps</strong> (fuente de referencia): ' +
+    '<strong style="color:var(--warn);">' + (stats.inconsistent_locations || 0) + ' con datos distintos</strong> en Apple o Bing y ' +
+    '<strong style="color:var(--bad);">' + (stats.missing_some_platform || 0) + ' faltan</strong> en alguna plataforma.';
+
+  document.getElementById('summary-stats').innerHTML = [
+    [stats.inconsistent_locations != null ? stats.inconsistent_locations + '/' + audited : '—', 'con datos distintos entre plataformas', 'var(--warn)'],
+    [stats.missing_some_platform != null ? stats.missing_some_platform : '—', 'faltan en alguna plataforma', 'var(--bad)'],
+    [stats.reply_rate_overall != null ? stats.reply_rate_overall + '%' : 'N/D', 'reseñas respondidas', 'var(--warn)']
+  ].map(function(s) {
+    return '<div style="text-align:center;"><div style="font-size:26px; font-weight:700; color:' + s[2] + ';">' + s[0] + '</div>' +
+      '<div class="muted" style="font-size:12px; max-width:110px;">' + s[1] + '</div></div>';
+  }).join('');
+
+  renderLocator(lastResult.locator_report);
+  renderVenues();
+  renderGhost();
+  renderRawTabs();
+  updateDiscardedCount();
+}
+
+function renderLocator(report) {
+  var card = document.getElementById('locator-card');
+  if (!report || !report.has_data) { card.style.display = 'none'; return; }
+  card.style.display = 'flex';
+  var CK = { ok: ['check_circle', 'var(--ok)'], warn: ['error', 'var(--warn)'], bad: ['cancel', 'var(--bad)'], na: ['remove', 'var(--tx-3)'] };
+  var badge = report.optimized
+    ? '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>'
+    : '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+  var host = '';
+  try { host = new URL(report.root_url).host; } catch (e) { host = report.root_url; }
+  var checks = (report.checks || []).map(function(c) {
+    var m = CK[c.status] || CK.na;
+    return '<div style="display:flex; align-items:center; gap:8px; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);">' +
+      '<span class="msr" style="font-size:17px; color:' + m[1] + ';">' + m[0] + '</span>' +
+      '<span style="color:var(--tx);">' + esc(c.label) + '</span>' +
+      '<span style="margin-left:auto; font-size:12.5px; font-weight:600; color:' + m[1] + ';">' + esc(c.detail) + '</span></div>';
+  }).join('');
+  card.innerHTML =
+    '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
+      '<h2 style="font-size:16px;">Store locator y store pages</h2>' +
+      '<a href="' + safeHref(report.root_url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:4px; font-size:12.5px; font-weight:600;">' + esc(host) + '<span class="msr" style="font-size:13px;">open_in_new</span></a>' +
+      '<span style="margin-left:auto;">' + badge + '</span></div>' +
+    '<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px 20px;">' + checks + '</div>';
+}
+
+function platHref(det, source) { return (det && det[source] && det[source].url) || '#'; }
+var PILL_STATE = {
+  ok: ['var(--ok-soft)', 'var(--ok)'], issue: ['var(--warn-soft)', 'var(--warn)'], off: ['var(--bad-soft)', 'var(--bad)']
+};
+var PLAT = [['google', 'G'], ['apple', 'A'], ['azure', 'B'], ['official', 'W']];
+
+function venuesFiltered() {
+  var clusters = (lastResult.audit.clusters || []);
+  var q = document.getElementById('venue-search').value.trim().toLowerCase();
+  var withGoogle = clusters.filter(function(c) { return (c.sources_present || []).indexOf('google') !== -1; });
+  if (!q) return withGoogle;
+  return withGoogle.filter(function(c) {
+    return ((c.canonical_label || '') + ' ' + (c.canonical_address || '')).toLowerCase().indexOf(q) !== -1;
+  });
+}
+
+function renderVenues() {
+  if (!lastResult) return;
+  var rows = venuesFiltered();
+  var total = (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('google') !== -1; }).length;
+  document.getElementById('venues-subtitle').textContent = total + ' con ficha en Google · de peor a mejor · clic en una fila para el detalle';
+  document.getElementById('venues-body').innerHTML = rows.map(renderVenueRow).join('') ||
+    '<div class="muted" style="padding:16px 18px;">Sin sedes que coincidan.</div>';
+}
+
+function renderVenueRow(c) {
+  var vm = c.venue_metrics || {};
+  var col = sevColor(vm.severity);
+  var open = openVenueId === c.cluster_id;
+  var discarded = !!deletedClusterIds[c.cluster_id];
+  var note = comment(c);
+  var ratColor = vm.rating == null ? 'var(--tx-3)' : (vm.rating < 3.5 ? 'var(--bad)' : (vm.rating < 4 ? 'var(--warn)' : 'var(--ok)'));
+  var det = vm.presence_detail || {};
+  var st = vm.platform_state || {};
+  var pills = PLAT.map(function(p) {
+    var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
+    var title = SOURCE_LABEL[p[0]] + (stt === 'ok' ? ' — correcto' : stt === 'issue' ? ' — con errores' : ' — no encontrada');
+    return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="' + esc(title) + '" ' +
+      'style="width:34px; height:30px; border-radius:8px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
+  }).join('');
+
+  var html =
+    '<div class="row-sep" style="opacity:' + (discarded ? .45 : 1) + ';">' +
+      '<div onclick="toggleVenue(\'' + esc(c.cluster_id) + '\')" style="display:grid; grid-template-columns:56px minmax(200px,1.2fr) minmax(170px,1fr) 128px 190px 76px; gap:14px; padding:13px 18px; align-items:center; cursor:pointer; background:' + (open ? 'var(--surface-2)' : 'transparent') + ';">' +
+        '<span class="pill" style="background:' + col[1] + '; color:' + col[0] + ';">' + (vm.score == null ? '—' : vm.score) + '</span>' +
+        '<div><div style="font-weight:600; color:var(--tx); font-size:13.5px;">' + esc(c.canonical_label) + '</div>' +
+          '<div class="muted" style="font-size:12px; margin-top:1px;">' + esc(c.canonical_address || '') + '</div></div>' +
+        '<div style="font-size:13px; color:var(--tx-2);">' + esc(vm.issue_summary || 'Sin problemas detectados') +
+          (note ? '<div style="display:flex; align-items:center; gap:5px; margin-top:3px; font-size:12px; color:var(--acc);"><span class="msr" style="font-size:14px;">edit_note</span>' + esc(note) + '</div>' : '') + '</div>' +
+        '<div style="font-size:12.5px;"><div style="display:flex; align-items:center; gap:4px;"><span class="msr" style="font-size:15px; color:' + ratColor + ';">star</span>' +
+          '<span style="font-weight:700; color:' + ratColor + ';">' + (vm.rating == null ? '—' : vm.rating) + '</span><span class="muted">· ' + fmtNum(vm.review_count) + '</span></div>' +
+          '<div class="muted" style="margin-top:2px;">' + reviewRateDisplay(vm.review_rate_3m) + ' en 3m · ' + replyRateDisplay(vm.reply_rate_3m) + ' resp.</div></div>' +
+        '<div style="display:flex; gap:5px;">' + pills + '</div>' +
+        '<div style="display:flex; gap:4px; justify-content:flex-end;">' +
+          '<button onclick="event.stopPropagation(); toggleDiscard(\'' + esc(c.cluster_id) + '\')" title="' + (discarded ? 'Reincluir' : 'Excluir del informe') + '" style="width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--tx-3); cursor:pointer; display:grid; place-items:center;"><span class="msr" style="font-size:16px;">' + (discarded ? 'undo' : 'close') + '</span></button>' +
+          '<span style="width:26px; height:30px; display:grid; place-items:center; color:var(--tx-3);"><span class="msr" style="font-size:18px;">' + (open ? 'expand_less' : 'expand_more') + '</span></span>' +
+        '</div>' +
+      '</div>';
+
+  if (open) html += renderVenueDetail(c);
+  return html + '</div>';
+}
+
+var DETAIL_FIELDS = [['name', 'Nombre'], ['phone', 'Teléfono'], ['website', 'Web'], ['opening_hours', 'Horario']];
+function cellStyle(verdict) {
+  // ref (google), ok, bad, na
+  if (verdict === 'ref') return ['var(--acc-soft)', 'var(--tx-2)', '', ''];
+  if (verdict === 'match') return ['transparent', 'var(--tx-2)', 'check', 'var(--ok)'];
+  if (verdict === 'conflict' || verdict === 'sin_dato') return ['var(--bad-soft)', 'var(--bad)', 'priority_high', 'var(--bad)'];
+  return ['transparent', 'var(--tx-3)', '', '']; // missing / na
+}
+function renderVenueDetail(c) {
+  var vm = c.venue_metrics || {};
+  var acc = { name: vm.accuracy_name, phone: vm.accuracy_phone, website: vm.accuracy_website, opening_hours: vm.accuracy_hours };
+  var det = vm.presence_detail || {};
+
+  var head = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--tx-3); border-bottom:1px solid var(--border);">' +
+    '<span style="padding:8px 12px;"></span><span style="padding:8px 12px; color:var(--acc);">Google · ref.</span>' +
+    '<span style="padding:8px 12px;">Apple</span><span style="padding:8px 12px;">Bing</span><span style="padding:8px 12px;">Web oficial</span></div>';
+
+  var body = DETAIL_FIELDS.map(function(f) {
+    var m = acc[f[0]] || { breakdown: {}, anchor_value: null };
+    var cells = [];
+    cells.push(detailCell(m.anchor_value || '—', 'ref'));
+    ['apple', 'azure', 'official'].forEach(function(s) {
+      var b = (m.breakdown || {})[s] || { verdict: 'na', value: null };
+      var val = b.value || (b.verdict === 'sin_dato' ? 'Sin dato' : (b.verdict === 'missing' ? 'No encontrada' : (b.verdict === 'na' ? 'N/D' : '—')));
+      cells.push(detailCell(val, b.verdict));
+    });
+    return '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
+      '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + f[1] + '</span>' + cells.join('') + '</div>';
+  }).join('');
+
+  // Links row (action links de Google)
+  var al = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
+  var linksRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
+    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Links</span>' +
+    detailCell(al, al === 'Ninguno detectado' ? 'conflict' : 'ref') +
+    detailCell('N/D', 'na') + detailCell('—', 'na') + detailCell('—', 'na') + '</div>';
+
+  // Ficha row (enlaces por fuente)
+  var fichaCells = ['google', 'apple', 'azure', 'official'].map(function(s) {
+    var url = (det[s] && det[s].url) || '';
+    var present = det[s] && det[s].present;
+    return '<span style="padding:9px 12px;">' + (url ?
+      '<a href="' + safeHref(url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">' + (present ? 'Abrir' : 'Buscar') + '<span class="msr" style="font-size:13px;">open_in_new</span></a>' : '<span class="muted">—</span>') + '</span>';
+  }).join('');
+  var fichaRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12px; align-items:center;">' +
+    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Ficha</span>' + fichaCells + '</div>';
+
+  var cur = comment(c);
+  var commentBox = '<div style="display:flex; gap:10px; margin-top:12px; align-items:center;">' +
+    '<input id="cmt-' + esc(c.cluster_id) + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
+    'oninput="setComment(\'' + esc(c.cluster_id) + '\', this.value)" onclick="event.stopPropagation();" ' +
+    'style="flex:1; border:1px solid var(--border-2); border-radius:8px; padding:8px 12px; background:var(--surface); color:var(--tx); font-size:13px; outline:none;"></div>';
+
+  return '<div style="padding:16px 18px 18px; background:var(--surface-2); border-top:1px solid var(--border);">' +
+    '<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden;">' + head + body + linksRow + fichaRow + '</div>' + commentBox + '</div>';
+}
+function detailCell(value, verdict) {
+  var s = cellStyle(verdict);
+  var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + ';">' + s[2] + '</span>' : '';
+  return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:center; gap:5px;">' + icon + esc(value) + '</span>';
+}
+
+function toggleVenue(id) { openVenueId = (openVenueId === id) ? null : id; renderVenues(); }
+function toggleDiscard(id) {
+  if (deletedClusterIds[id]) delete deletedClusterIds[id]; else deletedClusterIds[id] = true;
+  renderVenues(); updateDiscardedCount();
+}
+function comment(c) { return (c.cluster_id in commentEdits) ? commentEdits[c.cluster_id] : (c.presenter_comment || ''); }
+var commentEdits = {};
+function setComment(id, val) { commentEdits[id] = val; }
+function updateDiscardedCount() {
+  var n = Object.keys(deletedClusterIds).filter(function(id) {
+    var c = (lastResult.audit.clusters || []).find(function(x) { return x.cluster_id === id; });
+    return c && (c.sources_present || []).indexOf('google') !== -1;
+  }).length;
+  document.getElementById('discarded-count').textContent = n ? ('· ' + n + ' sede(s) descartadas del informe') : '';
+}
+
+/* ── Ghost (sin Google) ── */
+function ghostClusters() { return (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('google') === -1; }); }
+function renderGhost() {
+  var gc = ghostClusters();
+  var toggle = document.getElementById('ghost-toggle');
+  if (!gc.length) { toggle.style.display = 'none'; document.getElementById('ghost-body').style.display = 'none'; return; }
+  toggle.style.display = 'flex';
+  document.getElementById('ghost-label').textContent = gc.length + ' ubicaciones más, solo en Bing o Apple';
+  document.getElementById('ghost-body').innerHTML = gc.map(function(c) {
+    var vm = c.venue_metrics || {}; var st = vm.platform_state || {}; var det = vm.presence_detail || {};
+    var pills = PLAT.map(function(p) {
+      var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
+      return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" title="' + esc(SOURCE_LABEL[p[0]]) + '" style="width:34px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
+    }).join('');
+    var included = !deletedClusterIds[c.cluster_id];
+    return '<div style="display:grid; grid-template-columns:1fr 190px 130px; gap:14px; padding:10px 18px; border-top:1px solid var(--border); align-items:center; font-size:12.5px; color:var(--tx-3);">' +
+      '<span><span style="color:var(--tx-2); font-weight:600;">' + esc(c.canonical_label) + '</span> · ' + esc(c.canonical_address || '') + '</span>' +
+      '<div style="display:flex; gap:5px;">' + pills + '</div>' +
+      '<button onclick="toggleDiscard(\'' + esc(c.cluster_id) + '\'); renderGhost();" class="btn-ghost" style="padding:5px 10px; font-size:12px;">' + (included ? 'Incluida ✓' : 'Incluir en informe') + '</button></div>';
+  }).join('');
+}
+function toggleGhost() {
+  ghostOpen = !ghostOpen;
+  document.getElementById('ghost-body').style.display = ghostOpen ? 'block' : 'none';
+  document.getElementById('ghost-chev').textContent = ghostOpen ? 'expand_less' : 'chevron_right';
+  document.getElementById('ghost-action').textContent = ghostOpen ? 'Ocultar' : 'Revisar';
+}
+
+/* ── Datos crudos por fuente ── */
+function toggleRaw(e) {
+  if (e) e.preventDefault();
+  var card = document.getElementById('raw-card');
+  card.style.display = card.style.display === 'none' ? 'block' : 'none';
+}
+function rawRecordsFor(source) {
+  return (lastResult.audit.clusters || []).filter(function(c) { return c.by_source && c.by_source[source]; })
+    .map(function(c) { return c.by_source[source]; });
+}
+function renderRawTabs() {
+  var sources = [['google', 'Google'], ['apple', 'Apple'], ['azure', 'Bing'], ['official', 'Oficial']];
+  document.getElementById('raw-tabs').innerHTML = sources.map(function(s) {
+    var n = rawRecordsFor(s[0]).length;
+    var active = rawTab === s[0];
+    return '<button onclick="rawTab=\'' + s[0] + '\'; renderRawTabs();" class="btn-ghost" style="' + (active ? 'background:var(--acc); color:var(--acc-on); border-color:var(--acc);' : '') + '">' + s[1] + ' <span style="opacity:.7;">' + n + '</span></button>';
+  }).join('');
+  renderRawBody();
+}
+function renderRawBody() {
+  var recs = rawRecordsFor(rawTab);
+  if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:16px;">Sin registros.</div>'; return; }
+  var head = ['Nombre', 'Dirección', 'Teléfono', 'Web', 'Rating', 'Reseñas', 'Horarios', 'Ficha'];
+  var rows = recs.map(function(r) {
+    var hours = (r.opening_hours && r.opening_hours.length) ? r.opening_hours.join('; ') : '—';
+    var web = r.website_display || r.website;
+    return '<tr style="border-top:1px solid var(--border);">' +
+      td(r.name || '—', 'font-weight:600; color:var(--tx);') +
+      td(r.formatted_address || '—') +
+      td(r.phone_display || r.phone || '—') +
+      td(web ? '<a href="' + safeHref(web) + '" target="_blank" rel="noopener">' + esc(web) + '</a>' : '—', '', true) +
+      td(r.rating == null ? '—' : r.rating) +
+      td(fmtNum(r.review_count)) +
+      td(hours) +
+      td(r.verify_url ? '<a href="' + safeHref(r.verify_url) + '" target="_blank" rel="noopener">Abrir</a>' : '—', '', true) +
+      '</tr>';
+  }).join('');
+  document.getElementById('raw-body').innerHTML =
+    '<table><thead><tr>' + head.map(function(h) { return '<th style="text-align:left; padding:8px 12px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--tx-3); font-weight:600;">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+function td(html, style, isHtml) { return '<td style="padding:8px 12px; font-size:12.5px; color:var(--tx-2); ' + (style || '') + '">' + (isHtml ? html : esc(html)) + '</td>'; }
+
+/* ── PDF ── */
+function exportPDF() {
+  var btn = document.getElementById('pdf-btn');
+  if (!lastResult || !lastResult.audit) { alert('Primero ejecuta una auditoría.'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="msr spin" style="font-size:18px;">progress_activity</span>Generando…';
+  var payload = {
+    name: lastQuery.name, city: lastQuery.city,
+    official_comment: document.getElementById('official-comment').value.trim(),
+    audit: lastResult.audit,
+    official_errors: lastResult.official_errors || [],
+    official_findings: lastResult.official_findings || [],
+    site_analysis: lastResult.site_analysis || [],
+    deleted_cluster_ids: Object.keys(deletedClusterIds),
+    row_comments: commentEdits
+  };
+  fetch('/report/from_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+    .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Error ' + r.status); }); return r.blob(); })
+    .then(function(blob) {
+      var url = URL.createObjectURL(blob); var a = document.createElement('a');
+      a.href = url; a.download = 'auditoria_' + (lastQuery.name || 'prospect').replace(/\s+/g, '_') + '.pdf';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    })
+    .catch(function(err) { alert('Error generando el PDF: ' + err.message); })
+    .finally(function() { btn.disabled = false; btn.innerHTML = '<span class="msr" style="font-size:18px;">download</span>Exportar informe PDF'; });
+}
+
+/* ── Reabrir del histórico ── */
+function openAudit(id) {
+  fetch('/audits/' + id).then(function(r) { if (!r.ok) throw new Error('no encontrada'); return r.json(); })
+    .then(function(rec) {
+      lastResult = rec.snapshot || {};
+      lastResult._created_rel = relTime(rec.created_at);
+      lastQuery = { name: rec.name, city: rec.city };
+      deletedClusterIds = {}; commentEdits = {}; openVenueId = null;
+      (lastResult.audit && lastResult.audit.clusters || []).forEach(function(c) {
+        if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
+      });
+      enableNav('nav-results');
+      renderResults(); showScreen('results');
+    })
+    .catch(function() { alert('No se pudo abrir esa auditoría.'); });
+}
+
+/* ── init ── */
+document.getElementById('prospect-name').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
+document.getElementById('prospect-city').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
+showScreen('input');
+</script>
+</body>
+</html>

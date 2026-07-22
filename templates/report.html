@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Auditoría {{ prospect_name }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --surface: #f8f7f4;
+    --border: #d8d6d0;
+    --text: #1a1a19;
+    --muted: #6b6a65;
+    --hint: #9b9a95;
+    --accent: #534AB7;
+    --accent-bg: #EEEDFE;
+    --success: #0F6E56;
+    --success-bg: #E1F5EE;
+    --danger: #A32D2D;
+    --danger-bg: #FCEBEB;
+    --warn: #854F0B;
+    --warn-bg: #FAEEDA;
+  }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  @page {
+    size: A4;
+    margin: 22mm 16mm 20mm;
+    @bottom-center {
+      content: "Localistico — Confidencial — " counter(page) " / " counter(pages);
+      font-size: 9px;
+      color: #9b9a95;
+    }
+  }
+
+  h1, h2, h3 { font-weight: 600; }
+  .cover h1 { font-size: 30px; margin-bottom: 6px; }
+  .cover .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 40px; }
+  .cover-meta { font-size: 12px; color: var(--muted); margin-top: 60px; }
+  .cover-meta div { margin-bottom: 4px; }
+  .risk-pill {
+    display: inline-block; margin-top: 24px; padding: 6px 16px; border-radius: 20px;
+    font-size: 13px; font-weight: 600;
+  }
+  .risk-pill.critico, .risk-pill.alto { background: var(--danger-bg); color: var(--danger); }
+  .risk-pill.medio { background: var(--warn-bg); color: var(--warn); }
+  .risk-pill.sin-datos { background: var(--surface); color: var(--muted); }
+
+  .page-break { page-break-before: always; }
+
+  section { margin-bottom: 26px; }
+  section > h2 {
+    font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--accent); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 14px;
+  }
+
+  .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .kpi-tile {
+    flex: 1 1 30%; border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+    page-break-inside: avoid;
+  }
+  .kpi-tile .value { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .kpi-tile .label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .kpi-tile.critical .value { color: var(--danger); }
+
+  .narrative { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+  ul.recommendations { list-style: none; padding-left: 0; }
+  ul.recommendations li {
+    padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--accent-bg);
+    margin-bottom: 6px; font-size: 11px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 10px; }
+  thead th {
+    text-align: left; padding: 6px 8px; font-size: 9px; text-transform: uppercase;
+    letter-spacing: 0.03em; color: var(--muted); border-bottom: 1px solid var(--border);
+  }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tbody tr { page-break-inside: avoid; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 600;
+  }
+  .badge.critical { background: var(--danger-bg); color: var(--danger); }
+  .badge.moderate { background: var(--warn-bg); color: var(--warn); }
+  .badge.minor { background: var(--surface); color: var(--muted); }
+
+  .quote-card {
+    border: 1px solid var(--border); border-left: 3px solid var(--danger); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 8px; page-break-inside: avoid;
+  }
+  .quote-card .meta { font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+  .quote-card .text { font-size: 11px; font-style: italic; }
+
+  .cluster-block { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; page-break-inside: avoid; }
+  .cluster-block h3 { font-size: 12px; margin-bottom: 6px; }
+  .source-row { display: flex; gap: 8px; font-size: 9px; color: var(--muted); flex-wrap: wrap; }
+  .source-tag { border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; }
+  .muted { color: var(--hint); }
+
+  footer.note { font-size: 9px; color: var(--hint); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  {% if logo_data_uri %}
+  <img src="{{ logo_data_uri }}" alt="Localistico" style="height:26px;margin-bottom:24px;">
+  {% else %}
+  <div style="font-size:11px;color:var(--hint);text-transform:uppercase;letter-spacing:0.08em;">Localistico</div>
+  {% endif %}
+  <h1>Auditoría de presencia local</h1>
+  <div class="subtitle">{{ prospect_name }} — {{ city }}</div>
+
+  <div class="risk-pill {{ overall_risk | lower | replace('í', 'i') }}">Riesgo global: {{ overall_risk }}</div>
+
+  {% if summary.presence_score and summary.presence_score.score is not none %}
+  <div style="margin-top:20px;font-size:13px;color:var(--hint);text-transform:uppercase;letter-spacing:0.06em;">Local Presence Score</div>
+  <div style="font-size:48px;font-weight:700;color:var(--text);line-height:1;">{{ summary.presence_score.score }}<span style="font-size:20px;color:var(--hint);font-weight:400;"> / 100</span></div>
+  <div style="font-size:12px;color:var(--hint);margin-top:4px;">
+    Presencia {{ summary.presence_score.presence if summary.presence_score.presence is not none else '—' }} ·
+    Consistencia {{ summary.presence_score.consistency if summary.presence_score.consistency is not none else '—' }} ·
+    Reputación {{ summary.presence_score.reputation if summary.presence_score.reputation is not none else '—' }}
+  </div>
+  {% endif %}
+
+  <div class="cover-meta">
+    <div>Sedes auditadas: {{ summary.total_locations }}</div>
+    <div>Fecha de generación: {{ generated_at }}</div>
+    <div>Fuentes: Google Maps, Apple Maps, Bing Maps{{ ', datos oficiales' if summary.missing_official < summary.total_locations else '' }}</div>
+  </div>
+</section>
+
+<section class="page-break">
+  <h2>Resumen ejecutivo</h2>
+  <div class="kpi-row">
+    <div class="kpi-tile critical"><div class="value">{{ summary.locations_with_critical_flags }}</div><div class="label">sedes con problemas críticos</div></div>
+    <div class="kpi-tile"><div class="value">{{ summary.low_rating }}</div><div class="label">sedes con rating &lt; 3,5 en Google</div></div>
+    <div class="kpi-tile"><div class="value">{{ summary.no_reviews }}</div><div class="label">sedes sin ninguna reseña</div></div>
+    <div class="kpi-tile"><div class="value">{{ summary.missing_google }}</div><div class="label">sedes no encontradas en Google</div></div>
+    <div class="kpi-tile"><div class="value">{{ summary.missing_apple }}</div><div class="label">sedes no encontradas en Apple Maps</div></div>
+    <div class="kpi-tile"><div class="value">{{ summary.missing_azure }}</div><div class="label">sedes no encontradas en Bing Maps</div></div>
+  </div>
+
+  {% if summary.total_locations %}
+  <p class="narrative">
+    De las {{ summary.total_locations }} sedes auditadas, {{ summary.locations_with_critical_flags }}
+    presentan al menos un problema crítico de consistencia de datos o reputación
+    {%- if summary.locations_with_critical_flags > 0 %} — una oportunidad que la competencia probablemente
+    ya está aprovechando{% endif %}.
+  </p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Recomendaciones</h2>
+  <ul class="recommendations">
+    {% for item in recommendations %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="page-break">
+  <h2>Tabla de venues</h2>
+  <p class="narrative">Ordenada de peor a mejor calidad de datos. Presencia y accuracy pesan más que rating/reseñas en el orden; estas a su vez pesan más que las señales marcadas N/D.</p>
+  {% if venue_rows %}
+  <table>
+    <thead><tr>
+      <th>Sede</th><th>Presencia</th><th>Accuracy</th>
+      <th>Action links (G/A)</th><th>Rating</th><th>Reseñas</th><th>Reviews (3m)</th><th>Reply rate (3m)</th><th>Posts (3m)</th>
+    </tr></thead>
+    <tbody>
+      {% set no_google_limit = 5 %}
+      {% set no_google_total = venue_rows | rejectattr('has_google') | list | length %}
+      {% set ns = namespace(divider_shown=False, no_google_shown=0) %}
+      {% for row in venue_rows %}
+      {% if not row.has_google %}
+        {% if not ns.divider_shown %}
+        <tr><td colspan="9" class="muted" style="padding-top:10px;font-size:8px;text-transform:uppercase;letter-spacing:0.04em;border-top:1px solid var(--border);">Sin presencia en Google Maps — probablemente bajas o duplicados desactualizados, menor prioridad</td></tr>
+        {% set ns.divider_shown = True %}
+        {% endif %}
+        {% set ns.no_google_shown = ns.no_google_shown + 1 %}
+      {% endif %}
+      {% if row.has_google or ns.no_google_shown <= no_google_limit %}
+      <tr>
+        <td>[{{ row.cluster_id }}] {{ row.label }}{% if row.address %}<div class="muted" style="font-size:8px;margin-top:2px;">{{ row.address }}</div>{% endif %}{% if row.presenter_comment %}<div style="margin-top:3px;padding:3px 6px;border-left:2px solid var(--accent);background:var(--accent-bg);font-size:8px;color:var(--text);">{{ row.presenter_comment }}</div>{% endif %}</td>
+        <td>
+          {{ row.presence_pct }}%
+          {% if row.presence_missing %}
+          <div class="muted" style="font-size:8px;margin-top:2px;">
+            No en:
+            {% for item in row.presence_missing %}{% if item.url %}<a href="{{ item.url }}">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+          </div>
+          {% endif %}
+        </td>
+        <td style="font-size:9px;">
+          {% for lbl, val, note in [
+              ('Nombre', row.accuracy_name, row.accuracy_name_note),
+              ('Teléfono', row.accuracy_phone, row.accuracy_phone_note),
+              ('Web', row.accuracy_website, row.accuracy_website_note),
+              ('Horario', row.accuracy_hours, row.accuracy_hours_note)] %}
+          <div style="margin:1px 0;white-space:nowrap;"><span class="muted" style="display:inline-block;min-width:44px;">{{ lbl }}</span> {{ (val ~ '%') if val is not none else '—' }} <span class="muted" style="font-size:8px;">{{ note }}</span></div>
+          {% endfor %}
+        </td>
+        <td class="muted">{{ row.action_links }}</td>
+        <td>{% if row.rating is not none %}★ {{ row.rating }}{% else %}—{% endif %}</td>
+        <td>{{ row.review_count if row.review_count is not none else '—' }}</td>
+        <td class="muted">{{ row.review_rate_display }}</td>
+        <td class="muted">{{ row.reply_rate_display }}</td>
+        <td class="muted">{{ row.posts_display }}</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+      {% if no_google_total > no_google_limit %}
+      <tr><td colspan="9" class="muted" style="padding:6px 0;font-size:8px;">+ {{ no_google_total - no_google_limit }} sede(s) más sin presencia en Google Maps (no mostradas en este informe)</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <footer class="note">
+    Bajo cada columna de accuracy: A=Apple, B=Bing, O=Oficial — ✓ coincide, ✗ difiere, – sin dato en esa
+    fuente, ·=no aplica (fuente no auditada esta vez). "Action links (G/A)": el valor de Google (Reservar/
+    Pedir online/Menú/Entradas) se obtiene escrapeando la ficha de Maps — "Ninguno detectado" significa que
+    se comprobó y no hay ninguno; Apple siempre N/D (Apple Business Connect no es visible públicamente).
+    "Reviews (3m)" es el número de reseñas de los últimos ~3 meses escrapeadas de Google Maps; cuando ese
+    scraping falla para un local, se muestra "X/Y (aprox.)" sobre la muestra de ≤5 reseñas más recientes de
+    la API. "Reply rate (3m)" es el % de esas reseñas con respuesta del propietario. "Posts (3m)" es el número
+    de publicaciones de Google Business Profile en los últimos ~3 meses (0 es lo habitual en negocios que no
+    publican). Action links / Reply rate / Posts salen N/D si el scraping falló para ese local; no tienen
+    equivalente en la API pública.
+  </footer>
+  {% else %}
+  <p class="muted">No se encontraron sedes.</p>
+  {% endif %}
+</section>
+
+{% set with_ai_summary = clusters | selectattr('reputation.ai_summary') | list %}
+{% set with_negative = clusters | selectattr('reputation.negative_samples') | list %}
+{% if with_ai_summary or with_negative %}
+<section class="page-break">
+  <h2>Reseñas destacadas</h2>
+  {% if with_ai_summary %}
+  {% for cluster in with_ai_summary %}
+  <div class="quote-card" style="border-left-color: var(--accent);">
+    <div class="meta">[{{ cluster.cluster_id }}] {{ cluster.canonical_label }} — resumen de reseñas</div>
+    <div class="text">{{ cluster.reputation.ai_summary }}</div>
+  </div>
+  {% endfor %}
+  <footer class="note">Resúmenes generados con Gemini a partir de reseñas reales de Google.</footer>
+  {% endif %}
+
+  {% for cluster in with_negative %}
+    {% for review in cluster.reputation.negative_samples %}
+    <div class="quote-card">
+      <div class="meta">[{{ cluster.cluster_id }}] {{ cluster.canonical_label }} — {{ review.author_name or 'Anónimo' }} —
+        {{ review.rating }}★ — {{ review.relative_time_description or '' }}</div>
+      <div class="text">"{{ review.text or '(sin texto)' }}"</div>
+    </div>
+    {% endfor %}
+  {% endfor %}
+  <footer class="note">Fotografía en la fecha de la auditoría; no incluye evolución histórica de reseñas.</footer>
+</section>
+{% endif %}
+
+{% if site_analysis.has_data or official_comment %}
+<section>
+  <h2>Análisis del store locator</h2>
+  {% if site_analysis.has_data %}
+  <p class="narrative">
+    Índice optimizado (schema.org):
+    <strong>{{ 'Sí' if site_analysis.index_optimized else ('No' if site_analysis.index_optimized is not none else 'No se aportó ninguna URL de índice') }}</strong>
+    — Fichas de tienda individuales optimizadas:
+    <strong>{{ 'Sí' if site_analysis.store_pages_optimized else ('No' if site_analysis.store_pages_optimized is not none else 'No se aportó ninguna ficha individual') }}</strong>
+  </p>
+  {% endif %}
+  {% if official_comment %}
+  <div class="quote-card" style="border-left-color: var(--accent);">
+    <div class="meta">Comentario del comercial</div>
+    <div class="text">{{ official_comment }}</div>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if official_findings %}
+<section>
+  <h2>Hallazgos sobre los datos oficiales</h2>
+  <ul class="recommendations">
+    {% for f in official_findings %}
+    <li><span class="badge {{ f.severity }}">{{ f.severity }}</span> {{ f.url }} — {{ f.message }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+{% if official_errors %}
+<section>
+  <h2>Avisos de extracción de datos oficiales</h2>
+  <ul class="recommendations">
+    {% for err in official_errors %}
+    <li>{{ err.url }} — {{ err.reason }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="page-break">
+  <h2>Apéndice — detalle completo por sede</h2>
+  {% for cluster in clusters %}
+  <div class="cluster-block">
+    <h3>[{{ cluster.cluster_id }}] {{ cluster.canonical_label }} {% if cluster.ambiguous %}<span class="badge moderate">match ambiguo</span>{% endif %}</h3>
+    <div class="source-row">
+      {% for source in ['google', 'apple', 'azure', 'official'] %}
+        {% set record = cluster.by_source.get(source) %}
+        {% set presence = cluster.venue_metrics.presence_detail.get(source) %}
+        <span class="source-tag">
+          {{ source_labels[source] }}:
+          {% if record %}
+            {% if record.verify_url %}<a href="{{ record.verify_url }}">{{ record.formatted_address or record.name or 'ver' }}</a>{% else %}{{ record.formatted_address or record.name or 'sí' }}{% endif %}
+          {% elif presence and presence.url %}
+            <a href="{{ presence.url }}">buscar (no encontrado)</a>
+          {% else %}—{% endif %}
+        </span>
+      {% endfor %}
+    </div>
+    {% if cluster.flags %}
+    <div style="margin-top:6px;">
+      {% for f in cluster.flags %}
+      <div style="font-size:9px;margin-top:3px;"><span class="badge {{ f.severity }}">{{ f.rule }}</span> {{ f.message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+</body>
+</html>

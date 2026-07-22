@@ -1,0 +1,12 @@
+flask>=3.0
+requests>=2.32
+PyJWT[crypto]>=2.8
+cryptography>=42.0
+python-dotenv>=1.0
+beautifulsoup4>=4.12
+extruct>=0.16
+rapidfuzz>=3.6
+weasyprint>=62,<64
+gunicorn>=22.0
+truststore>=0.9
+playwright>=1.45

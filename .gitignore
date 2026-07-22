@@ -1,0 +1,19 @@
+# Secrets / credentials
+.env
+config/*.p8
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Runtime data (persistent caches / audit history — regenerated at runtime)
+*.sqlite
+.audit_cache.sqlite
+.audit_history.sqlite
+
+# Local tooling / OS
+.claude/
+.DS_Store
