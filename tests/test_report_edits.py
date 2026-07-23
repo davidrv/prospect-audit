@@ -93,6 +93,60 @@ def test_report_from_data_rejects_missing_audit():
     assert resp.status_code == 400
 
 
+def _llm_cluster(cid, hits, runs_n=3):
+    c = _cluster(cid)
+    runs = ([{'appears': True, 'position': 1, 'label': 'x'}] * hits
+            + [{'appears': False, 'position': None, 'label': None}] * (runs_n - hits))
+    c['venue_metrics'] = {'llm_visibility': {'prompt': cid + ' prompt', 'runs': runs, 'hits': hits}}
+    return c
+
+
+def _audit_with_llm(clusters, hits_total):
+    audit = _audit(clusters)
+    per = {c['cluster_id']: c['venue_metrics']['llm_visibility'] for c in clusters}
+    audit['summary']['llm_visibility'] = {
+        'engine': 'chatgpt', 'prompt_template': 'tienda X en {zona}, Barcelona', 'category': 'tienda X',
+        'runs': 3, 'venues_checked': len(per), 'checks_total': 3 * len(per), 'hits_total': hits_total,
+        'per_venue': per, 'calls': 0}
+    return audit
+
+
+def test_delete_recomputes_llm_aggregate():
+    # Borrar una sede analizada debe recalcular hits/comprobaciones/sedes del
+    # agregado de IA — si no, seguiría contando la sede borrada.
+    audit = _audit_with_llm([_llm_cluster('L1', 3), _llm_cluster('L2', 1)], hits_total=4)
+    app_module._apply_report_edits(audit, ['L2'], {})
+    llm = audit['summary']['llm_visibility']
+    assert llm['venues_checked'] == 1
+    assert llm['checks_total'] == 3
+    assert llm['hits_total'] == 3                 # solo quedan los 3 hits de L1
+    assert 'L2' not in llm['per_venue']
+    assert llm['prompt_template'] == 'tienda X en {zona}, Barcelona'  # plantilla conservada
+
+
+def test_delete_all_llm_venues_clears_aggregate():
+    audit = _audit_with_llm([_llm_cluster('L1', 3)], hits_total=3)
+    app_module._apply_report_edits(audit, ['L1'], {})
+    assert audit['summary']['llm_visibility'] is None
+
+
+def test_recompute_endpoint_returns_updated_summary():
+    client = app_module.app.test_client()
+    audit = _audit_with_llm([_llm_cluster('L1', 3), _llm_cluster('L2', 2)], hits_total=5)
+    resp = client.post('/audit/recompute',
+                       json={'audit': audit, 'deleted_cluster_ids': ['L2'], 'row_comments': {}})
+    assert resp.status_code == 200
+    summary = resp.get_json()['summary']
+    assert summary['total_locations'] == 1
+    assert summary['llm_visibility']['hits_total'] == 3
+    assert summary['llm_visibility']['venues_checked'] == 1
+
+
+def test_recompute_endpoint_rejects_missing_audit():
+    client = app_module.app.test_client()
+    assert client.post('/audit/recompute', json={}).status_code == 400
+
+
 def test_venue_rows_propagate_presenter_comment():
     rec = normalize.make_record('google', 'g1', name='Foo', formatted_address='X')
     cluster = {
