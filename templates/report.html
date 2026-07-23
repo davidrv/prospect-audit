@@ -6,304 +6,288 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #ffffff; --surface: #F5F3F0; --border: #E7E4DF; --border-2: #D8D4CE;
-    --text: #0F0F0F; --muted: #3A3A3A; --hint: #797979;
-    --accent: #FF5000; --accent-bg: #FFEDE4;
-    --ok: #0F6E56; --ok-bg: #E5F1ED; --warn: #854F0B; --warn-bg: #F8EFDD; --bad: #A32D2D; --bad-bg: #F8E9E9;
+    --ink: #0f0f0f; --text: #1a1a19; --muted: #6b6a65; --hint: #94928b; --line: #e8e5df; --line-2: #d8d4cc;
+    --surface: #f7f6f3; --accent: #FF5000; --accent-2: #D14000;
+    --ok: #0F6E56; --ok-bg: #E6F3EE; --warn: #FF5000; --warn-bg: #FFF0E8; --bad: #D14000; --bad-bg: #FFE3D4;
   }
-  body { font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: var(--text); font-size: 11px; line-height: 1.5; }
+  body { font-family: 'Inter', -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; color: var(--text); font-size: 12px; line-height: 1.5; }
+  a { color: var(--accent); text-decoration: none; word-break: break-all; }
+  h1, h2, h3 { font-weight: 700; letter-spacing: -0.02em; }
+
   @page {
-    size: A4; margin: 20mm 15mm 18mm;
-    @bottom-center { content: "Localistico — Confidencial — " counter(page) " / " counter(pages); font-size: 9px; color: var(--hint); }
+    size: A4; margin: 15mm 16mm 13mm;
+    @bottom-left { content: "localistico · Prospect Audit"; font-size: 9px; color: var(--hint); }
+    @bottom-right { content: counter(page); font-size: 9px; color: var(--hint); }
   }
-  h1, h2, h3 { font-weight: 700; }
-  a { color: var(--accent); text-decoration: none; }
+  @page cover { margin: 0; @bottom-left { content: none } @bottom-right { content: none } }
 
-  .cover h1 { font-size: 30px; margin-bottom: 6px; }
-  .cover .subtitle { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
-  .cover-meta { font-size: 12px; color: var(--muted); margin-top: 48px; }
-  .cover-meta div { margin-bottom: 4px; }
-  .score-num { font-size: 52px; font-weight: 700; color: var(--text); line-height: 1; }
-  .score-sub { font-size: 12px; color: var(--hint); margin-top: 4px; }
-  .risk-pill { display: inline-block; margin-top: 8px; padding: 5px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; }
-  .risk-pill.critico, .risk-pill.alto { background: var(--bad-bg); color: var(--bad); }
-  .risk-pill.medio { background: var(--warn-bg); color: var(--warn); }
-  .risk-pill.sin-datos { background: var(--surface); color: var(--muted); }
+  .page { page-break-before: always; }
+  .cover { page: cover; page-break-before: avoid; }
 
-  .page-break { page-break-before: always; }
-  section { margin-bottom: 22px; }
-  section > h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 5px; margin-bottom: 12px; }
+  header.sec { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--text); padding-bottom: 8px; margin-bottom: 16px; }
+  header.sec h2 { font-size: 23px; }
+  header.sec .tag { color: var(--hint); font-size: 11px; }
+  .narrative { font-size: 13.5px; line-height: 1.6; margin-bottom: 14px; }
+  .msr { display: none; } /* iconos Material no disponibles offline en WeasyPrint */
 
-  .stat-row { display: flex; gap: 12px; margin-bottom: 14px; }
-  .stat-tile { flex: 1; border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; page-break-inside: avoid; }
-  .stat-tile .value { font-size: 24px; font-weight: 700; }
-  .stat-tile .label { font-size: 10px; color: var(--hint); margin-top: 2px; }
-  .v-warn { color: var(--warn); } .v-bad { color: var(--bad); } .v-ok { color: var(--ok); } .v-acc { color: var(--accent); }
-  .narrative { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  /* score badge */
+  .sc { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; font-weight: 700; font-size: 13px; }
+  .sc.sev-critico, .sc.sev-alto { background: var(--bad-bg); color: var(--bad); }
+  .sc.sev-medio { background: var(--warn-bg); color: var(--warn); }
+  .sc.sev-ok { background: var(--ok-bg); color: var(--ok); }
+  .sc.sev-sin_datos { background: #f0efec; color: var(--muted); }
 
-  ul.recommendations { list-style: none; padding-left: 0; }
-  ul.recommendations li { padding: 8px 10px; border-left: 3px solid var(--accent); background: var(--accent-bg); margin-bottom: 6px; font-size: 11px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .tile .n { font-size: 24px; font-weight: 700; }
+  .tile .l { font-size: 11px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .n.ok { color: var(--ok); } .n.warn { color: var(--warn); } .n.bad { color: var(--bad); } .n.na { color: var(--muted); }
+  .stat.ok { background: var(--ok-bg); } .stat.warn { background: var(--warn-bg); } .stat.bad { background: var(--bad-bg); }
+  .stat { border-radius: 12px; padding: 14px 16px; border: none; }
+  .stat .n { font-size: 26px; } .stat .n.ok { color: var(--ok); } .stat .n.warn { color: var(--accent); } .stat .n.bad { color: var(--bad); }
+  .stat .l { color: var(--text); }
 
-  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; }
-  .checks .chk { font-size: 10.5px; padding: 4px 0; border-bottom: 1px solid var(--border); }
-  .chk .st { font-weight: 700; }
-  .st.ok { color: var(--ok); } .st.warn { color: var(--warn); } .st.bad { color: var(--bad); } .st.na { color: var(--hint); }
+  .callout { background: var(--surface); border-radius: 12px; padding: 16px 18px; font-size: 13px; line-height: 1.6; }
+  .callout.accent { background: var(--warn-bg); border: 1px solid #ffd2bc; }
 
-  .badge-cap { font-size: 10px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; }
+  .pill-cap { display: inline-block; border-radius: 999px; padding: 5px 14px; font-weight: 700; font-size: 11px; letter-spacing: 0.05em; }
+  .pill-cap.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill-cap.accent { background: var(--warn-bg); color: var(--accent); }
 
-  /* ── Ficha por sede ── */
-  .venue { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; page-break-inside: avoid; }
-  .venue-head { display: flex; align-items: baseline; gap: 8px; }
-  .score-badge { font-weight: 700; font-size: 13px; border-radius: 999px; padding: 2px 9px; }
-  .sev-critico { background: var(--bad-bg); color: var(--bad); }
-  .sev-alto { background: var(--warn-bg); color: var(--warn); }
-  .sev-medio { background: var(--warn-bg); color: var(--warn); }
-  .sev-ok { background: var(--ok-bg); color: var(--ok); }
-  .sev-sin_datos { background: var(--surface); color: var(--hint); }
-  .venue-name { font-size: 13px; font-weight: 700; }
-  .venue-addr { font-size: 10px; color: var(--hint); }
-  .pills { margin-left: auto; display: flex; gap: 4px; }
-  .pill { width: 22px; height: 18px; border-radius: 5px; font-size: 9px; font-weight: 700; text-align: center; line-height: 18px; display: inline-block; border: 1px solid; }
-  .pill.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
-  .pill.issue { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
-  .pill.off { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
-  .issue-line { font-size: 11px; color: var(--muted); margin-top: 6px; }
-  .rep-line { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
-  .rep-line .star { color: var(--warn); font-weight: 700; }
-  .comment { margin-top: 7px; padding: 6px 9px; border-left: 3px solid var(--accent); background: var(--accent-bg); font-size: 10.5px; }
-  .comment .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); font-weight: 700; display: block; margin-bottom: 1px; }
+  .action { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin-bottom: 8px; page-break-inside: avoid; }
+  .action .t { font-weight: 600; font-size: 13px; }
+  .action .d { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .action .m { font-size: 11px; color: var(--muted); text-align: center; white-space: nowrap; }
+  .lvl-Bajo, .lvl-Alto { color: var(--ok); font-weight: 700; }
+  .lvl-Medio { color: var(--accent); font-weight: 700; }
 
-  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 9.5px; }
-  table.cmp th { text-align: left; padding: 4px 6px; font-size: 8px; text-transform: uppercase; letter-spacing: .03em; color: var(--hint); border-bottom: 1px solid var(--border); }
-  table.cmp th.ref { color: var(--accent); }
-  table.cmp td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  td.field { font-weight: 700; color: var(--text); width: 62px; }
-  td.ref { background: var(--accent-bg); }
-  td.cmp-match { color: var(--muted); }
-  td.cmp-conflict, td.cmp-sin_dato { background: var(--bad-bg); color: var(--bad); font-weight: 600; }
-  td.cmp-missing, td.cmp-na { color: var(--hint); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--hint); font-size: 9.5px; letter-spacing: 0.06em; padding: 6px 8px; border-bottom: 1px solid var(--line-2); }
+  td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 11.5px; line-height: 1.45; }
 
-  .llm { margin-top: 8px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; font-size: 10px; }
-  .run { display: inline-block; min-width: 20px; text-align: center; border-radius: 4px; padding: 0 4px; font-weight: 700; font-size: 9px; margin-right: 3px; }
-  .run.no { background: var(--bad-bg); color: var(--bad); } .run.hit { background: var(--warn-bg); color: var(--warn); } .run.na { background: var(--surface); color: var(--hint); }
+  .quote { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+  .quote .h { font-size: 12px; color: var(--bad); font-weight: 700; }
+  .quote .t { margin-top: 6px; font-size: 12px; line-height: 1.55; color: #3a3a3a; }
 
-  .quote { border: 1px solid var(--border); border-left: 3px solid var(--bad); border-radius: 6px; padding: 6px 9px; margin-top: 6px; }
-  .quote .meta { font-size: 8.5px; color: var(--hint); margin-bottom: 2px; }
-  .quote .text { font-size: 10px; font-style: italic; }
-  .muted { color: var(--hint); }
-  footer.note { font-size: 9px; color: var(--hint); margin-top: 8px; }
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9px; font-weight: 700; }
-  .badge.critical { background: var(--bad-bg); color: var(--bad); }
-  .badge.moderate { background: var(--warn-bg); color: var(--warn); }
-  .badge.minor { background: var(--surface); color: var(--muted); }
+  .check { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.na { background: var(--hint); }
+
+  h3.sub { font-size: 14px; margin: 0 0 10px; }
+  .venue-app { page-break-inside: avoid; margin-bottom: 14px; }
+  td.ref { color: var(--accent); }
+  td.bad { color: var(--bad); }
+  .note-dash { border: 1px dashed var(--line-2); border-radius: 12px; padding: 12px 16px; font-size: 12px; color: var(--muted); font-style: italic; }
+  .cta { background: var(--ink); border-radius: 14px; padding: 18px 22px; display: flex; align-items: center; gap: 16px; color: #fff; margin-top: 16px; }
+  .cta .btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 9px 18px; font-weight: 700; font-size: 13px; white-space: nowrap; }
 </style>
 </head>
 <body>
 
-<!-- ══ PORTADA ══ -->
-<section class="cover">
-  {% if logo_data_uri %}
-  <img src="{{ logo_data_uri }}" alt="Localistico" style="height:24px;margin-bottom:22px;">
-  {% else %}
-  <div style="font-size:11px;color:var(--hint);text-transform:uppercase;letter-spacing:0.08em;">Localistico</div>
-  {% endif %}
-  <h1>Auditoría de presencia local</h1>
-  <div class="subtitle">{{ prospect_name }} — {{ city }}</div>
-
-  {% if summary.presence_score and summary.presence_score.score is not none %}
-  <div style="font-size:12px;color:var(--hint);text-transform:uppercase;letter-spacing:0.06em;">Local Presence Score</div>
-  <div class="score-num">{{ summary.presence_score.score }}<span style="font-size:20px;color:var(--hint);font-weight:400;"> / 100</span></div>
-  <div class="score-sub">
-    Presencia {{ summary.presence_score.presence if summary.presence_score.presence is not none else '—' }} ·
-    Consistencia {{ summary.presence_score.consistency if summary.presence_score.consistency is not none else '—' }} ·
-    Reputación {{ summary.presence_score.reputation if summary.presence_score.reputation is not none else '—' }}
+<!-- ══ 1 · PORTADA ══ -->
+<section class="cover" style="background:#0f0f0f; color:#fff; height:297mm; overflow:hidden; display:flex; flex-direction:column; padding:18mm;">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font-weight:700; font-size:19px; letter-spacing:-0.02em;"><span style="color:var(--accent);">●</span> localistico</span>
   </div>
-  {% endif %}
-  <div class="risk-pill {{ overall_risk | lower | replace('í', 'i') }}">Riesgo global: {{ overall_risk }}</div>
-
-  <div class="cover-meta">
-    <div>Sedes auditadas: {{ summary.total_locations }}</div>
-    <div>Fecha de generación: {{ generated_at }}</div>
-    <div>Fuentes: Google Maps, Apple Maps, Bing Maps{{ ', datos oficiales' if summary.missing_official < summary.total_locations else '' }}</div>
+  <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px;">
+    <div style="text-transform:uppercase; letter-spacing:0.1em; font-size:12px; color:#b5b3ad; font-weight:600;">Auditoría de presencia local</div>
+    <h1 style="font-size:50px; line-height:1.05;">{{ prospect_name }}<br><span style="color:#b5b3ad; font-weight:500;">{{ city }}</span></h1>
+    <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
+      {% set score = summary.presence_score.score if summary.presence_score else none %}
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:118px; height:118px; border-radius:50%; border:5px solid var(--accent); flex-shrink:0;">
+        <div style="font-size:40px; font-weight:700; line-height:1;">{{ score if score is not none else '—' }}</div>
+        <div style="font-size:11px; color:#b5b3ad;">de 100</div>
+      </div>
+      <div>
+        <div style="font-size:15px; font-weight:600;">Local Presence Score</div>
+        <div style="display:inline-block; margin-top:8px; background:var(--accent); color:#fff; border-radius:999px; padding:6px 16px; font-weight:700; font-size:13px; letter-spacing:0.06em;">RIESGO {{ overall_risk | upper }}</div>
+        <div style="color:#b5b3ad; font-size:12px; margin-top:8px; max-width:300px; line-height:1.5;">{{ cover_blurb }}</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; justify-content:space-between; color:#b5b3ad; font-size:11px; border-top:1px solid #333; padding-top:10px;">
+    <span>{{ summary.total_locations }} sedes auditadas · Google, Apple, Bing, web oficial{{ ' y asistentes de IA' if llm else '' }}</span>
+    <span>{{ generated_at }} · Confidencial</span>
   </div>
 </section>
 
-<!-- ══ RESUMEN ══ -->
-<section class="page-break">
-  <h2>Resumen</h2>
+<!-- ══ 2 · RESUMEN EJECUTIVO ══ -->
+<section class="page">
+  <header class="sec"><h2>Resumen ejecutivo</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
   {% set ps = summary.presence_score or {} %}
-  {% set stats = summary.stats or {} %}
-  {% if ps.venues_scored %}
-  <p class="narrative">
-    Auditadas las <strong>{{ ps.venues_scored }} sedes con ficha en Google Maps</strong> (fuente de referencia):
-    <strong class="v-warn">{{ stats.inconsistent_locations or 0 }} con datos distintos</strong> en Apple o Bing y
-    <strong class="v-bad">{{ stats.missing_some_platform or 0 }} faltan</strong> en alguna plataforma.
-  </p>
-  {% endif %}
+  <p class="narrative">Hemos auditado las <strong>{{ ps.venues_scored or summary.total_locations }} sedes de {{ prospect_name }} en {{ city }}</strong> con ficha en Google Maps (fuente de referencia) y las hemos comparado con Apple Maps, Bing Maps y la web oficial. El resultado es un <strong>Local Presence Score de {{ ps.score if ps.score is not none else '—' }}/100</strong>: los clientes que buscan una tienda encuentran datos incompletos o contradictorios según dónde busquen.</p>
 
-  <div class="stat-row">
-    <div class="stat-tile"><div class="value v-warn">{{ stats.inconsistent_locations if stats.inconsistent_locations is not none else '—' }}{% if ps.venues_scored %}/{{ ps.venues_scored }}{% endif %}</div><div class="label">con datos distintos entre plataformas</div></div>
-    <div class="stat-tile"><div class="value v-bad">{{ stats.missing_some_platform if stats.missing_some_platform is not none else '—' }}</div><div class="label">faltan en alguna plataforma</div></div>
-    <div class="stat-tile"><div class="value v-warn">{{ (stats.reply_rate_overall ~ '%') if stats.reply_rate_overall is not none else 'N/D' }}</div><div class="label">reseñas respondidas</div></div>
-  </div>
-
-  <div class="stat-row">
-    <div class="stat-tile"><div class="value v-bad">{{ summary.locations_with_critical_flags }}</div><div class="label">sedes con problemas críticos</div></div>
-    <div class="stat-tile"><div class="value">{{ summary.low_rating }}</div><div class="label">rating &lt; 3,5 en Google</div></div>
-    <div class="stat-tile"><div class="value">{{ summary.no_reviews }}</div><div class="label">sin ninguna reseña</div></div>
-    <div class="stat-tile"><div class="value">{{ summary.missing_google }}</div><div class="label">no encontradas en Google</div></div>
-  </div>
-</section>
-
-<!-- Store locator -->
-{% if locator_report and locator_report.has_data %}
-<section>
-  <h2>Store locator y store pages</h2>
-  <div style="margin-bottom:8px;">
-    {% if locator_report.root_url %}<a href="{{ locator_report.root_url }}">{{ locator_report.root_url }}</a>{% endif %}
-    <span class="badge-cap" style="margin-left:8px;{% if locator_report.optimized %}background:var(--ok-bg);color:var(--ok);{% else %}background:var(--bad-bg);color:var(--bad);{% endif %}">{{ 'Optimizado' if locator_report.optimized else 'No optimizado' }}</span>
-  </div>
-  <div class="checks">
-    {% for c in locator_report.checks %}
-    <div class="chk">{{ c.label }} <span class="st {{ c.status }}">· {{ c.detail }}</span></div>
+  <div class="grid-4" style="margin-bottom:14px;">
+    {% for s in subscores %}
+    <div class="tile" style="text-align:center;"><div class="n {{ s.tone }}">{{ s.value if s.value is not none else '—' }}</div><div class="l">{{ s.label }}</div></div>
     {% endfor %}
   </div>
-</section>
-{% elif site_analysis.has_data %}
-<section>
-  <h2>Store locator y store pages</h2>
-  <p class="narrative">
-    Índice optimizado (schema.org): <strong>{{ 'Sí' if site_analysis.index_optimized else ('No' if site_analysis.index_optimized is not none else 'N/D') }}</strong>
-    — Fichas individuales optimizadas: <strong>{{ 'Sí' if site_analysis.store_pages_optimized else ('No' if site_analysis.store_pages_optimized is not none else 'N/D') }}</strong>
-  </p>
-</section>
-{% endif %}
 
-{% if summary.llm_visibility and summary.llm_visibility.venues_checked %}
-<section>
-  <h2>Visibilidad en IA (ChatGPT)</h2>
-  <p class="narrative">
-    Sobre {{ summary.llm_visibility.venues_checked }} sede(s) × {{ summary.llm_visibility.runs }} repeticiones, el
-    prospecto aparece en <strong>{{ summary.llm_visibility.hits_total }} de {{ summary.llm_visibility.checks_total }}</strong>
-    comprobaciones para consultas del tipo «{{ summary.llm_visibility.prompt_template }}». El detalle por sede está más abajo.
-  </p>
-</section>
-{% endif %}
+  <div class="grid-3" style="margin-bottom:14px;">
+    {% for st in exec_stats %}
+    <div class="tile stat {{ st.tone }}"><div class="n {{ st.tone }}">{{ st.value }}</div><div class="l">{{ st.label }}</div></div>
+    {% endfor %}
+  </div>
 
-<section>
-  <h2>Recomendaciones</h2>
-  <ul class="recommendations">
-    {% for item in recommendations %}<li>{{ item }}</li>{% endfor %}
-  </ul>
+  <div class="callout"><strong>Por qué importa ahora:</strong> las búsquedas locales acaban en visita en muy poco tiempo, y los asistentes de IA ya recomiendan tiendas usando estos mismos datos. Cada ficha incoherente es un cliente que llega a una tienda cerrada — o que va a la competencia.</div>
 </section>
 
-{% if official_comment %}
-<section>
-  <h2>Comentario del comercial</h2>
-  <div class="comment"><span class="lbl">Nota general</span>{{ official_comment }}</div>
-</section>
-{% endif %}
+<!-- ══ 3 · PLAN DE ACCIÓN ══ -->
+<section class="page">
+  <header class="sec"><h2>Plan de acción priorizado</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
 
-<!-- ══ SEDES 1 A 1 ══ -->
-<section class="page-break">
-  <h2>Sedes auditadas — detalle</h2>
-  <p class="narrative">Una ficha por sede, de peor a mejor Local Presence Score. Google es la referencia; el resto se compara contra Google.</p>
+  <div style="margin-bottom:14px;">
+    <div class="pill-cap ok" style="margin-bottom:10px;">QUICK WINS · PRIMERAS SEMANAS</div>
+    {% for a in action_plan.quick_wins %}
+    <div class="action">
+      <div><div class="t">{{ a.title }}</div><div class="d">{{ a.detail }}</div></div>
+      <span class="m">Esfuerzo<br><span class="lvl-{{ a.effort }}">{{ a.effort }}</span></span>
+      <span class="m">Impacto<br><span class="lvl-{{ a.impact }}">{{ a.impact }}</span></span>
+    </div>
+    {% endfor %}
+  </div>
+  <div>
+    <div class="pill-cap accent" style="margin-bottom:10px;">PROYECTOS · TRIMESTRE</div>
+    {% for a in action_plan.projects %}
+    <div class="action">
+      <div><div class="t">{{ a.title }}</div><div class="d">{{ a.detail }}</div></div>
+      <span class="m">Esfuerzo<br><span class="lvl-{{ a.effort }}">{{ a.effort }}</span></span>
+      <span class="m">Impacto<br><span class="lvl-{{ a.impact }}">{{ a.impact }}</span></span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if recommendations %}
+  <p class="tag" style="margin-top:12px;">Recomendaciones automáticas: {{ recommendations | join(' · ') }}</p>
+  {% endif %}
+</section>
+
+<!-- ══ 4 · ESTADO POR SEDE ══ -->
+<section class="page">
+  <header class="sec"><h2>Estado por sede</h2><span class="tag">de peor a mejor · Google Maps como referencia</span></header>
+  {% set google_cards = venue_cards | selectattr('has_google') | list %}
+  <table>
+    <thead><tr><th style="width:44px;">SCORE</th><th>SEDE</th><th>QUÉ FALLA</th><th style="width:120px;">REPUTACIÓN</th></tr></thead>
+    <tbody>
+      {% for v in google_cards %}
+      <tr>
+        <td><span class="sc sev-{{ v.severity }}">{{ v.score if v.score is not none else '—' }}</span></td>
+        <td><strong>{{ v.label }}</strong>{% if v.address %}<br><span style="color:var(--muted);">{{ v.address }}</span>{% endif %}
+          {% if v.presenter_comment %}<br><span style="color:var(--accent); font-size:10.5px;">✎ {{ v.presenter_comment }}</span>{% endif %}</td>
+        <td>{{ v.issue_summary or 'Sin problemas detectados' }}</td>
+        <td>{% if v.rating is not none %}<strong style="color:{% if v.rating < 3.5 %}var(--bad){% elif v.rating < 4 %}var(--accent){% else %}var(--ok){% endif %};">★ {{ v.rating }}</strong>{% else %}★ —{% endif %} · {{ v.review_count if v.review_count is not none else '—' }} reseñas<br><span style="color:var(--muted);">{{ v.reply_rate_display }} respondidas</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if ghost_count %}
+  <div class="callout" style="margin-top:14px;"><strong>Además:</strong> existen <strong>{{ ghost_count }} ficha(s) más solo en Apple o Bing</strong> (sin ficha en Google) — posibles duplicados o sedes dadas de baja que siguen apareciendo a los clientes.</div>
+  {% endif %}
+</section>
+
+<!-- ══ 5 · REPUTACIÓN Y VISIBILIDAD IA ══ -->
+<section class="page">
+  <header class="sec"><h2>Reputación y visibilidad en IA</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
+
+  {% if highlight_reviews %}
+  <h3 class="sub">Reseñas recientes destacadas</h3>
+  <div class="grid-2">
+    {% for r in highlight_reviews %}
+    <div class="quote"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }} · {{ r.label }}</div><div class="t">"{{ r.text or '(sin texto)' }}"</div></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if ai_review_summary %}
+  <div class="callout accent" style="margin-top:10px;"><strong>Resumen IA de reseñas:</strong> {{ ai_review_summary }}</div>
+  {% endif %}
+
+  {% if llm %}
+  <h3 class="sub" style="margin-top:18px;">Visibilidad en asistentes de IA · Visibility Index</h3>
+  <div style="display:flex; align-items:center; gap:16px; border:1px solid var(--line); border-radius:12px; padding:14px 16px;">
+    <div style="text-align:center; width:96px; flex-shrink:0;">
+      <div style="font-size:30px; font-weight:700; color:{% if llm.hits_total == llm.checks_total %}var(--ok){% elif llm.hits_total %}var(--accent){% else %}var(--bad){% endif %};">{{ llm.hits_total }}/{{ llm.checks_total }}</div>
+      <div style="font-size:10.5px; color:var(--muted);">comprobaciones con aparición</div>
+    </div>
+    <div style="flex:1; border-left:1px solid var(--line); padding-left:16px; font-size:12px; line-height:1.6;">
+      Preguntamos a <strong>ChatGPT</strong> «{{ llm.prompt_template }}» para cada sede ({{ llm.runs }} repeticiones){% if llm.position_range %}. {{ prospect_name }} aparece {{ llm.position_range }} puesto{% endif %} — y los asistentes citan los datos de las plataformas, no la web oficial. Un programa GEO consolida esas menciones en primeras posiciones con datos correctos.
+    </div>
+  </div>
+  {% endif %}
+
+  {% if locator_report and locator_report.has_data %}
+  <h3 class="sub" style="margin-top:18px;">Web oficial · store locator</h3>
+  <div class="grid-2">
+    {% for c in locator_report.checks %}
+    <div class="check"><span class="dot {{ c.status }}"></span>{{ c.label }} — <strong>{{ c.detail }}</strong></div>
+    {% endfor %}
+  </div>
+  {% if not locator_report.optimized %}
+  <p class="narrative" style="margin-top:10px;">Consecuencia: <strong>la web oficial no actúa como fuente de verdad</strong>. Google, Apple, Bing y los asistentes de IA construyen la ficha de cada tienda con datos de terceros, sin que la marca controle el resultado.</p>
+  {% endif %}
+  {% endif %}
+</section>
+
+<!-- ══ 6 · APÉNDICE ══ -->
+<section class="page">
+  <header class="sec"><h2>Apéndice · detalle por sede</h2><span class="tag">comparación campo a campo</span></header>
 
   {% for v in venue_cards %}
-  <div class="venue">
-    <div class="venue-head">
-      <span class="score-badge sev-{{ v.severity }}">{{ v.score if v.score is not none else '—' }}</span>
-      <div>
-        <div class="venue-name">{{ v.label }}</div>
-        {% if v.address %}<div class="venue-addr">{{ v.address }}</div>{% endif %}
-      </div>
-      <span class="pills">
-        {% for src, letter in [('google','G'), ('apple','A'), ('azure','B'), ('official','W')] %}
-        {% set stt = v.platform_state.get(src, 'off') %}
-        <span class="pill {{ stt }}">{{ letter }}</span>
-        {% endfor %}
-      </span>
+  {% if v.has_google %}
+  <div class="venue-app">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+      <span class="sc sev-{{ v.severity }}" style="width:40px; height:40px; font-size:15px;">{{ v.score if v.score is not none else '—' }}</span>
+      <div><strong style="font-size:14px;">{{ v.label }}</strong>{% if v.address %}<br><span style="color:var(--muted); font-size:12px;">{{ v.address }}</span>{% endif %}</div>
     </div>
-
-    {% if v.issue_summary %}<div class="issue-line">{{ v.issue_summary }}</div>{% endif %}
-
-    <div class="rep-line">
-      {% if v.rating is not none %}<span class="star">★ {{ v.rating }}</span>{% else %}★ —{% endif %}
-      · {{ v.review_count if v.review_count is not none else '—' }} reseñas
-      · {{ v.review_rate_display }} en 3 m · {{ v.reply_rate_display }} respondidas
-    </div>
-
-    {% if v.presenter_comment %}
-    <div class="comment"><span class="lbl">Comentario del comercial</span>{{ v.presenter_comment }}</div>
-    {% endif %}
-
-    <table class="cmp">
-      <thead><tr>
-        <th></th><th class="ref">Google · ref.</th><th>Apple</th><th>Bing</th><th>Web oficial</th>
-      </tr></thead>
+    <table>
+      <thead><tr><th style="width:70px;"></th><th class="ref">GOOGLE · REF.</th><th>APPLE</th><th>BING</th><th>WEB OFICIAL</th></tr></thead>
       <tbody>
         {% for row in v.compare %}
         <tr>
-          <td class="field">{{ row.label }}</td>
-          <td class="ref">{{ row.anchor }}</td>
-          {% for cell in row.cells %}<td class="cmp-{{ cell.verdict }}">{{ cell.text }}</td>{% endfor %}
+          <td style="color:var(--muted); font-weight:600;">{{ row.label }}</td>
+          <td>{{ row.anchor }}</td>
+          {% for cell in row.cells %}<td class="{{ 'bad' if cell.verdict in ['conflict','sin_dato'] else '' }}">{{ cell.text }}</td>{% endfor %}
         </tr>
         {% endfor %}
         <tr>
-          <td class="field">Links</td>
-          <td class="ref" colspan="4">{{ v.action_links or 'N/D' }}</td>
+          <td style="color:var(--muted); font-weight:600;">Links</td>
+          <td colspan="4">{{ v.action_links or 'N/D' }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--muted); font-weight:600;">Reputación</td>
+          <td>{% if v.rating is not none %}<strong>★ {{ v.rating }}</strong> · {{ v.review_count }} reseñas · {{ v.reply_rate_display }} resp.{% else %}—{% endif %}</td>
+          <td colspan="3" style="color:var(--muted);">Google es la fuente de reputación de referencia</td>
         </tr>
       </tbody>
     </table>
-
     {% if v.llm and v.llm.runs %}
-    <div class="llm">
-      <strong>Visibilidad IA (ChatGPT)</strong> — «{{ v.llm.prompt }}» ·
-      {% for r in v.llm.runs %}
-        {% if r.appears is none %}<span class="run na">?</span>
-        {% elif not r.appears %}<span class="run no">✕</span>
-        {% elif r.position is not none %}<span class="run hit">{{ r.position }}º</span>
-        {% else %}<span class="run hit">✓</span>{% endif %}
-      {% endfor %}
-      <span class="muted">aparece en {{ v.llm.hits }} de {{ v.llm.runs | length }}</span>
-    </div>
+    <div class="callout" style="margin-top:8px; font-size:12px;"><strong>Visibilidad IA:</strong> «{{ v.llm.prompt }}» — aparece en {{ v.llm.hits }} de {{ v.llm.runs | length }} repeticiones.</div>
     {% endif %}
-
-    {% if v.ai_summary %}<div class="quote" style="border-left-color:var(--accent);"><div class="meta">Resumen de reseñas (IA)</div><div class="text">{{ v.ai_summary }}</div></div>{% endif %}
-    {% for review in v.negative_samples %}
-    <div class="quote">
-      <div class="meta">{{ review.author_name or 'Anónimo' }} — {{ review.rating }}★ — {{ review.relative_time_description or '' }}</div>
-      <div class="text">"{{ review.text or '(sin texto)' }}"</div>
-    </div>
+    <div class="note-dash" style="margin-top:8px;">Nota del comercial: {{ v.presenter_comment or '—' }}</div>
+    {% if v.negative_samples %}
+    {% for r in v.negative_samples %}
+    <div class="quote" style="margin-top:8px;"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }}</div><div class="t">"{{ r.text or '(sin texto)' }}"</div></div>
     {% endfor %}
+    {% endif %}
   </div>
+  {% endif %}
   {% endfor %}
 
-  <footer class="note">
-    Pills: G Google · A Apple · B Bing · W web oficial (verde = correcto, ámbar = con diferencias, rojo = no encontrada).
-    En la comparación, la columna Google es la referencia; celdas en rojo = dato distinto o ausente frente a Google.
-    "Links" = enlaces de acción en la ficha de Google (Reservar/Pedir online/Menú); solo se analizan en las peores sedes.
-    "Reviews en 3 m" y "% respondidas" salen de las reseñas recientes de Google.
-  </footer>
-</section>
+  {% if official_findings %}
+  <h3 class="sub" style="margin-top:14px;">Hallazgos sobre los datos oficiales</h3>
+  {% for f in official_findings %}<div class="check" style="margin-bottom:6px;"><span class="dot {{ 'bad' if f.severity=='critical' else ('warn' if f.severity=='moderate' else 'na') }}"></span>{{ f.url }} — {{ f.message }}</div>{% endfor %}
+  {% endif %}
 
-{% if official_findings %}
-<section>
-  <h2>Hallazgos sobre los datos oficiales</h2>
-  <ul class="recommendations">
-    {% for f in official_findings %}<li><span class="badge {{ f.severity }}">{{ f.severity }}</span> {{ f.url }} — {{ f.message }}</li>{% endfor %}
-  </ul>
+  <div class="cta">
+    <div style="flex:1;">
+      <div style="font-weight:700; font-size:15px;">¿Hablamos de cómo arreglarlo?</div>
+      <div style="color:#b5b3ad; font-size:12px; margin-top:2px;">Localistico gestiona presencia, reputación y visibilidad en IA para marcas con múltiples sedes.</div>
+    </div>
+    <span class="btn">localistico.com</span>
+  </div>
 </section>
-{% endif %}
-
-{% if official_errors %}
-<section>
-  <h2>Avisos de extracción de datos oficiales</h2>
-  <ul class="recommendations">
-    {% for err in official_errors %}<li>{{ err.url }} — {{ err.reason }}</li>{% endfor %}
-  </ul>
-</section>
-{% endif %}
 
 </body>
 </html>

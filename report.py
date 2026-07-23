@@ -41,6 +41,15 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
         'locator_report': results.get('locator_report'),
         'source_labels': SOURCE_LABELS,
         'venue_cards': _venue_cards(clusters),
+        'cover_blurb': _cover_blurb(audit['summary']),
+        'subscores': _subscores(audit['summary']),
+        'exec_stats': _exec_stats(audit['summary'], clusters),
+        'action_plan': _action_plan(audit['summary'], clusters, results.get('locator_report')),
+        'highlight_reviews': _highlight_reviews(clusters),
+        'ai_review_summary': _ai_review_summary(clusters),
+        'recent_reviews_total': _recent_reviews_total(clusters),
+        'llm': _llm_block(audit['summary']),
+        'ghost_count': sum(1 for c in clusters if 'google' not in c['sources_present']),
     }
 
     html = render_template('report.html', **context)
@@ -163,6 +172,162 @@ def _venue_cards(clusters):
             'ai_summary': reputation.get('ai_summary'),
         })
     return cards
+
+
+def _tone(value, good=70, mid=50):
+    if value is None:
+        return 'na'
+    return 'ok' if value >= good else ('warn' if value >= mid else 'bad')
+
+
+def _geo_score(summary):
+    """Puntuación GEO derivada del Visibility Index (hits/comprobaciones) — no
+    es una métrica nueva, solo el % de apariciones ya calculado. None si no se
+    ejecutó la fase de IA."""
+    llm = summary.get('llm_visibility') or {}
+    checks = llm.get('checks_total') or 0
+    if not checks:
+        return None
+    return round(100 * (llm.get('hits_total') or 0) / checks)
+
+
+def _subscores(summary):
+    ps = summary.get('presence_score') or {}
+    out = [{'label': 'Presencia', 'value': ps.get('presence')},
+           {'label': 'Consistencia', 'value': ps.get('consistency')},
+           {'label': 'Reputación', 'value': ps.get('reputation')}]
+    geo = _geo_score(summary)
+    if geo is not None:
+        out.append({'label': 'GEO · visibilidad IA', 'value': geo})
+    for t in out:
+        t['tone'] = _tone(t['value'])
+    return out
+
+
+def _exec_stats(summary, clusters):
+    total = summary['total_locations']
+    scored = (summary.get('presence_score') or {}).get('venues_scored') or 0
+    stats = summary.get('stats') or {}
+    reply = stats.get('reply_rate_overall')
+    crit = summary['locations_with_critical_flags']
+    low = summary['low_rating']
+    miss_off = summary['missing_official']
+    inc = stats.get('inconsistent_locations') or 0
+    miss_plat = stats.get('missing_some_platform') or 0
+
+    def s(value, label, tone):
+        return {'value': value, 'label': label, 'tone': tone}
+
+    return [
+        s(crit, 'sedes con problemas críticos de datos', 'bad' if crit else 'ok'),
+        s(low, 'sedes con rating por debajo de 3,5', 'bad' if low else 'ok'),
+        s(f'{miss_off}/{total}' if total else '—', 'sedes ausentes del store locator oficial',
+          'bad' if miss_off else 'ok'),
+        s(f'{inc}/{scored}' if scored else str(inc), 'sedes con datos distintos entre plataformas',
+          'warn' if inc else 'ok'),
+        s(f'{reply}%' if reply is not None else 'N/D', 'de las reseñas recientes reciben respuesta', 'warn'),
+        s(miss_plat, 'sedes ausentes de Apple o Bing', 'ok' if not miss_plat else 'warn'),
+    ]
+
+
+def _cover_blurb(summary):
+    stats = summary.get('stats') or {}
+    scored = (summary.get('presence_score') or {}).get('venues_scored') or 0
+    inc = stats.get('inconsistent_locations') or 0
+    parts = []
+    if scored and inc:
+        parts.append(f'{inc} de {scored} sedes con datos incoherentes entre plataformas')
+    if summary['missing_official']:
+        parts.append('sedes sin publicar en la web oficial')
+    if not parts:
+        return 'Presencia local auditada en Google, Apple, Bing y la web oficial.'
+    return (' y '.join(parts) + '.').capitalize()
+
+
+def _action_plan(summary, clusters, locator_report):
+    """Plan de acción priorizado, DERIVADO de las mismas condiciones que las
+    recomendaciones. Los niveles de esfuerzo/impacto son etiquetas editoriales
+    fijas por tipo de acción (no se calculan a partir de datos)."""
+    stats = summary.get('stats') or {}
+    ghost = sum(1 for c in clusters if 'google' not in c['sources_present'])
+    inc = stats.get('inconsistent_locations') or 0
+    reply = stats.get('reply_rate_overall')
+    lr = locator_report or {}
+    quick, projects = [], []
+
+    if inc:
+        quick.append({'title': 'Unificar nombre, teléfono y horarios en Apple y Bing',
+                      'detail': f'{inc} sede(s) con datos distintos frente a Google.',
+                      'effort': 'Bajo', 'impact': 'Alto'})
+    if reply is not None and reply < 50:
+        quick.append({'title': 'Responder a las reseñas recientes',
+                      'detail': f'Hoy solo el {reply}% recibe respuesta; responder mejora rating y conversión.',
+                      'effort': 'Bajo', 'impact': 'Medio'})
+    if ghost:
+        quick.append({'title': f'Revisar las {ghost} fichas huérfanas en Apple y Bing',
+                      'detail': 'Posibles duplicados o sedes cerradas que siguen apareciendo a los clientes.',
+                      'effort': 'Medio', 'impact': 'Alto'})
+    if not quick:
+        quick.append({'title': 'Mantener la consistencia actual',
+                      'detail': 'No se detectaron incoherencias críticas; monitorizar periódicamente.',
+                      'effort': 'Bajo', 'impact': 'Medio'})
+
+    if summary['missing_official'] or (lr.get('has_data') and not lr.get('optimized')):
+        projects.append({'title': 'Store locator con página indexable por sede',
+                         'detail': 'Sin páginas de sede indexables, Google e IA no pueden citar la web oficial como fuente.',
+                         'effort': 'Alto', 'impact': 'Alto'})
+    projects.append({'title': 'Datos estructurados LocalBusiness + sitemap de sedes',
+                     'detail': 'Schema.org completo (horario, teléfono, geo) para que buscadores e IA lean la fuente oficial.',
+                     'effort': 'Medio', 'impact': 'Alto'})
+    if summary['low_rating']:
+        projects.append({'title': 'Programa continuo de reputación por sede',
+                         'detail': f'{summary["low_rating"]} sede(s) por debajo de 3,5 arrastran la percepción de la marca.',
+                         'effort': 'Medio', 'impact': 'Alto'})
+    return {'quick_wins': quick, 'projects': projects}
+
+
+def _highlight_reviews(clusters, limit=2):
+    out = []
+    for cluster in clusters:
+        for r in (cluster.get('reputation') or {}).get('negative_samples') or []:
+            out.append({'rating': r.get('rating'), 'label': cluster['canonical_label'],
+                        'text': r.get('text')})
+    out.sort(key=lambda x: x['rating'] if x['rating'] is not None else 5)
+    return out[:limit]
+
+
+def _ai_review_summary(clusters):
+    """Resumen IA de reseñas — solo disponible si Places API (New) devolvió uno
+    (gated por ENABLE_GOOGLE_REVIEW_SUMMARY, casi siempre vacío en España). No
+    tenemos un resumen agregado multi-mes propio (ver notas del informe)."""
+    for cluster in clusters:
+        s = (cluster.get('reputation') or {}).get('ai_summary')
+        if s:
+            return s
+    return None
+
+
+def _recent_reviews_total(clusters):
+    total, any_scraped = 0, False
+    for cluster in clusters:
+        rr = cluster['venue_metrics'].get('review_rate_3m') or {}
+        if rr.get('source') == 'scraped' and isinstance(rr.get('value'), int):
+            total += rr['value']
+            any_scraped = True
+    return total if any_scraped else None
+
+
+def _llm_block(summary):
+    llm = summary.get('llm_visibility')
+    if not llm or not llm.get('venues_checked'):
+        return None
+    positions = [r['position'] for v in (llm.get('per_venue') or {}).values()
+                 for r in (v.get('runs') or []) if r.get('position') is not None]
+    rng = None
+    if positions:
+        lo, hi = min(positions), max(positions)
+        rng = f'el {lo}º' if lo == hi else f'entre el {lo}º y el {hi}º'
+    return {**llm, 'position_range': rng}
 
 
 def _site_analysis_summary(site_analysis):
