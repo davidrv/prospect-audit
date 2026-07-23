@@ -1602,4 +1602,9 @@ def _apple_access_token():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5050))
     print(f'\n  → http://localhost:{port}\n')
-    app.run(port=port, debug=True)
+    # Sin auto-reloader: el job store es en memoria (_jobs); un reinicio del
+    # reloader al guardar cualquier .py borraba los jobs a mitad de auditoría
+    # → el polling recibía 404 "job no encontrado". Mantenemos el debugger para
+    # trazas. Activa el reload con USE_RELOADER=1 si lo necesitas en desarrollo.
+    use_reloader = os.environ.get('USE_RELOADER', '').strip() == '1'
+    app.run(port=port, debug=True, use_reloader=use_reloader)
