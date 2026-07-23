@@ -44,7 +44,6 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
         'cover_blurb': _cover_blurb(audit['summary']),
         'subscores': _subscores(audit['summary']),
         'exec_stats': _exec_stats(audit['summary'], clusters),
-        'action_plan': _action_plan(audit['summary'], clusters, results.get('locator_report')),
         'highlight_reviews': _highlight_reviews(clusters),
         'ai_review_summary': _ai_review_summary(clusters),
         'recent_reviews_total': _recent_reviews_total(clusters),
@@ -244,48 +243,6 @@ def _cover_blurb(summary):
     if not parts:
         return 'Presencia local auditada en Google, Apple, Bing y la web oficial.'
     return (' y '.join(parts) + '.').capitalize()
-
-
-def _action_plan(summary, clusters, locator_report):
-    """Plan de acción priorizado, DERIVADO de las mismas condiciones que las
-    recomendaciones. Los niveles de esfuerzo/impacto son etiquetas editoriales
-    fijas por tipo de acción (no se calculan a partir de datos)."""
-    stats = summary.get('stats') or {}
-    ghost = sum(1 for c in clusters if 'google' not in c['sources_present'])
-    inc = stats.get('inconsistent_locations') or 0
-    reply = stats.get('reply_rate_overall')
-    lr = locator_report or {}
-    quick, projects = [], []
-
-    if inc:
-        quick.append({'title': 'Unificar nombre, teléfono y horarios en Apple y Bing',
-                      'detail': f'{inc} sede(s) con datos distintos frente a Google.',
-                      'effort': 'Bajo', 'impact': 'Alto'})
-    if reply is not None and reply < 50:
-        quick.append({'title': 'Responder a las reseñas recientes',
-                      'detail': f'Hoy solo el {reply}% recibe respuesta; responder mejora rating y conversión.',
-                      'effort': 'Bajo', 'impact': 'Medio'})
-    if ghost:
-        quick.append({'title': f'Revisar las {ghost} fichas huérfanas en Apple y Bing',
-                      'detail': 'Posibles duplicados o sedes cerradas que siguen apareciendo a los clientes.',
-                      'effort': 'Medio', 'impact': 'Alto'})
-    if not quick:
-        quick.append({'title': 'Mantener la consistencia actual',
-                      'detail': 'No se detectaron incoherencias críticas; monitorizar periódicamente.',
-                      'effort': 'Bajo', 'impact': 'Medio'})
-
-    if summary['missing_official'] or (lr.get('has_data') and not lr.get('optimized')):
-        projects.append({'title': 'Store locator con página indexable por sede',
-                         'detail': 'Sin páginas de sede indexables, Google e IA no pueden citar la web oficial como fuente.',
-                         'effort': 'Alto', 'impact': 'Alto'})
-    projects.append({'title': 'Datos estructurados LocalBusiness + sitemap de sedes',
-                     'detail': 'Schema.org completo (horario, teléfono, geo) para que buscadores e IA lean la fuente oficial.',
-                     'effort': 'Medio', 'impact': 'Alto'})
-    if summary['low_rating']:
-        projects.append({'title': 'Programa continuo de reputación por sede',
-                         'detail': f'{summary["low_rating"]} sede(s) por debajo de 3,5 arrastran la percepción de la marca.',
-                         'effort': 'Medio', 'impact': 'Alto'})
-    return {'quick_wins': quick, 'projects': projects}
 
 
 def _highlight_reviews(clusters, limit=2):

@@ -140,37 +140,7 @@
   <div class="callout"><strong>Por qué importa ahora:</strong> las búsquedas locales acaban en visita en muy poco tiempo, y los asistentes de IA ya recomiendan tiendas usando estos mismos datos. Cada ficha incoherente es un cliente que llega a una tienda cerrada — o que va a la competencia.</div>
 </section>
 
-<!-- ══ 3 · PLAN DE ACCIÓN ══ -->
-<section class="page">
-  <header class="sec"><h2>Plan de acción priorizado</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
-
-  <div style="margin-bottom:14px;">
-    <div class="pill-cap ok" style="margin-bottom:10px;">QUICK WINS · PRIMERAS SEMANAS</div>
-    {% for a in action_plan.quick_wins %}
-    <div class="action">
-      <div><div class="t">{{ a.title }}</div><div class="d">{{ a.detail }}</div></div>
-      <span class="m">Esfuerzo<br><span class="lvl-{{ a.effort }}">{{ a.effort }}</span></span>
-      <span class="m">Impacto<br><span class="lvl-{{ a.impact }}">{{ a.impact }}</span></span>
-    </div>
-    {% endfor %}
-  </div>
-  <div>
-    <div class="pill-cap accent" style="margin-bottom:10px;">PROYECTOS · TRIMESTRE</div>
-    {% for a in action_plan.projects %}
-    <div class="action">
-      <div><div class="t">{{ a.title }}</div><div class="d">{{ a.detail }}</div></div>
-      <span class="m">Esfuerzo<br><span class="lvl-{{ a.effort }}">{{ a.effort }}</span></span>
-      <span class="m">Impacto<br><span class="lvl-{{ a.impact }}">{{ a.impact }}</span></span>
-    </div>
-    {% endfor %}
-  </div>
-
-  {% if recommendations %}
-  <p class="tag" style="margin-top:12px;">Recomendaciones automáticas: {{ recommendations | join(' · ') }}</p>
-  {% endif %}
-</section>
-
-<!-- ══ 4 · ESTADO POR SEDE ══ -->
+<!-- ══ 3 · ESTADO POR SEDE ══ -->
 <section class="page">
   <header class="sec"><h2>Estado por sede</h2><span class="tag">de peor a mejor · Google Maps como referencia</span></header>
   {% set google_cards = venue_cards | selectattr('has_google') | list %}
@@ -193,7 +163,7 @@
   {% endif %}
 </section>
 
-<!-- ══ 5 · REPUTACIÓN Y VISIBILIDAD IA ══ -->
+<!-- ══ 4 · REPUTACIÓN Y VISIBILIDAD IA ══ -->
 <section class="page">
   <header class="sec"><h2>Reputación y visibilidad en IA</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
 
@@ -240,9 +210,13 @@
   {% endif %}
   {% endif %}
   {% endif %}
+
+  {% if official_comment %}
+  <div class="note-dash" style="margin-top:12px;">Nota del comercial (store locator): {{ official_comment }}</div>
+  {% endif %}
 </section>
 
-<!-- ══ 6 · APÉNDICE ══ -->
+<!-- ══ 5 · APÉNDICE ══ -->
 <section class="page">
   <header class="sec"><h2>Apéndice · detalle por sede</h2><span class="tag">comparación campo a campo</span></header>
 
