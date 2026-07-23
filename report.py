@@ -226,7 +226,7 @@ def _exec_stats(summary, clusters):
         s(f'{inc}/{scored}' if scored else str(inc), 'sedes con datos distintos entre plataformas',
           'warn' if inc else 'ok'),
         s(f'{reply}%' if reply is not None else 'N/D', 'de las reseñas recientes reciben respuesta', 'warn'),
-        s(miss_plat, 'sedes ausentes de Apple o Bing', 'ok' if not miss_plat else 'warn'),
+        s(miss_plat, 'sedes ausentes de Google, Apple o Bing', 'ok' if not miss_plat else 'warn'),
     ]
 
 

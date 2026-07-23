@@ -87,27 +87,27 @@
 <body>
 
 <!-- ══ 1 · PORTADA ══ -->
-<section class="cover" style="background:#0f0f0f; color:#fff; height:297mm; overflow:hidden; display:flex; flex-direction:column; padding:18mm;">
+<section class="cover" style="background:#ffffff; color:var(--text); height:279mm; overflow:hidden; display:flex; flex-direction:column; padding:18mm;">
   <div style="display:flex; align-items:center; gap:8px;">
     <span style="font-weight:700; font-size:19px; letter-spacing:-0.02em;"><span style="color:var(--accent);">●</span> localistico</span>
   </div>
   <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px;">
-    <div style="text-transform:uppercase; letter-spacing:0.1em; font-size:12px; color:#b5b3ad; font-weight:600;">Auditoría de presencia local</div>
-    <h1 style="font-size:50px; line-height:1.05;">{{ prospect_name }}<br><span style="color:#b5b3ad; font-weight:500;">{{ city }}</span></h1>
+    <div style="text-transform:uppercase; letter-spacing:0.1em; font-size:12px; color:var(--muted); font-weight:600;">Auditoría de presencia local</div>
+    <h1 style="font-size:50px; line-height:1.05;">{{ prospect_name }}<br><span style="color:var(--hint); font-weight:500;">{{ city }}</span></h1>
     <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
       {% set score = summary.presence_score.score if summary.presence_score else none %}
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:118px; height:118px; border-radius:50%; border:5px solid var(--accent); flex-shrink:0;">
         <div style="font-size:40px; font-weight:700; line-height:1;">{{ score if score is not none else '—' }}</div>
-        <div style="font-size:11px; color:#b5b3ad;">de 100</div>
+        <div style="font-size:11px; color:var(--muted);">de 100</div>
       </div>
       <div>
         <div style="font-size:15px; font-weight:600;">Local Presence Score</div>
         <div style="display:inline-block; margin-top:8px; background:var(--accent); color:#fff; border-radius:999px; padding:6px 16px; font-weight:700; font-size:13px; letter-spacing:0.06em;">RIESGO {{ overall_risk | upper }}</div>
-        <div style="color:#b5b3ad; font-size:12px; margin-top:8px; max-width:300px; line-height:1.5;">{{ cover_blurb }}</div>
+        <div style="color:var(--muted); font-size:12px; margin-top:8px; max-width:300px; line-height:1.5;">{{ cover_blurb }}</div>
       </div>
     </div>
   </div>
-  <div style="display:flex; justify-content:space-between; color:#b5b3ad; font-size:11px; border-top:1px solid #333; padding-top:10px;">
+  <div style="display:flex; justify-content:space-between; color:var(--hint); font-size:11px; border-top:1px solid var(--line); padding-top:10px;">
     <span>{{ summary.total_locations }} sedes auditadas · Google, Apple, Bing, web oficial{{ ' y asistentes de IA' if llm else '' }}</span>
     <span>{{ generated_at }} · Confidencial</span>
   </div>
