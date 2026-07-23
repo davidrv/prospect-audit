@@ -130,6 +130,9 @@
       <input id="llm-category" class="txt" placeholder="Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)" style="width:100%; font-size:13px;">
       <div class="muted" style="font-size:11.5px;">Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.</div>
     </div>
+    <div id="cost-line" class="muted" style="display:none; font-size:12px; display:flex; align-items:center; gap:6px;">
+      <span class="msr" style="font-size:15px;">payments</span><span id="cost-text"></span>
+    </div>
     <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:12px; font-size:15px;"><span class="msr" style="font-size:20px;">search</span>Auditar presencia local</button>
     <p class="muted" style="font-size:12px; text-align:center; margin:0;">Suele tardar 1–3 minutos. Puedes ver el progreso en vivo.</p>
   </div>
@@ -302,6 +305,25 @@ function toggleLlmCat() {
   var on = document.getElementById('check-llm').checked;
   document.getElementById('llm-cat-wrap').style.display = on ? 'flex' : 'none';
   if (on) document.getElementById('llm-category').focus();
+  renderCost();
+}
+
+var pricing = null;
+function loadPricing() {
+  fetch('/pricing').then(function(r) { return r.json(); })
+    .then(function(p) { pricing = p; renderCost(); }).catch(function() {});
+}
+function eur(n) { return '€' + Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function renderCost() {
+  if (!pricing) return;
+  var line = document.getElementById('cost-line');
+  var withLlm = document.getElementById('check-llm').checked;
+  var total = pricing.maps_max + (withLlm ? pricing.llm_delta : 0);
+  var txt = 'Coste máximo estimado: ' + eur(total);
+  if (withLlm) txt += ' (incl. ' + eur(pricing.llm_delta) + ' visibilidad IA)';
+  txt += ' · máx. ' + pricing.assumptions.google_max + ' sedes; menos = más barato';
+  document.getElementById('cost-text').textContent = txt;
+  line.style.display = 'flex';
 }
 function buildFormData(name, city, officialUrls) {
   var fd = new FormData();
@@ -839,6 +861,7 @@ function openAudit(id) {
 /* ── init ── */
 document.getElementById('prospect-name').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
 document.getElementById('prospect-city').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
+loadPricing();
 showScreen('input');
 </script>
 </body>

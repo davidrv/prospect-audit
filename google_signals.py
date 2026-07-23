@@ -32,10 +32,12 @@ _HTTP_ATTEMPTS = 3
 
 
 def _reviews_max_pages():
+    # 3 páginas por sede (antes 5): recorta el mayor consumidor de SerpApi sin
+    # perder apenas cobertura del ventana de 3 meses. Configurable por env.
     try:
-        return max(1, int(os.environ.get('SERPAPI_REVIEWS_MAX_PAGES', '5')))
+        return max(1, int(os.environ.get('SERPAPI_REVIEWS_MAX_PAGES', '3')))
     except ValueError:
-        return 5
+        return 3
 
 
 def _key():
