@@ -464,11 +464,16 @@ function startAudit() {
 }
 
 function pollJob(jobId) {
-  var since = 0, intervalMs = 1200;
+  var since = 0, intervalMs = 1200, fails = 0, MAX_FAILS = 8;
   function tick() {
     fetch('/jobs/' + jobId + '/status?since=' + since)
-      .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); }); return r.json(); })
+      .then(function(r) {
+        if (r.status === 404) return r.json().then(function(d) { var e = new Error(d.error || 'job no encontrado'); e.fatal = true; throw e; });
+        if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); });
+        return r.json();
+      })
       .then(function(data) {
+        fails = 0;  // conexión recuperada
         since = data.progress_count;
         if (data.sources) renderSteps(data.sources);
         if (typeof data.percent === 'number') document.getElementById('progress-bar').style.width = data.percent + '%';
@@ -480,7 +485,18 @@ function pollJob(jobId) {
         if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || 'desconocido'), 'var(--bad)']]); return; }
         setTimeout(tick, intervalMs);
       })
-      .catch(function(err) { appendLog([['—', 'Error: ' + err.message, 'var(--bad)']]); });
+      .catch(function(err) {
+        // Reintenta ante cortes transitorios (reinicio del server / blip de red)
+        // en vez de rendirse al primer fallo. Un 404 (job expirado) es fatal.
+        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — recarga y reintenta.', 'var(--bad)']]); return; }
+        fails++;
+        if (fails <= MAX_FAILS) {
+          appendLog([[nowClock(), 'Conexión perdida, reintentando… (' + fails + '/' + MAX_FAILS + ')', 'var(--warn)']]);
+          setTimeout(tick, Math.min(6000, intervalMs * fails));
+        } else {
+          appendLog([['—', 'Error: ' + err.message + ' — sin conexión con el servidor; recarga y reintenta.', 'var(--bad)']]);
+        }
+      });
   }
   tick();
 }
