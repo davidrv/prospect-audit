@@ -681,13 +681,17 @@ def _apply_report_edits(audit, deleted_ids, comments):
     for cluster in kept:
         raw = comments.get(cluster.get('cluster_id'))
         cluster['presenter_comment'] = (str(raw).strip()[:_MAX_COMMENT_LEN] or None) if raw else None
-    # Preserve the LLM-visibility aggregate (computed in a separate phase, not
-    # by _audit_summary) across the recompute so the PDF keeps it.
+    # El agregado de visibilidad IA se calcula en una fase aparte (no en
+    # _audit_summary). Al borrar sedes hay que RECALCULARLO sobre las que
+    # quedan — si no, hits/comprobaciones/GEO seguirían contando la sede
+    # borrada. Se conserva la plantilla/categoría del prompt del agregado
+    # previo; queda None si ninguna sede superviviente tenía análisis.
     prev_llm = (audit.get('summary') or {}).get('llm_visibility')
     audit['clusters'] = kept
     audit['summary'] = _audit_summary(kept)
     if prev_llm:
-        audit['summary']['llm_visibility'] = prev_llm
+        audit['summary']['llm_visibility'] = prev_llm  # deja accesible la plantilla
+        audit['summary']['llm_visibility'] = _recompute_llm_summary(audit, '')
     return audit
 
 
@@ -719,6 +723,21 @@ def report_from_data():
     filename = 'auditoria_' + (name or 'prospect').replace(' ', '_') + '.pdf'
     return Response(pdf_bytes, mimetype='application/pdf',
                      headers={'Content-Disposition': f'attachment; filename="{filename}"'})
+
+
+@app.route('/audit/recompute', methods=['POST'])
+def audit_recompute():
+    """Recalcula el resumen (score/subscores/stats + agregado de IA) tras
+    descartar sedes, para que la vista de Resultados no muestre totales
+    obsoletos. Mismo cálculo que el informe (_apply_report_edits), pero solo
+    devuelve el summary — no renderiza PDF ni recomputa fuentes. El audit del
+    body es una copia del navegador, así que mutarlo aquí no afecta a nada."""
+    data = request.get_json(force=True, silent=True) or {}
+    audit = data.get('audit')
+    if not isinstance(audit, dict) or 'clusters' not in audit:
+        return jsonify({'error': 'Falta el audit a recalcular'}), 400
+    _apply_report_edits(audit, data.get('deleted_cluster_ids'), data.get('row_comments'))
+    return jsonify({'summary': audit['summary']})
 
 
 # ── Background job endpoints (live progress polling) ────────────

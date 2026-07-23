@@ -561,14 +561,24 @@ function onDone(result) {
 /* ═══════════════ resultados ═══════════════ */
 function renderResults() {
   if (!lastResult || !lastResult.audit) return;
-  var audit = lastResult.audit, summary = audit.summary || {};
-  var ps = summary.presence_score || {};
-  var score = ps.score;
   officialCommentEdit = lastResult.official_comment || '';
 
   document.getElementById('results-eyebrow').textContent = 'Auditoría completada' + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
   document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="color:var(--faint);">·</span> ' + esc(lastQuery.city);
 
+  renderLocator(lastResult.locator_report);
+  updateSummary();
+  renderVenues();
+  renderGhost();
+  renderRawTabs();
+  updateDiscardedCount();
+}
+
+// Pinta score + descripción + stats + tarjeta IA desde audit.summary. Se
+// reejecuta al recalcular tras descartar sedes (recomputeSummary).
+function updateSummary() {
+  var summary = (lastResult.audit || {}).summary || {};
+  var ps = summary.presence_score || {}, score = ps.score;
   // Gauge (r=64 → circunferencia ≈ 402)
   var circ = 402, dash = (score == null ? 0 : Math.max(0, Math.min(100, score)) / 100 * circ);
   var arc = document.getElementById('score-arc');
@@ -576,8 +586,7 @@ function renderResults() {
   arc.setAttribute('stroke', sevColor(sevFromScore(score))[0]);
   document.getElementById('score-num').textContent = (score == null ? '—' : score);
 
-  var stats = summary.stats || {};
-  var audited = ps.venues_scored || 0;
+  var stats = summary.stats || {}, audited = ps.venues_scored || 0;
   document.getElementById('summary-desc').innerHTML =
     'Auditadas las <strong style="color:var(--tx);">' + audited + ' sedes</strong> con ficha en Google Maps (fuente de referencia): ' +
     '<strong style="color:var(--warn);">' + (stats.inconsistent_locations || 0) + ' con datos distintos</strong> en Apple o Bing y ' +
@@ -593,16 +602,29 @@ function renderResults() {
       '<div class="muted" style="font-size:13px; margin-top:2px;">' + s[1] + '</div></div>';
   }).join('');
 
-  renderLocator(lastResult.locator_report);
   renderLLM(summary.llm_visibility);
   // 2 columnas solo si ambas tarjetas están visibles
   var loc = document.getElementById('locator-card'), llmC = document.getElementById('llm-card');
   var shown = (loc.style.display !== 'none' ? 1 : 0) + (llmC.style.display !== 'none' ? 1 : 0);
   document.getElementById('cards-2col').style.gridTemplateColumns = shown === 2 ? '1fr 1fr' : '1fr';
-  renderVenues();
-  renderGhost();
-  renderRawTabs();
-  updateDiscardedCount();
+}
+
+// Recalcula el resumen en el servidor (scoring + agregado IA) con las sedes
+// descartadas fuera, para que score/stats/IA no queden obsoletos. Ignora
+// respuestas atrasadas si el usuario descarta varias seguidas.
+var _recomputeSeq = 0;
+function recomputeSummary() {
+  if (!lastResult || !lastResult.audit) return;
+  var seq = ++_recomputeSeq;
+  fetch('/audit/recompute', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ audit: lastResult.audit, deleted_cluster_ids: Object.keys(deletedClusterIds), row_comments: commentEdits })
+  }).then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (!d || seq !== _recomputeSeq || !lastResult.audit) return;  // descarta respuestas obsoletas
+      lastResult.audit.summary = d.summary;
+      updateSummary();
+    }).catch(function() {});
 }
 
 function renderLocator(report) {
@@ -908,7 +930,7 @@ function detailCell(value, verdict) {
 function toggleVenue(id) { openVenueId = (openVenueId === id) ? null : id; renderVenues(); }
 function toggleDiscard(id) {
   if (deletedClusterIds[id]) delete deletedClusterIds[id]; else deletedClusterIds[id] = true;
-  renderVenues(); updateDiscardedCount();
+  renderVenues(); updateDiscardedCount(); recomputeSummary();
 }
 function comment(c) { return (c.cluster_id in commentEdits) ? commentEdits[c.cluster_id] : (c.presenter_comment || ''); }
 var commentEdits = {};
