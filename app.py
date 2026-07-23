@@ -949,8 +949,32 @@ AZURE_NAME_MATCH_THRESHOLD = 80
 APPLE_NAME_MATCH_THRESHOLD = 70
 
 
+# Palabras genéricas de sector: si el comercial busca "NH hoteles" o "Zara
+# tiendas", esas fichas en Google se llaman "Hotel NH Barcelona…" / "Zara" —
+# sin el token "hoteles"/"tiendas" — y el token_set_ratio se hundía (<60),
+# descartando TODAS las sedes. Se prueba también la consulta sin estas palabras.
+_GENERIC_NAME_WORDS = {
+    'hotel', 'hoteles', 'hotels', 'tienda', 'tiendas', 'store', 'stores', 'shop', 'shops',
+    'restaurante', 'restaurantes', 'restaurant', 'farmacia', 'farmacias', 'pharmacy',
+    'clinica', 'clinicas', 'supermercado', 'supermercados', 'cafe', 'cafeteria',
+    'oficina', 'oficinas', 'sucursal', 'sucursales', 'centro', 'centros',
+}
+
+
+def _strip_generic_words(name_norm):
+    return ' '.join(t for t in name_norm.split() if t not in _GENERIC_NAME_WORDS)
+
+
 def _matches_prospect_name(query_name_norm, place_name, threshold=NAME_MATCH_THRESHOLD):
-    return fuzz.token_set_ratio(query_name_norm, normalize.name_norm(place_name)) >= threshold
+    cand = normalize.name_norm(place_name)
+    if fuzz.token_set_ratio(query_name_norm, cand) >= threshold:
+        return True
+    # Reintenta sin las palabras genéricas de sector ("NH hoteles" → "nh"),
+    # que si no hunden el match contra "Hotel NH Barcelona…".
+    core = _strip_generic_words(query_name_norm)
+    if core and core != query_name_norm:
+        return fuzz.token_set_ratio(core, cand) >= threshold
+    return False
 
 
 def _search_google(name, city, progress=None):
