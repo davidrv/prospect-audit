@@ -138,6 +138,20 @@ def apple_maps_url(lat, lng, name):
     return f'https://maps.apple.com/?ll={lat},{lng}&q={quote(name or "sede")}'
 
 
+def apple_place_url(place_id, provider):
+    """Deep-link a la ficha REAL de Apple Maps a partir del `place_id` (+ el
+    `_provider` de la fuente de datos) que devuelve SerpApi apple_maps. Es más
+    preciso que `apple_maps_url` (que solo ancla por coordenadas + nombre).
+    SerpApi ya suele traer la URL montada en `link`; esto es el fallback para
+    reconstruirla. Devuelve None sin place_id."""
+    if not place_id:
+        return None
+    url = f'https://maps.apple.com/place?place-id={quote(str(place_id))}'
+    if provider not in (None, ''):
+        url += f'&_provider={quote(str(provider))}'
+    return url
+
+
 def bing_maps_url(lat, lng, name):
     """Azure Maps has no consumer-facing web map to deep-link into — Bing Maps
     is the closest human-checkable surface backed by the same Microsoft

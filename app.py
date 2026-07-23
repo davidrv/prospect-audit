@@ -584,7 +584,19 @@ def _enrich_apple_record(rec):
         rec['rating'] = match.get('rating')
     if match.get('reviews') is not None:
         rec['review_count'] = match.get('reviews')
-    (rec.setdefault('raw', {}))['serpapi_enriched'] = True
+    # Enlace a la ficha REAL de Apple: SerpApi ya lo trae montado en `link`
+    # (https://maps.apple.com/place?place-id=…&_provider=…). Es mucho más
+    # preciso que el verify_url por coordenadas de from_apple(), y ancla la
+    # comparativa a esa misma ficha (place_id) en vez de al match por nombre.
+    link = match.get('link') or normalize.apple_place_url(
+        match.get('place_id'), match.get('provider_id'))
+    if link:
+        rec['verify_url'] = link
+    raw = rec.setdefault('raw', {})
+    raw['serpapi_enriched'] = True
+    if match.get('place_id'):
+        raw['apple_place_id'] = match.get('place_id')
+        raw['apple_provider_id'] = match.get('provider_id')
 
 
 def _audit_summary(clusters):

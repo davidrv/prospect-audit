@@ -97,6 +97,37 @@ def test_enrich_apple_record_keeps_existing_values(monkeypatch):
     assert rec['website_display'] == 'serpapi-site.es'  # el que faltaba se rellena
 
 
+def test_enrich_apple_sets_real_ficha_link_from_serpapi(monkeypatch):
+    monkeypatch.setattr(app_module, '_serpapi_apple_lookup', lambda name, lat, lng: {
+        'title': name, 'place_id': 'I623A2B788E0D1E10', 'provider_id': '9902',
+        'link': 'https://maps.apple.com/place?place-id=I623A2B788E0D1E10&_provider=9902',
+    })
+    rec = _apple_rec()
+    assert 'maps.apple.com/?ll=' in rec['verify_url']  # partía del deep-link por coordenadas
+    app_module._enrich_apple_record(rec)
+    assert rec['verify_url'] == 'https://maps.apple.com/place?place-id=I623A2B788E0D1E10&_provider=9902'
+    assert rec['raw']['apple_place_id'] == 'I623A2B788E0D1E10'
+    assert rec['raw']['apple_provider_id'] == '9902'
+
+
+def test_enrich_apple_builds_ficha_link_when_serpapi_link_absent(monkeypatch):
+    monkeypatch.setattr(app_module, '_serpapi_apple_lookup', lambda name, lat, lng: {
+        'title': name, 'place_id': 'IABC', 'provider_id': '9902'})  # sin 'link'
+    rec = _apple_rec()
+    app_module._enrich_apple_record(rec)
+    assert rec['verify_url'] == 'https://maps.apple.com/place?place-id=IABC&_provider=9902'
+
+
+def test_enrich_apple_keeps_coord_link_when_no_place_id(monkeypatch):
+    monkeypatch.setattr(app_module, '_serpapi_apple_lookup',
+                        lambda name, lat, lng: {'title': name, 'phone': '+34 1'})  # sin place_id/link
+    rec = _apple_rec()
+    before = rec['verify_url']
+    app_module._enrich_apple_record(rec)
+    assert rec['verify_url'] == before  # se conserva el fallback por coordenadas
+    assert 'apple_place_id' not in rec['raw']
+
+
 def test_enrich_apple_clusters_only_enriches_google_matched(monkeypatch):
     monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
     called = []
