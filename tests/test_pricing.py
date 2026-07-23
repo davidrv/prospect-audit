@@ -29,7 +29,18 @@ def test_fewer_review_pages_is_cheaper():
 
 def test_prices_configurable_by_env(monkeypatch):
     monkeypatch.setenv('PRICE_SERPAPI', '1.00')
-    est = pricing.estimate_max(google_max=25, reviews_pages=3, cloro_venues=5, cloro_runs=3)
-    # 25×(3+1) google-signals + 25 apple = 125 llamadas SerpApi × 1.00 = 125 del total
+    est = pricing.estimate_max(google_max=25, reviews_pages=3, cloro_venues=5, cloro_runs=3,
+                               action_links_venues=5)
+    # SerpApi: 25×3 reseñas + 5 action links (solo peores) + 25 apple = 105 búsquedas × 1.00
     assert est['prices']['serpapi'] == 1.00
-    assert est['maps_max'] >= 125
+    assert est['maps_max'] >= 105
+    assert est['assumptions']['action_links_venues'] == 5
+
+
+def test_action_links_capped_reduces_cost(monkeypatch):
+    monkeypatch.setenv('PRICE_SERPAPI', '1.00')
+    few = pricing.estimate_max(google_max=25, reviews_pages=3, cloro_venues=5, cloro_runs=3,
+                               action_links_venues=5)
+    many = pricing.estimate_max(google_max=25, reviews_pages=3, cloro_venues=5, cloro_runs=3,
+                                action_links_venues=25)
+    assert few['maps_max'] < many['maps_max']  # 20 llamadas de links menos

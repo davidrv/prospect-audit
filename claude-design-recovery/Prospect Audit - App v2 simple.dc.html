@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/localistico-design-system-1d50ae1d-d173-434f-94d5-63bfe50b5a68/colors_and_type.css">
+  <script src="_ds/localistico-design-system-1d50ae1d-d173-434f-94d5-63bfe50b5a68/_ds_bundle.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,1,0">
+  <style>
+    html, body { margin: 0; padding: 0; }
+    a { color: #FF5000; } a:hover { color: #E64600; }
+    .msr { font-family: "Material Symbols Rounded"; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 20px; line-height: 1; display: inline-block; user-select: none; }
+    @keyframes paspin { to { transform: rotate(360deg); } }
+    [data-pa] {
+      --bg: #FAF9F7; --surface: #FFFFFF; --surface-2: #F5F3F0; --border: #E7E4DF; --border-2: #D8D4CE;
+      --tx: #0F0F0F; --tx-2: #3A3A3A; --tx-3: #797979;
+      --acc: #FF5000; --acc-hover: #E64600; --acc-soft: #FFEDE4; --acc-on: #FFFFFF;
+      --ok: #0F6E56; --ok-soft: #E5F1ED; --warn: #854F0B; --warn-soft: #F8EFDD; --bad: #A32D2D; --bad-soft: #F8E9E9;
+    }
+    [data-pa][data-theme="dark"] {
+      --bg: #161513; --surface: #201E1B; --surface-2: #2A2723; --border: #38342F; --border-2: #4A453F;
+      --tx: #F4F2EF; --tx-2: #C9C5BF; --tx-3: #8F8B84;
+      --acc: #FF6A26; --acc-hover: #FF8248; --acc-soft: rgba(255,80,0,0.16); --acc-on: #FFFFFF;
+      --ok: #55C29B; --ok-soft: rgba(85,194,155,0.14); --warn: #E0A34E; --warn-soft: rgba(224,163,78,0.14); --bad: #E07A7A; --bad-soft: rgba(224,122,122,0.14);
+    }
+    [data-pa] input, [data-pa] textarea, [data-pa] button { font-family: var(--font-sans); }
+    [data-pa] input::placeholder, [data-pa] textarea::placeholder { color: var(--tx-3); }
+  </style>
+</helmet>
+
+<div data-pa="true" data-theme="{{ themeAttr }}" style="min-height: 100vh; background: var(--bg); color: var(--tx-2); font-size: 14px; line-height: 1.4;">
+
+  <header data-screen-label="Barra superior" style="display: flex; align-items: center; gap: 20px; padding: 0 24px; height: 56px; background: var(--surface); border-bottom: 2px solid var(--acc); position: sticky; top: 0; z-index: 30;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="msr" style="color: var(--acc); font-size: 24px;">pin_drop</span>
+      <span style="font-weight: 700; font-size: 17px; color: var(--tx); letter-spacing: -0.01em;">localistico</span>
+      <span style="width: 1px; height: 20px; background: var(--border-2); margin: 0 6px;"></span>
+      <span style="font-weight: 600; font-size: 14px; color: var(--tx);">Prospect Audit</span>
+    </div>
+    <nav style="display: flex; gap: 4px; margin-left: auto;">
+      <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="3">
+        <button onClick="{{ nv.go }}" style="border: none; cursor: pointer; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; background: {{ nv.bg }}; color: {{ nv.color }};" style-hover="opacity: 0.85;">{{ nv.label }}</button>
+      </sc-for>
+    </nav>
+    <button onClick="{{ toggleTheme }}" title="Cambiar tema" style="display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface); color: var(--tx-2); border-radius: 8px; cursor: pointer;" style-hover="background: var(--surface-2);">
+      <span class="msr" style="font-size: 18px;">{{ themeIcon }}</span>
+    </button>
+  </header>
+
+  <!-- ══ RESULTADOS ══ -->
+  <sc-if value="{{ showResults }}" hint-placeholder-val="{{ true }}">
+  <main data-screen-label="Resultados" style="max-width: 1060px; margin: 0 auto; padding: 24px 24px 64px; display: flex; flex-direction: column; gap: 16px;">
+
+    <div style="display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap;">
+      <div>
+        <div class="eyebrow" style="font-size: 12px; color: var(--acc);">Auditoría completada · hoy 10:42</div>
+        <h1 style="font-size: 28px; margin-top: 4px; color: var(--tx);">Movistar <span style="font-weight: 400; color: var(--tx-3);">· Barcelona</span></h1>
+      </div>
+      <button style="margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 700; font-size: 14px; cursor: pointer;" style-hover="background: var(--acc-hover);"><span class="msr" style="font-size: 18px;">download</span>Exportar informe PDF</button>
+    </div>
+
+    <!-- Resumen -->
+    <section style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; display: flex; align-items: center; gap: 28px; flex-wrap: wrap;">
+      <svg width="96" height="96" viewBox="0 0 110 110" style="flex-shrink: 0;">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"></circle>
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--acc)" stroke-width="11" stroke-linecap="round" stroke-dasharray="{{ scoreDash }}" transform="rotate(-90 55 55)"></circle>
+        <text x="55" y="53" text-anchor="middle" style="font-size: 30px; font-weight: 700; fill: var(--tx);">52</text>
+        <text x="55" y="72" text-anchor="middle" style="font-size: 10px; fill: var(--tx-3);">de 100</text>
+      </svg>
+      <div style="flex: 1; min-width: 240px;">
+        <div style="font-weight: 700; color: var(--tx); font-size: 15px;">Local Presence Score</div>
+        <p style="font-size: 13.5px; color: var(--tx-2); margin-top: 4px; max-width: 440px;">Auditadas las <strong style="color: var(--tx);">29 sedes con ficha en Google Maps</strong> (fuente de referencia): <strong style="color: var(--warn);">23 tienen datos distintos en Apple o Bing</strong> y <strong style="color: var(--bad);">11 faltan en alguna plataforma</strong>.</p>
+      </div>
+      <div style="display: flex; gap: 28px;">
+        <sc-for list="{{ stats }}" as="st" hint-placeholder-count="3">
+          <div style="text-align: center;">
+            <div style="font-size: 26px; font-weight: 700; color: {{ st.color }};">{{ st.v }}</div>
+            <div style="font-size: 12px; color: var(--tx-3); max-width: 110px;">{{ st.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- Store locator -->
+    <section style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <h2 style="font-size: 16px; color: var(--tx);">Store locator y store pages</h2>
+        <a href="https://tiendas.movistar.es" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 600;">tiendas.movistar.es<span class="msr" style="font-size: 13px;">open_in_new</span></a>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bad); background: var(--bad-soft); border-radius: 999px; padding: 3px 10px;">No optimizado</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px;">
+        <sc-for list="{{ locatorChecks }}" as="lc" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--border);">
+            <span class="msr" style="font-size: 17px; color: {{ lc.color }};">{{ lc.icon }}</span>
+            <span style="color: var(--tx);">{{ lc.label }}</span>
+            <span style="margin-left: auto; font-size: 12.5px; font-weight: 600; color: {{ lc.color }};">{{ lc.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span class="msr" style="font-size: 16px; color: var(--tx-3);">edit_note</span>
+        <input placeholder="Auditoría manual de las store pages (ej.: las fichas no tienen fotos ni horarios festivos, el buscador de tiendas falla en móvil)…" style="flex: 1; border: 1px solid var(--border-2); border-radius: 8px; padding: 8px 12px; background: var(--bg); color: var(--tx); font-size: 13px; outline: none;">
+        <button style="padding: 8px 14px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 600; font-size: 12.5px; cursor: pointer;" style-hover="background: var(--acc-hover);">Guardar nota</button>
+      </div>
+    </section>
+
+    <!-- Visibilidad en IA -->
+    <section style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <h2 style="font-size: 16px; color: var(--tx);">Visibilidad en IA · Visibility Index</h2>
+        <span style="font-size: 12.5px; color: var(--tx-3);">se comprueba cada sede encontrada en Google · 3 repeticiones por sede</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bad); background: var(--bad-soft); border-radius: 999px; padding: 3px 10px;">Aparece en 5 de 21 comprobaciones</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 13px;">
+        <span class="msr" style="font-size: 16px; color: var(--tx-3);">chat</span>
+        <span style="color: var(--tx); font-style: italic;">"tienda de telefonía móvil en {zona de la sede}, Barcelona"</span>
+        <span style="margin-left: auto; font-size: 12px; color: var(--tx-3);">categoría del perfil de Google + ciudad del input · el resultado por sede está en su fila (chip IA y detalle)</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--tx-3);">
+        <span style="display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--acc); background: var(--acc-soft); color: var(--acc); border-radius: 999px; padding: 4px 11px; font-weight: 600;"><span class="msr" style="font-size: 14px;">check</span>ChatGPT · auditado</span>
+        <sc-for list="{{ llmOthers }}" as="lo" hint-placeholder-count="3">
+          <span style="display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border-2); border-radius: 999px; padding: 4px 11px; font-weight: 600; color: var(--tx-3);"><span class="msr" style="font-size: 14px;">add</span>{{ lo }}</span>
+        </sc-for>
+        <span>también auditables bajo demanda</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: flex-start; background: var(--acc-soft); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--tx-2); line-height: 1.45;">
+        <span class="msr" style="font-size: 15px; color: var(--acc); margin-top: 1px;">info</span>
+        <span>Esto es solo una muestra. Nuestro <strong style="color: var(--tx);">Visibility Index</strong> completo se basa en decenas de prompts y repeticiones por sede y categoría, para medir consistencia y obtener un resultado determinista.</span>
+      </div>
+    </section>
+
+    <!-- Tabla simple -->
+    <section style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap;">
+        <h2 style="font-size: 16px; color: var(--tx);">Sedes auditadas</h2>
+        <span style="font-size: 12.5px; color: var(--tx-3);">29 con ficha en Google · de peor a mejor · clic en una fila para ver el detalle</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--bg);">
+          <span class="msr" style="font-size: 16px; color: var(--tx-3);">search</span>
+          <input placeholder="Buscar sede…" style="border: none; outline: none; background: transparent; color: var(--tx); font-size: 13px; width: 140px;">
+        </div>
+      </div>
+
+      <div style="overflow-x: auto;">
+      <div style="min-width: 930px;">
+      <div style="display: grid; grid-template-columns: 56px minmax(200px, 1.2fr) minmax(170px, 1fr) 128px 190px 76px; gap: 14px; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--surface-2); font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tx-3);">
+        <span>Score</span><span>Sede</span><span>Qué falla</span><span>Reputación</span><span>Comprobar en</span><span style="text-align: right;"></span>
+      </div>
+
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+        <div style="border-bottom: 1px solid var(--border); opacity: {{ r.opacity }};">
+          <div onClick="{{ r.toggle }}" style="display: grid; grid-template-columns: 56px minmax(200px, 1.2fr) minmax(170px, 1fr) 128px 190px 76px; gap: 14px; padding: 13px 18px; align-items: center; cursor: pointer; background: {{ r.rowBg }};" style-hover="background: var(--surface-2);">
+            <span style="min-width: 36px; text-align: center; padding: 4px 0; border-radius: 999px; font-weight: 700; font-size: 13px; background: {{ r.sevSoft }}; color: {{ r.sevColor }};">{{ r.score }}</span>
+            <div>
+              <div style="font-weight: 600; color: var(--tx); font-size: 13.5px;">{{ r.name }}</div>
+              <div style="font-size: 12px; color: var(--tx-3); margin-top: 1px;">{{ r.addr }}</div>
+            </div>
+            <div style="font-size: 13px; color: var(--tx-2);">{{ r.issue }}
+              <sc-if value="{{ r.note }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 3px; font-size: 12px; color: var(--acc);"><span class="msr" style="font-size: 14px;">edit_note</span>{{ r.note }}</div>
+              </sc-if>
+            </div>
+            <div style="font-size: 12.5px;">
+              <div style="display: flex; align-items: center; gap: 4px;"><span class="msr" style="font-size: 15px; color: {{ r.ratColor }};">star</span><span style="font-weight: 700; color: {{ r.ratColor }};">{{ r.rating }}</span><span style="color: var(--tx-3);">· {{ r.reviews }}</span></div>
+              <div style="color: var(--tx-3); margin-top: 2px;">{{ r.r3m }} en 3 m · {{ r.reply }} resp.</div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <sc-for list="{{ r.plats }}" as="p" hint-placeholder-count="4">
+                <a href="{{ p.href }}" target="_blank" rel="noopener" onClick="{{ stopClick }}" title="{{ p.title }}" style="width: 34px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; font-weight: 700; text-decoration: none; background: {{ p.bg }}; color: {{ p.color }}; border: 1px solid {{ p.bc }};" style-hover="opacity: 0.8;">{{ p.k }}</a>
+              </sc-for>
+              <span title="{{ r.llmTitle }}" style="width: 34px; height: 30px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: {{ r.llmBg }}; color: {{ r.llmColor }}; border: 1px solid {{ r.llmBc }};">IA</span>
+            </div>
+            <div style="display: flex; gap: 4px; justify-content: flex-end;">
+              <button onClick="{{ r.discard }}" title="{{ r.discardTitle }}" style="width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--tx-3); cursor: pointer; display: grid; place-items: center;" style-hover="color: var(--bad); border-color: var(--bad);"><span class="msr" style="font-size: 16px;">{{ r.discardIcon }}</span></button>
+              <span style="width: 26px; height: 30px; display: grid; place-items: center; color: var(--tx-3);"><span class="msr" style="font-size: 18px;">{{ r.chev }}</span></span>
+            </div>
+          </div>
+
+          <sc-if value="{{ r.isOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 16px 18px 18px; background: var(--surface-2); border-top: 1px solid var(--border);">
+              <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden;">
+                <div style="display: grid; grid-template-columns: 90px repeat(4, 1fr); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--tx-3); border-bottom: 1px solid var(--border);">
+                  <span style="padding: 8px 12px;"></span>
+                  <span style="padding: 8px 12px; color: var(--acc);">Google · ref.</span>
+                  <span style="padding: 8px 12px;">Apple</span>
+                  <span style="padding: 8px 12px;">Bing</span>
+                  <span style="padding: 8px 12px;">Web oficial</span>
+                </div>
+                <sc-for list="{{ r.detail }}" as="d" hint-placeholder-count="4">
+                  <div style="display: grid; grid-template-columns: 90px repeat(4, 1fr); font-size: 12.5px; border-bottom: 1px solid var(--border); align-items: stretch;">
+                    <span style="padding: 9px 12px; font-weight: 600; color: var(--tx);">{{ d.field }}</span>
+                    <sc-for list="{{ d.cells }}" as="c" hint-placeholder-count="4">
+                      <span title="{{ c.tip }}" style="padding: 9px 12px; background: {{ c.bg }}; color: {{ c.color }}; display: flex; align-items: center; gap: 5px;">
+                        <sc-if value="{{ c.icon }}" hint-placeholder-val="{{ false }}"><span class="msr" style="font-size: 14px; color: {{ c.iconColor }};">{{ c.icon }}</span></sc-if>
+                        {{ c.v }}
+                      </span>
+                    </sc-for>
+                  </div>
+                </sc-for>
+                <div style="display: grid; grid-template-columns: 90px repeat(4, 1fr); font-size: 12px; align-items: center;">
+                  <span style="padding: 9px 12px; font-weight: 600; color: var(--tx);">Ficha</span>
+                  <sc-for list="{{ r.links }}" as="lk" hint-placeholder-count="4">
+                    <span style="padding: 9px 12px;">
+                      <a href="{{ lk.href }}" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">{{ lk.label }}<span class="msr" style="font-size: 13px;">open_in_new</span></a>
+                    </span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; flex-wrap: wrap;">
+                <span class="msr" style="font-size: 16px; color: var(--acc);">smart_toy</span>
+                <strong style="color: var(--tx);">ChatGPT</strong>
+                <span style="font-style: italic; color: var(--tx-2);">"{{ r.llmPrompt }}"</span>
+                <span style="display: flex; gap: 4px;">
+                  <sc-for list="{{ r.llmRuns }}" as="lr" hint-placeholder-count="3">
+                    <span title="Repetición {{ lr.n }}: {{ lr.tip }}" style="min-width: 26px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 10.5px; font-weight: 700; padding: 0 5px; background: {{ lr.bg }}; color: {{ lr.color }};">{{ lr.label }}</span>
+                  </sc-for>
+                </span>
+                <span style="color: var(--tx-3);">{{ r.llmNote }}</span>
+              </div>
+              <div style="display: flex; gap: 10px; margin-top: 10px; align-items: center;">
+                <input placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" style="flex: 1; border: 1px solid var(--border-2); border-radius: 8px; padding: 8px 12px; background: var(--surface); color: var(--tx); font-size: 13px; outline: none;">
+                <button style="padding: 8px 14px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 600; font-size: 12.5px; cursor: pointer;" style-hover="background: var(--acc-hover);">Guardar nota</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+      </div>
+      </div>
+
+      <button onClick="{{ toggleNoGoogle }}" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 13px 18px; border: none; background: var(--surface-2); cursor: pointer; font-size: 13px; color: var(--tx-2); text-align: left;" style-hover="opacity: 0.85;">
+        <span class="msr" style="font-size: 18px; color: var(--acc);">{{ noGoogleChev }}</span>
+        <span style="font-weight: 600; color: var(--tx);">84 ubicaciones más, solo en Bing o Apple</span>
+        <span style="color: var(--tx-3);">sin ficha en Google — no auditadas (posibles duplicados o bajas)</span>
+        <span style="margin-left: auto; font-size: 12px; font-weight: 600; color: var(--acc);">{{ noGoogleAction }}</span>
+      </button>
+      <sc-if value="{{ noGoogleOpen }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ ghostRows }}" as="g" hint-placeholder-count="3">
+          <div style="display: grid; grid-template-columns: 1fr 190px 130px; gap: 14px; padding: 10px 18px; border-top: 1px solid var(--border); align-items: center; font-size: 12.5px; color: var(--tx-3);">
+            <span><span style="color: var(--tx-2); font-weight: 600;">{{ g.name }}</span> · {{ g.addr }}</span>
+            <div style="display: flex; gap: 5px;">
+              <sc-for list="{{ g.plats }}" as="gp" hint-placeholder-count="4">
+                <a href="{{ gp.href }}" target="_blank" rel="noopener" title="{{ gp.title }}" style="width: 34px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 11px; font-weight: 700; text-decoration: none; background: {{ gp.bg }}; color: {{ gp.color }}; border: 1px solid {{ gp.bc }};" style-hover="opacity: 0.8;">{{ gp.k }}</a>
+              </sc-for>
+            </div>
+            <button style="border: 1px solid var(--border-2); background: var(--surface); color: var(--tx-2); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 600; cursor: pointer;" style-hover="background: var(--surface-2);">Incluir en informe</button>
+          </div>
+        </sc-for>
+      </sc-if>
+    </section>
+
+    <div style="display: flex; gap: 18px; font-size: 13px; color: var(--tx-3); padding: 0 4px;">
+      <a href="#" style="font-weight: 600;">Ver datos crudos por fuente</a>
+      <span>·</span>
+      <span>2 sedes descartadas del informe</span>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ══ INPUT ══ -->
+  <sc-if value="{{ showInput }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Nueva auditoría" style="max-width: 560px; margin: 0 auto; padding: 56px 24px 64px; display: flex; flex-direction: column; gap: 16px;">
+    <div>
+      <div class="eyebrow" style="font-size: 12px; color: var(--acc);">Herramienta interna · equipo comercial</div>
+      <h1 style="font-size: 28px; margin-top: 4px; color: var(--tx);">Auditar un prospecto</h1>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 12px;">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tx-3);">Nombre del prospecto
+          <input value="Movistar" style="border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--bg); color: var(--tx); outline: none; font-weight: 400; letter-spacing: 0; text-transform: none;">
+        </label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tx-3);">Ciudad
+          <input value="Barcelona" style="border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--bg); color: var(--tx); outline: none; font-weight: 400; letter-spacing: 0; text-transform: none;">
+        </label>
+      </div>
+      <button onClick="{{ toggleOfficial }}" style="display: flex; align-items: center; gap: 8px; border: none; background: transparent; padding: 0; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--acc);" style-hover="opacity: 0.85;">
+        <span class="msr" style="font-size: 18px;">{{ officialChev }}</span>Datos oficiales del prospecto (opcional)
+      </button>
+      <sc-if value="{{ officialOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 12px; border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--bg);">
+          <textarea rows="3" placeholder="Una URL de su store locator por línea. Ej.: https://tiendas.movistar.es" style="border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 13px; background: var(--surface); color: var(--tx); outline: none; resize: vertical;"></textarea>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button style="display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface); color: var(--tx-2); font-weight: 600; font-size: 12.5px; cursor: pointer;" style-hover="background: var(--surface-2);"><span class="msr" style="font-size: 16px;">upload_file</span>Subir CSV de sedes</button>
+            <a href="#" style="font-size: 12.5px;">Descargar plantilla</a>
+          </div>
+        </div>
+      </sc-if>
+      <button onClick="{{ goProgressBtn }}" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 700; font-size: 15px; cursor: pointer;" style-hover="background: var(--acc-hover);"><span class="msr" style="font-size: 20px;">search</span>Auditar presencia local</button>
+      <p style="font-size: 12px; color: var(--tx-3); text-align: center;">Suele tardar 1–3 minutos. Te avisamos al terminar.</p>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 20px;">
+      <div style="font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--tx-3); margin-bottom: 10px;">Auditorías recientes</div>
+      <sc-for list="{{ recentAudits }}" as="ra" hint-placeholder-count="3">
+        <button onClick="{{ ra.open }}" style="width: 100%; display: flex; align-items: center; gap: 10px; padding: 9px 4px; border: none; border-top: 1px solid var(--border); background: transparent; cursor: pointer; font-size: 13px; text-align: left;" style-hover="opacity: 0.8;">
+          <span class="msr" style="font-size: 17px; color: var(--acc);">storefront</span>
+          <span style="font-weight: 600; color: var(--tx);">{{ ra.name }}</span>
+          <span style="color: var(--tx-3);">{{ ra.meta }}</span>
+          <span style="margin-left: auto; min-width: 34px; text-align: center; padding: 2px 7px; border-radius: 999px; font-weight: 700; font-size: 12px; background: {{ ra.soft }}; color: {{ ra.color }};">{{ ra.score }}</span>
+        </button>
+      </sc-for>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- ══ PROGRESO ══ -->
+  <sc-if value="{{ showProgress }}" hint-placeholder-val="{{ false }}">
+  <main data-screen-label="Progreso" style="max-width: 560px; margin: 0 auto; padding: 56px 24px 64px; display: flex; flex-direction: column; gap: 16px;">
+    <div>
+      <div class="eyebrow" style="font-size: 12px; color: var(--acc);">Auditando · quedan ~45 s</div>
+      <h1 style="font-size: 28px; margin-top: 4px; color: var(--tx);">Movistar <span style="font-weight: 400; color: var(--tx-3);">· Barcelona</span></h1>
+    </div>
+    <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 18px;">
+      <div style="height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden;"><div style="height: 100%; width: 62%; border-radius: 999px; background: var(--acc);"></div></div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <sc-for list="{{ progressSteps }}" as="ps" hint-placeholder-count="4">
+          <div style="display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13.5px;">
+            <span class="msr" style="font-size: 20px; color: {{ ps.color }}; animation: {{ ps.anim }};">{{ ps.icon }}</span>
+            <span style="font-weight: 600; color: var(--tx);">{{ ps.label }}</span>
+            <span style="margin-left: auto; font-weight: 600; font-size: 12.5px; color: {{ ps.color }};">{{ ps.status }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div>
+        <button onClick="{{ toggleLog }}" style="display: flex; align-items: center; gap: 6px; border: none; background: transparent; padding: 0; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--tx-3);" style-hover="color: var(--tx);"><span class="msr" style="font-size: 16px;">{{ logChev }}</span>Registro detallado</button>
+        <sc-if value="{{ logOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-size: 12px; color: var(--tx-3); display: flex; flex-direction: column; gap: 5px;">
+            <sc-for list="{{ logLines }}" as="ll" hint-placeholder-count="4">
+              <div style="display: flex; gap: 8px;"><span style="min-width: 42px;">{{ ll.t }}</span><span style="color: {{ ll.color }};">{{ ll.msg }}</span></div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button onClick="{{ goResultsBtn }}" style="flex: 1; padding: 11px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 700; font-size: 14px; cursor: pointer;" style-hover="background: var(--acc-hover);">Ver resultados parciales</button>
+        <button style="padding: 11px 16px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface); color: var(--tx-2); font-weight: 600; font-size: 13.5px; cursor: pointer;" style-hover="background: var(--surface-2);">Cancelar</button>
+      </div>
+    </div>
+  </main>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 1280, &quot;height&quot;: 900}, &quot;tema&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;claro&quot;, &quot;oscuro&quot;], &quot;default&quot;: &quot;claro&quot;, &quot;section&quot;: &quot;Apariencia&quot;}, &quot;pantalla&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;input&quot;, &quot;progreso&quot;, &quot;resultados&quot;], &quot;default&quot;: &quot;resultados&quot;, &quot;section&quot;: &quot;Demo&quot;}}">
+class Component extends DCLogic {
+  state = { screen: null, dark: null, open: 'L29', discarded: {}, logOpen: true, officialOpen: false, noGoogleOpen: false };
+
+  renderVals() {
+    const p = this.props;
+    const dark = this.state.dark ?? ((p.tema ?? 'claro') === 'oscuro');
+    const screen = this.state.screen ?? ({input: 'input', progreso: 'progress', resultados: 'results'}[p.pantalla] ?? 'results');
+    const V = { ok: 'var(--ok)', okS: 'var(--ok-soft)', warn: 'var(--warn)', warnS: 'var(--warn-soft)', bad: 'var(--bad)', badS: 'var(--bad-soft)', acc: 'var(--acc)', accS: 'var(--acc-soft)', tx3: 'var(--tx-3)', s2: 'var(--surface-2)' };
+    const sevMap = { critico: [V.bad, V.badS], alto: [V.warn, V.warnS], medio: [V.warn, V.warnS], ok: [V.ok, V.okS] };
+
+    const platHref = (k, q) => ({
+      g: 'https://www.google.com/maps/search/' + encodeURIComponent(q),
+      a: 'https://maps.apple.com/?q=' + encodeURIComponent(q),
+      b: 'https://www.bing.com/maps?q=' + encodeURIComponent(q),
+      w: 'https://tiendas.movistar.es',
+    }[k]);
+    const platNames = { g: 'Google Maps', a: 'Apple Maps', b: 'Bing Maps', w: 'Web oficial' };
+    // st: 'ok' correcto | 'issue' con errores | 'off' no encontrada
+    const mkPlats = (states, q) => Object.entries(states).map(([k, st]) => ({
+      k: k.toUpperCase(), href: platHref(k, q),
+      title: platNames[k] + (st === 'ok' ? ' — correcto. Abrir ficha' : st === 'issue' ? ' — con errores. Abrir ficha' : ' — NO encontrada. Buscar'),
+      bg: st === 'ok' ? V.okS : st === 'issue' ? V.warnS : V.badS,
+      color: st === 'ok' ? V.ok : st === 'issue' ? V.warn : V.bad,
+      bc: st === 'ok' ? V.ok : st === 'issue' ? V.warn : V.bad,
+    }));
+    const cell = (v, st, tip) => ({ v, st, tip: tip || '' });
+    const detailGeneric = [
+      ['Nombre', [cell('Tienda Movistar', 'ref'), cell('Movistar', 'bad', 'No coincide con Google'), cell('Tienda Movistar', 'ok'), cell('Sin schema.org', 'na')]],
+      ['Teléfono', [cell('93x xx xx xx', 'ref'), cell('93x xx xx xx', 'ok'), cell('Distinto', 'bad', 'Teléfono distinto'), cell('—', 'na')]],
+      ['Web', [cell('tiendas.movistar.es', 'ref'), cell('movistar.es', 'bad', 'Dominio genérico'), cell('tiendas.movistar.es', 'ok'), cell('—', 'na')]],
+      ['Horario', [cell('L–S 9:30–21:30', 'ref'), cell('Distinto', 'bad', 'Horario distinto'), cell('Sin horario', 'bad', 'Falta el horario'), cell('—', 'na')]],
+      ['Links', [cell('Ninguno detectado', 'bad', 'Sin Reservar / Pedir online / Cita en la ficha de Google'), cell('N/D', 'na', 'Apple no lo expone públicamente'), cell('—', 'na'), cell('—', 'na')]],
+    ];
+
+    const venues = [
+      { id: 'L29', name: 'Tienda Movistar · Via Júlia', addr: 'Via Júlia, 48 · Nou Barris, Barcelona', score: 21, sev: 'critico',
+        issue: 'Horario y nombre mal en Apple y Bing · sin ficha en su web', note: 'Confirmar si sigue abierta antes de la reunión', rep: [3.3, 286, 4, '0%'],
+        llm: { zone: 'Nou Barris', runs: ['no', 'no', 'no'], note: 'no aparece; recomienda Vodafone y Orange' },
+        states: { g: 'ok', a: 'issue', b: 'issue', w: 'off' },
+        detail: [
+          ['Nombre', [cell('Tienda Movistar', 'ref'), cell('Movistar Via Julia', 'bad', 'No coincide con Google'), cell('MOVISTAR', 'bad', 'No coincide con Google'), cell('Sin schema.org', 'na')]],
+          ['Teléfono', [cell('933 50 12 40', 'ref'), cell('932 76 00 11', 'bad', 'Teléfono distinto'), cell('933 50 12 40', 'ok'), cell('—', 'na')]],
+          ['Web', [cell('tiendas.movistar.es', 'ref'), cell('movistar.es', 'bad', 'Dominio genérico'), cell('tiendas.movistar.es', 'ok'), cell('—', 'na')]],
+          ['Horario', [cell('L–S 9:30–21:00', 'ref'), cell('L–V 10:00–20:00', 'bad', 'Horario distinto'), cell('Sin horario', 'bad', 'Falta el horario'), cell('—', 'na')]],
+          ['Links', [cell('Ninguno detectado', 'bad', 'Sin Reservar / Pedir online / Cita en la ficha de Google'), cell('N/D', 'na', 'Apple no lo expone públicamente'), cell('—', 'na'), cell('—', 'na')]],
+        ] },
+      { id: 'L7', name: 'Tienda Movistar · C.C. La Farga', addr: 'C.C. La Farga, local B18 · L\u2019Hospitalet', score: 24, sev: 'critico',
+        issue: 'Web genérica sin ficha local · teléfono distinto en Bing', note: null, rep: [3.2, 230, 2, '0%'], llm: { zone: 'L\u2019Hospitalet', runs: ['no', 'no', 'no'], note: 'no aparece en ninguna repetición' }, states: { g: 'ok', a: 'issue', b: 'issue', w: 'off' }, detail: detailGeneric },
+      { id: 'L4', name: 'Tienda Movistar · Av. de Gaudí', addr: 'Av. de Gaudí, 69 · Eixample, Barcelona', score: 31, sev: 'critico',
+        issue: 'Rating 2,6 — el peor de la red · nombre mal en Apple', note: 'Destacar en el informe', rep: [2.6, 244, 9, '0%'], llm: { zone: 'Eixample', runs: ['no', '5.º', 'no'], note: 'cuando aparece, cita el rating bajo' }, states: { g: 'ok', a: 'issue', b: 'ok', w: 'ok' }, detail: detailGeneric },
+      { id: 'L22', name: 'Tienda Movistar · Las Arenas', addr: 'C.C. Las Arenas, S13 · Eixample, Barcelona', score: 33, sev: 'alto',
+        issue: 'Teléfono distinto entre plataformas', note: null, rep: [3.3, 235, 3, '0%'], llm: { zone: 'Eixample', runs: ['no', 'no', 'no'], note: 'no aparece en ninguna repetición' }, states: { g: 'ok', a: 'issue', b: 'issue', w: 'off' }, detail: detailGeneric },
+      { id: 'L28', name: 'Movistar · Via Augusta', addr: 'Via Augusta, 177 · Sarrià-Sant Gervasi', score: 45, sev: 'alto',
+        issue: 'Nombre inconsistente en las tres plataformas', note: null, rep: [3.3, 538, 6, '17%'], llm: { zone: 'Sarrià-Sant Gervasi', runs: ['4.º', 'no', 'no'], note: 'aparece 1 de 3 — inconsistente' }, states: { g: 'ok', a: 'issue', b: 'issue', w: 'off' }, detail: detailGeneric },
+      { id: 'L21', name: 'Tienda Movistar · Diagonal 617', addr: 'El Corte Inglés, Av. Diagonal 617 · Les Corts', score: 58, sev: 'medio',
+        issue: 'Horario incompleto en Bing', note: null, rep: [4.1, 269, 11, '9%'], llm: { zone: 'Les Corts', runs: ['3.º', 'no', 'no'], note: 'cita el horario incorrecto de Bing' }, states: { g: 'ok', a: 'ok', b: 'issue', w: 'ok' }, detail: detailGeneric },
+      { id: 'L25', name: 'Tienda Movistar · Pl. Catalunya', addr: 'Pl. de Catalunya, 16 · Ciutat Vella, Barcelona', score: 74, sev: 'ok',
+        issue: 'Todo correcto salvo web en Apple', note: null, rep: [4.6, 6100, 38, '24%'], llm: { zone: 'Ciutat Vella', runs: ['1.º', '2.º', 'no'], note: 'la sede mejor posicionada en IA' }, states: { g: 'ok', a: 'issue', b: 'ok', w: 'ok' }, detail: detailGeneric },
+    ];
+
+    const rows = venues.map(v => {
+      const [sevColor, sevSoft] = sevMap[v.sev];
+      const isOpen = this.state.open === v.id;
+      const isDiscarded = !!this.state.discarded[v.id];
+      const q = v.name + ' ' + v.addr;
+      return {
+        ...v, isOpen, sevColor, sevSoft,
+        opacity: isDiscarded ? 0.45 : 1,
+        rowBg: isOpen ? 'var(--surface-2)' : 'transparent',
+        chev: isOpen ? 'expand_less' : 'expand_more',
+        discardIcon: isDiscarded ? 'undo' : 'close',
+        discardTitle: isDiscarded ? 'Reincluir en el informe' : 'Excluir del informe',
+        rating: v.rep[0].toLocaleString('es-ES'), reviews: v.rep[1].toLocaleString('es-ES'), r3m: v.rep[2], reply: v.rep[3],
+        ratColor: v.rep[0] < 3.5 ? V.bad : (v.rep[0] < 4 ? V.warn : V.ok),
+        ...(() => {
+          const hits = v.llm.runs.filter(x => x !== 'no').length;
+          const [c, s] = hits === 0 ? [V.bad, V.badS] : (hits < 3 ? [V.warn, V.warnS] : [V.ok, V.okS]);
+          return {
+            llmBg: s, llmColor: c, llmBc: c,
+            llmTitle: 'ChatGPT: aparece en ' + hits + ' de 3 repeticiones — abre la fila para ver el detalle',
+            llmPrompt: 'tienda de telefonía móvil en ' + v.llm.zone + ', Barcelona',
+            llmNote: v.llm.note,
+            llmRuns: v.llm.runs.map((rn, i) => ({
+              n: i + 1, label: rn === 'no' ? '✕' : rn,
+              tip: rn === 'no' ? 'no aparece' : 'aparece en posición ' + rn,
+              bg: rn === 'no' ? V.badS : V.warnS, color: rn === 'no' ? V.bad : V.warn,
+            })),
+          };
+        })(),
+        plats: mkPlats(v.states, q),
+        links: ['g', 'a', 'b', 'w'].map(k => ({ label: k === 'w' ? 'Ver web' : 'Abrir', href: platHref(k, q) })),
+        detail: v.detail.map(([field, cells]) => ({
+          field,
+          cells: cells.map(c => ({
+            v: c.v, tip: c.tip,
+            bg: c.st === 'bad' ? V.badS : (c.st === 'ref' ? V.accS : 'transparent'),
+            color: c.st === 'na' ? V.tx3 : (c.st === 'bad' ? V.bad : 'var(--tx-2)'),
+            icon: c.st === 'bad' ? 'priority_high' : (c.st === 'ok' ? 'check' : null),
+            iconColor: c.st === 'bad' ? V.bad : V.ok,
+          })),
+        })),
+        toggle: () => this.setState(s => ({ open: s.open === v.id ? null : v.id })),
+        discard: (e) => { e.stopPropagation(); this.setState(s => ({ discarded: { ...s.discarded, [v.id]: !s.discarded[v.id] } })); },
+      };
+    });
+
+    const setScreen = (sc) => () => this.setState({ screen: sc });
+    const navItems = [['input', 'Input'], ['progress', 'Progreso'], ['results', 'Resultados']].map(([sc, label]) => {
+      const active = screen === sc;
+      return { label, go: setScreen(sc), bg: active ? V.acc : 'transparent', color: active ? 'var(--acc-on)' : V.tx3 };
+    });
+
+    return {
+      themeAttr: dark ? 'dark' : 'light',
+      themeIcon: dark ? 'light_mode' : 'dark_mode',
+      toggleTheme: () => this.setState({ dark: !dark }),
+      showResults: screen === 'results', showInput: screen === 'input', showProgress: screen === 'progress',
+      navItems, rows,
+      stopClick: (e) => e.stopPropagation(),
+      goProgressBtn: setScreen('progress'), goResultsBtn: setScreen('results'),
+      scoreDash: '150 289',
+      stats: [
+        { v: '23/29', label: 'con datos distintos entre plataformas', color: V.warn },
+        { v: '11', label: 'faltan en alguna plataforma', color: V.bad },
+        { v: '0%', label: 'reseñas respondidas', color: V.warn },
+      ],
+      llmOthers: ['Claude', 'Gemini', 'Copilot'],
+      locatorChecks: [
+        { label: 'JSON-LD LocalBusiness en store pages', status: 'no encontrado', icon: 'cancel', color: V.bad },
+        { label: 'Marcado schema.org (horario, teléfono, geo)', status: 'incompleto', icon: 'error', color: V.warn },
+        { label: 'Página individual por sede (indexable)', status: '25 de 29', icon: 'error', color: V.warn },
+        { label: 'Sitemap con las store pages', status: 'sí', icon: 'check_circle', color: V.ok },
+      ],
+      noGoogleOpen: this.state.noGoogleOpen,
+      noGoogleChev: this.state.noGoogleOpen ? 'expand_less' : 'chevron_right',
+      noGoogleAction: this.state.noGoogleOpen ? 'Ocultar' : 'Revisar',
+      toggleNoGoogle: () => this.setState(s => ({ noGoogleOpen: !s.noGoogleOpen })),
+      ghostRows: [
+        { name: 'Movistar', addr: 'Gran Via de les Corts Catalanes, 568' },
+        { name: 'Movistar', addr: 'Carrer d\u2019Entença, 84' },
+        { name: 'Movistar', addr: 'Avinguda de Río de Janeiro, 42' },
+      ].map(g => ({ ...g, plats: mkPlats({ g: 'off', a: 'issue', b: 'ok', w: 'off' }, 'Movistar ' + g.addr + ' Barcelona') })),
+      officialOpen: this.state.officialOpen,
+      officialChev: this.state.officialOpen ? 'expand_less' : 'chevron_right',
+      toggleOfficial: () => this.setState(s => ({ officialOpen: !s.officialOpen })),
+      recentAudits: [
+        { name: 'Movistar', meta: 'Barcelona · hoy · 113 sedes', score: 38, color: V.bad, soft: V.badS, open: setScreen('results') },
+        { name: 'Farmàcies Ecoceutics', meta: 'Girona · ayer · 41 sedes', score: 64, color: V.warn, soft: V.warnS, open: setScreen('results') },
+        { name: 'Clínica Baviera', meta: 'Madrid · 14 jul · 89 sedes', score: 71, color: V.warn, soft: V.warnS, open: setScreen('results') },
+      ],
+      progressSteps: [
+        { label: 'Google Maps', status: '29 sedes', icon: 'check_circle', color: V.ok, anim: 'none' },
+        { label: 'Apple Maps', status: '47 sedes', icon: 'check_circle', color: V.ok, anim: 'none' },
+        { label: 'Bing Maps', status: 'en curso…', icon: 'progress_activity', color: V.acc, anim: 'paspin 1s linear infinite' },
+        { label: 'Datos oficiales', status: 'en cola', icon: 'radio_button_unchecked', color: V.tx3, anim: 'none' },
+      ],
+      logOpen: this.state.logOpen,
+      logChev: this.state.logOpen ? 'expand_less' : 'chevron_right',
+      toggleLog: () => this.setState(s => ({ logOpen: !s.logOpen })),
+      logLines: [
+        { t: '10:41:02', msg: 'Google Places API: 29 sedes encontradas', color: 'var(--tx-2)' },
+        { t: '10:41:40', msg: 'Apple vía SerpApi: 46/47 sedes ampliadas', color: 'var(--tx-2)' },
+        { t: '10:41:41', msg: 'Aviso: 1 sede de Apple sin datos (rate limit)', color: 'var(--warn)' },
+        { t: '10:42:05', msg: 'Bing Maps: analizando reseñas 2/3 sedes…', color: 'var(--tx-2)' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -413,3 +413,22 @@ def test_rating_and_review_count_are_separate_fields():
     m = _compute(cluster, has_official_data=False)
     assert m['rating'] == 4.2
     assert m['review_count'] == 87
+
+
+# ── orden de la lista por score (peor→mejor) ─────────────────────────
+
+def test_clusters_sorted_by_score_worst_first():
+    poor = _cluster({'google': _rec('google')})                 # solo Google → presence baja
+    good = _cluster({'google': _rec('google'), 'apple': _rec('apple'), 'azure': _rec('azure')})
+    ordered = venue_metrics.compute_venue_metrics([good, poor], has_official_data=False, city='Barcelona')
+    scores = [c['venue_metrics']['score'] for c in ordered]
+    assert scores == sorted(scores)                             # ascendente (peor primero)
+    assert ordered[0] is poor and ordered[1] is good
+
+
+def test_google_present_group_ranked_before_no_google():
+    no_google = _cluster({'apple': _rec('apple')})
+    with_google = _cluster({'google': _rec('google'), 'apple': _rec('apple'), 'azure': _rec('azure')})
+    ordered = venue_metrics.compute_venue_metrics([no_google, with_google], has_official_data=False,
+                                                  city='Barcelona')
+    assert 'google' in ordered[0]['sources_present']            # las con Google van primero como grupo

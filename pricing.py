@@ -32,19 +32,21 @@ def _prices():
     return out
 
 
-def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs):
+def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs, action_links_venues=5):
     """Coste máximo por auditoría (EUR) con el supuesto de `google_max` sedes.
     Devuelve `maps_max` (todo menos IA) y `llm_delta` (la fase de visibilidad IA,
     que el input suma al marcar el checkbox)."""
     p = _prices()
     ts_pages = max(1, math.ceil(google_max / 20))  # ~20 resultados por página de Text Search
+    links_calls = min(google_max, action_links_venues)  # action links solo en las N peores
 
     maps = (
         ts_pages * p['textsearch']
         + google_max * p['details']
         + 1 * p['geocode']
         + (2 + google_max) * p['azure']                       # Azure: 2 city-wide + 1 por ancla Google
-        + google_max * (reviews_pages + 1) * p['serpapi']     # Google signals: reviews + action links por sede
+        + google_max * reviews_pages * p['serpapi']           # Google signals: reseñas (todas las sedes)
+        + links_calls * p['serpapi']                          # action links: solo las N peores
         + google_max * p['serpapi']                           # Apple enrich: ≤1 por sede con match en Google
     )
     llm = cloro_venues * cloro_runs * p['cloro']
@@ -55,6 +57,7 @@ def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs):
         'llm_delta': round(llm, 2),
         'assumptions': {
             'google_max': google_max, 'reviews_pages': reviews_pages,
+            'action_links_venues': links_calls,
             'cloro_venues': cloro_venues, 'cloro_runs': cloro_runs,
         },
         'prices': p,

@@ -142,10 +142,22 @@ def _fetch_action_links(place_id, session):
     return _action_links_from_place(data.get('place_results') or {})
 
 
-def fetch_place_signals(place_id, *, months=3, session=None):
-    """Reviews (last ~`months`) + action links for a Google place, via
-    SerpApi. Never raises — returns {'reviews', 'action_links', 'posts':[]}
-    with whatever was gathered."""
+def fetch_action_links(place_id, session=None):
+    """Solo los action links (1 llamada SerpApi `google_maps` place). Se usa
+    aparte para pedirlos únicamente en las N peores sedes. Never raises."""
+    if not _key() or not place_id:
+        return []
+    try:
+        return _fetch_action_links(place_id, session or requests)
+    except Exception:
+        return []
+
+
+def fetch_place_signals(place_id, *, months=3, session=None, include_action_links=True):
+    """Reviews (last ~`months`) + (opcional) action links para un place de
+    Google, vía SerpApi. `include_action_links=False` se salta la llamada de
+    links (se piden aparte solo para las peores sedes, para gastar menos
+    SerpApi). Never raises — devuelve {'reviews', 'action_links', 'posts':[]}."""
     empty = {'reviews': [], 'action_links': [], 'posts': []}
     if not _key() or not place_id:
         return empty
@@ -155,5 +167,5 @@ def fetch_place_signals(place_id, *, months=3, session=None):
         reviews = _fetch_reviews(place_id, cutoff, sess)
     except Exception:
         reviews = []
-    action_links = _fetch_action_links(place_id, sess)
+    action_links = _fetch_action_links(place_id, sess) if include_action_links else []
     return {'reviews': reviews, 'action_links': action_links, 'posts': []}

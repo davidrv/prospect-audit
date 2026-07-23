@@ -115,6 +115,11 @@ _CLORO_WORKERS = _int_env('CLORO_WORKERS', 5)        # sedes comprobadas en para
 # el "coste máximo" del estimador. Si se encuentran menos, sale más barato.
 _GOOGLE_MAX_RESULTS = _int_env('GOOGLE_MAX_RESULTS', 25)
 
+# Los action links de Google (1 llamada SerpApi por sede) solo se piden para
+# las N peores sedes por score — igual que Cloro — para ahorrar SerpApi. El
+# resto muestra N/D en "Links".
+_ACTION_LINKS_MAX_VENUES = _int_env('GOOGLE_ACTION_LINKS_MAX_VENUES', 5)
+
 
 # ── Background jobs (live progress polling) ─────────────────────
 #
@@ -479,8 +484,49 @@ def _build_audit(results, has_official_data, city, progress=None):
     inconsistencies.detect_inconsistencies(clusters)
     reputation.compute_reputation(clusters)
     venue_metrics.compute_venue_metrics(clusters, has_official_data, city)
+    # Action links: solo para las N peores sedes (ya ordenadas por score) —
+    # ahorra SerpApi vs pedirlos para todas. Va después del sort.
+    _attach_action_links_worst(clusters, progress=progress)
 
     return {'clusters': clusters, 'summary': _audit_summary(clusters)}
+
+
+def _attach_action_links_worst(clusters, progress=None):
+    """Pide los action links de Google (SerpApi) solo para las
+    `_ACTION_LINKS_MAX_VENUES` peores sedes con Google (los clusters ya vienen
+    ordenados peor→mejor) y actualiza su métrica `action_links_google`. Best-
+    effort; el resto queda en N/D. Cacheado por place_id."""
+    if not _GOOGLE_SIGNALS_VIA_SERPAPI or not _REVIEW_SCRAPING_ENABLED:
+        return
+    worst = [c for c in clusters if 'google' in c['sources_present']][:_ACTION_LINKS_MAX_VENUES]
+    targets = [(c, (c['by_source']['google'].get('raw') or {})) for c in worst]
+    targets = [(c, raw) for c, raw in targets if raw.get('place_id')]
+    if not targets:
+        return
+
+    def emit(msg):
+        app.logger.info(msg)
+        if progress:
+            progress(msg)
+
+    emit(f'Analizando action links (top {len(targets)} peores sedes)…')
+
+    def _one(pair):
+        cluster, raw = pair
+        place_id = raw['place_id']
+        ck = f'action_links:{place_id}'
+        links = cache.get(ck)
+        if links is None:
+            links = google_signals.fetch_action_links(place_id)
+            if links:
+                cache.set(ck, links)
+        raw['scraped_action_links'] = links or []
+        cluster['venue_metrics']['action_links_google'] = (
+            venue_metrics._scraped_action_links(cluster['by_source']['google'])
+            or {'value': 'N/D', 'reason': venue_metrics._ACTION_LINKS_UNAVAILABLE_REASON})
+
+    with ThreadPoolExecutor(max_workers=_REVIEW_SCRAPE_WORKERS) as pool:
+        list(pool.map(_one, targets))
 
 
 def _enrich_apple_clusters(clusters, progress=None):
@@ -741,7 +787,8 @@ def pricing_route():
     est = pricing.estimate_max(
         google_max=_GOOGLE_MAX_RESULTS,
         reviews_pages=google_signals._reviews_max_pages(),
-        cloro_venues=_CLORO_MAX_VENUES, cloro_runs=_CLORO_RUNS)
+        cloro_venues=_CLORO_MAX_VENUES, cloro_runs=_CLORO_RUNS,
+        action_links_venues=_ACTION_LINKS_MAX_VENUES)
     est['llm_available'] = _LLM_VISIBILITY_ENABLED
     return jsonify(est)
 
@@ -1004,7 +1051,10 @@ def _attach_scraped_reviews(places, progress=None):
         def _fetch_one(place):
             nonlocal done
             try:
-                signals = google_signals.fetch_place_signals(place['place_id'], months=_REVIEW_SCRAPE_MONTHS)
+                # Solo reseñas aquí; los action links se piden aparte y solo
+                # para las N peores sedes (ver _attach_action_links_worst).
+                signals = google_signals.fetch_place_signals(
+                    place['place_id'], months=_REVIEW_SCRAPE_MONTHS, include_action_links=False)
                 _store(place, signals)
             except Exception as e:
                 with done_lock:

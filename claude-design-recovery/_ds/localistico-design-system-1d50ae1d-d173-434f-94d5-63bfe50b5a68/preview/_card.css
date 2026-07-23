@@ -1,0 +1,61 @@
+/* Shared card styles for preview cards. */
+@import url("../colors_and_type.css");
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+.card {
+  width: 700px;
+  padding: 32px;
+  background: var(--surface-page);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card.dark {
+  background: var(--brand-black);
+  color: var(--brand-white);
+}
+
+.row { display: flex; gap: 16px; align-items: stretch; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+.grow { flex: 1; }
+
+.swatch {
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px;
+  min-height: 96px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  border: 1px solid transparent;
+}
+.swatch .name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+.swatch .hex  { opacity: 0.85; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-meta);
+}
+
+.divider-thin {
+  height: 1px;
+  background: var(--border-strong);
+}
