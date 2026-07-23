@@ -38,8 +38,9 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
         'official_findings': results.get('official_findings', []),
         'official_comment': official_comment,
         'site_analysis': _site_analysis_summary(results.get('site_analysis', [])),
+        'locator_report': results.get('locator_report'),
         'source_labels': SOURCE_LABELS,
-        'venue_rows': _venue_rows(clusters),
+        'venue_cards': _venue_cards(clusters),
     }
 
     html = render_template('report.html', **context)
@@ -80,24 +81,6 @@ def _recommendations(summary, official_findings):
     return items
 
 
-_VERDICT_SYMBOLS = {'match': '✓', 'conflict': '✗', 'sin_dato': '–', 'missing': '–', 'na': '·'}
-_SOURCE_SHORT = {'apple': 'A', 'azure': 'B', 'official': 'O'}
-
-
-def _accuracy_note(metric):
-    """Compact per-source breakdown for a print medium with no hover — e.g.
-    'A✓ B✗ O·' (Apple matches, Bing conflicts, no official data this audit)."""
-    return ' '.join(f'{_SOURCE_SHORT[s]}{_VERDICT_SYMBOLS[metric["breakdown"][s]["verdict"]]}'
-                     for s in ('apple', 'azure', 'official'))
-
-
-def _presence_missing(detail):
-    """Sources this venue was NOT found on, each with a search-URL so the
-    absence can be verified live (google/apple/azure) — same purpose as the
-    UI's presence-column tooltip, just rendered inline since PDFs have no hover."""
-    return [{'label': SOURCE_LABELS[s], 'url': info['url']} for s, info in detail.items() if not info['present']]
-
-
 def _review_rate_display(review_rate):
     """A real scraped count (google_reviews_scraper.py) is already filtered
     to the last ~3 months, so 'value' and 'sample_size' are always equal —
@@ -117,42 +100,69 @@ def _reply_rate_display(reply_rate):
     return 'N/D' if value == 'N/D' else f'{value}%'
 
 
-def _posts_display(posts_metric):
-    value = posts_metric['value']
-    return 'N/D' if value == 'N/D' else str(value)
+_SEVERITY_LABEL = {'critico': 'Crítico', 'alto': 'Alto', 'medio': 'Medio', 'ok': 'OK', 'sin_datos': 'Sin datos'}
+_CMP_FIELDS = [('name', 'Nombre'), ('phone', 'Teléfono'), ('website', 'Web'), ('opening_hours', 'Horario')]
 
 
-def _venue_rows(clusters):
-    """Pre-formats venue_metrics into flat, template-ready rows — keeps the
-    per-source breakdown/search-link formatting logic in Python (testable)
-    rather than spread across Jinja conditionals."""
+def _cell_value(breakdown_entry):
+    """Texto a mostrar en una celda de comparación (mismo criterio que la UI):
+    el valor real si lo hay, o una etiqueta según el veredicto."""
+    value = breakdown_entry.get('value')
+    if value:
+        return value
+    return {'sin_dato': 'Sin dato', 'missing': 'No encontrada', 'na': 'N/D'}.get(
+        breakdown_entry.get('verdict'), '—')
+
+
+def _compare_rows(m):
+    """Filas de comparación por campo (Google = referencia vs Apple/Bing/web),
+    igual que el detalle expandible de la UI — solo lee accuracy.breakdown, no
+    inventa nada."""
+    acc = {'name': m['accuracy_name'], 'phone': m['accuracy_phone'],
+           'website': m['accuracy_website'], 'opening_hours': m['accuracy_hours']}
     rows = []
+    for key, label in _CMP_FIELDS:
+        a = acc[key]
+        cells = []
+        for source in ('apple', 'azure', 'official'):
+            b = (a.get('breakdown') or {}).get(source) or {'verdict': 'na', 'value': None}
+            cells.append({'verdict': b.get('verdict'), 'text': _cell_value(b)})
+        rows.append({'label': label, 'anchor': a.get('anchor_value') or '—', 'cells': cells})
+    return rows
+
+
+def _venue_cards(clusters):
+    """Una ficha por sede (mismo contenido que la fila + detalle de la UI):
+    score/severidad, qué falla, reputación, estado por plataforma, la
+    comparación por campo, el comentario manual del comercial y (si se pidió)
+    la visibilidad en IA. No añade métricas nuevas — solo reordena lo que ya
+    calcula venue_metrics."""
+    cards = []
     for cluster in clusters:
         m = cluster['venue_metrics']
-        rows.append({
-            'cluster_id': cluster['cluster_id'],
+        reputation = cluster.get('reputation') or {}
+        cards.append({
+            'id': cluster['cluster_id'],
             'label': cluster['canonical_label'],
             'address': cluster['canonical_address'],
-            'presenter_comment': cluster.get('presenter_comment'),
             'has_google': 'google' in cluster['sources_present'],
-            'presence_pct': m['presence_pct'],
-            'presence_missing': _presence_missing(m['presence_detail']),
-            'accuracy_hours': m['accuracy_hours']['avg'],
-            'accuracy_hours_note': _accuracy_note(m['accuracy_hours']),
-            'accuracy_phone': m['accuracy_phone']['avg'],
-            'accuracy_phone_note': _accuracy_note(m['accuracy_phone']),
-            'accuracy_website': m['accuracy_website']['avg'],
-            'accuracy_website_note': _accuracy_note(m['accuracy_website']),
-            'accuracy_name': m['accuracy_name']['avg'],
-            'accuracy_name_note': _accuracy_note(m['accuracy_name']),
-            'action_links': f"{m['action_links_google']['value']} / {m['action_links_apple']['value']}",
+            'score': m.get('score'),
+            'severity': m.get('severity'),
+            'severity_label': _SEVERITY_LABEL.get(m.get('severity'), '—'),
+            'issue_summary': m.get('issue_summary'),
+            'presenter_comment': cluster.get('presenter_comment'),
+            'platform_state': m.get('platform_state') or {},
             'rating': m['rating'],
             'review_count': m['review_count'],
             'review_rate_display': _review_rate_display(m['review_rate_3m']),
             'reply_rate_display': _reply_rate_display(m['reply_rate_3m']),
-            'posts_display': _posts_display(m['posts_3m']),
+            'action_links': m['action_links_google'].get('value'),
+            'compare': _compare_rows(m),
+            'llm': m.get('llm_visibility'),
+            'negative_samples': reputation.get('negative_samples') or [],
+            'ai_summary': reputation.get('ai_summary'),
         })
-    return rows
+    return cards
 
 
 def _site_analysis_summary(site_analysis):

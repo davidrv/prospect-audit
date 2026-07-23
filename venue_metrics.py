@@ -134,8 +134,14 @@ def compute_venue_metrics(clusters, has_official_data, city):
     for cluster in clusters:
         cluster['venue_metrics'] = _metrics_for_cluster(cluster, sources_checked, has_official_data, city)
 
+    # Orden peor→mejor por el Local Presence Score visible (0–100), con las
+    # sedes con match en Google como grupo por delante (una sede sin Google es
+    # más probable un duplicado/baja que un hueco real). `venue_score` queda
+    # solo como desempate. Este orden es el que ve el comercial en la lista y
+    # el que define "las N peores" para links/Cloro.
     clusters.sort(key=lambda c: (
         0 if 'google' in c['sources_present'] else 1,
+        c['venue_metrics']['score'] if c['venue_metrics']['score'] is not None else 101,
         c['venue_metrics']['venue_score'],
     ))
     return clusters

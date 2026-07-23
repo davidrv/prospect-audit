@@ -1,0 +1,178 @@
+/* =========================================================================
+   Localistico — Colors & Typography Tokens
+   Source of truth: Localistico Brand Guidelines 2026 WCAG (Figma)
+   ========================================================================= */
+
+/* ---------- Fonts -------------------------------------------------------- */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/InterVariable.ttf") format("truetype-variations"),
+       url("fonts/InterVariable.ttf") format("truetype");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/InterVariable-Italic.ttf") format("truetype-variations"),
+       url("fonts/InterVariable-Italic.ttf") format("truetype");
+}
+
+:root {
+  /* ---------- Brand colors (from Figma — exact values) -------------------
+     Localistico is built around a small, opinionated palette:
+       Orange  = primary brand mark / pin colour
+       Black   = primary surfaces, slide backgrounds (always 100% black)
+       Greys   = body text (#3A3A3A) and meta text (#3F3F3F)
+     The palette is deliberately small. Avoid introducing new hues. ----- */
+
+  --brand-orange:        #CC4A00;   /* rgb(204, 74, 0)   primary — the only brand colour */
+  --brand-black:         #000000;
+  --brand-white:         #FFFFFF;
+
+  /* Greys (text + UI) */
+  --text-primary:        #0F0F0F;   /* rgb(15,15,15)   slide titles */
+  --text-body:           #3A3A3A;   /* rgb(58,58,58)   body copy */
+  --text-meta:           #3F3F3F;   /* rgb(63,63,63)   eyebrows, captions */
+  --text-muted:          #797979;
+  --text-link:           #3068A1;   /* rgb(48,104,161) ToC active link */
+
+  /* Surface system */
+  --surface-page:        #FFFFFF;
+  --surface-inverse:     #000000;
+  --surface-soft:        #FAFAFA;
+  --surface-card:        #FFFFFF;
+  --surface-overlay-75:  rgba(0,0,0,0.75);
+  --surface-overlay-55:  rgba(0,0,0,0.55);
+
+  /* Borders / dividers */
+  --border-strong:       #000000;
+  --border-soft:         #E5E5E5;
+  --border-dashed:       #9747FF;   /* Figma component-frame purple, not for production */
+
+  /* Semantic — derived from brand orange */
+  --accent:              var(--brand-orange);
+  --accent-on:           var(--brand-white);
+
+  /* ---------- Typography -------------------------------------------------
+     Localistico uses Inter for everything. There is no second face.
+     Voice rules favour British English, sentence case, simple language. -- */
+
+  --font-sans:           "Inter", "Inter Variable", -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono:           "Inter", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Weights actually used in the guideline file */
+  --weight-regular:      400;
+  --weight-medium:       500;
+  --weight-bold:         700;
+
+  /* Type scale (px). Sizes lifted from the Figma frames so slides match 1:1. */
+  --fs-eyebrow:    16px;   /* "BRAND GUIDELINES" caps */
+  --fs-body:       16px;   /* default body copy */
+  --fs-lead:       20px;
+  --fs-h4:         24px;   /* in-slide subhead, bold */
+  --fs-h3:         32px;   /* slide title */
+  --fs-h2:         40px;
+  --fs-h1:         56px;
+  --fs-display:    96px;   /* cover deck title */
+  --fs-display-lg: 128px;
+
+  /* Line heights (from Figma) */
+  --lh-tight:      1.0;    /* 100% — used on titles */
+  --lh-snug:       1.2;
+  --lh-body:       1.4;    /* used on all body text */
+  --lh-loose:      1.6;
+
+  /* Letter-spacing accents */
+  --tracking-tight:  -0.01em;
+  --tracking-normal: 0;
+  --tracking-caps:   0.04em;  /* used on caps eyebrows + ToC active links */
+
+  /* ---------- Spacing & radius ------------------------------------------
+     Slide grid: 1920×1080, outer margin 80px, header bar 88px tall. ------ */
+
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;       /* slide outer margin */
+  --space-30:  120px;
+
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   16px;     /* cards, image tiles, palette swatches */
+  --radius-pill: 999px;
+
+  /* Shadows — used very sparingly. Localistico decks are mostly flat. */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+  --shadow-pop:  0 8px 32px rgba(0,0,0,0.12);
+}
+
+/* ---------- Element defaults -------------------------------------------- */
+html { font-family: var(--font-sans); color: var(--text-body); }
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5 {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  font-weight: var(--weight-bold);
+  line-height: var(--lh-tight);
+  margin: 0;
+  text-wrap: balance;
+}
+h1 { font-size: var(--fs-h1); letter-spacing: var(--tracking-tight); }
+h2 { font-size: var(--fs-h2); }
+h3 { font-size: var(--fs-h3); }
+h4 { font-size: var(--fs-h4); line-height: var(--lh-body); }
+
+p { margin: 0; text-wrap: pretty; }
+
+.eyebrow {
+  font-size: var(--fs-eyebrow);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-meta);
+}
+
+.lead {
+  font-size: var(--fs-lead);
+  line-height: var(--lh-body);
+  color: var(--text-body);
+}
+
+.quote {
+  font-size: var(--fs-h4);
+  font-weight: var(--weight-medium);
+  font-style: italic;
+  color: var(--text-body);
+  line-height: var(--lh-body);
+}
+
+a { color: var(--text-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Utility: a Localistico-branded divider line — used under headers */
+.divider {
+  height: 1px;
+  background: var(--border-strong);
+  width: 100%;
+}

@@ -81,3 +81,20 @@ def test_fetch_place_signals_combines_reviews_and_links(monkeypatch):
     assert out['reviews'][0]['has_owner_reply'] is True
     assert out['action_links'] == [{'type': 'order', 'label': 'Pedir online'}]
     assert out['posts'] == []
+
+
+def test_fetch_place_signals_can_skip_action_links(monkeypatch):
+    monkeypatch.setenv('SERPAPI_KEY', 'fake')
+    now = datetime.now(timezone.utc)
+    calls = []
+    orig = _fake_get_json({None: ([_review(_iso(now))], None)})
+
+    def spy(session, params):
+        calls.append(params.get('engine'))
+        return orig(session, params)
+
+    monkeypatch.setattr(gs, '_get_json', spy)
+    out = gs.fetch_place_signals('PID', months=3, include_action_links=False)
+    assert len(out['reviews']) == 1
+    assert out['action_links'] == []                 # no se piden
+    assert 'google_maps' not in calls                # no hubo llamada de action links

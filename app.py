@@ -26,6 +26,7 @@ import inconsistencies
 import llm_visibility
 import matching
 import normalize
+import pricing
 import reputation
 import scoring
 import venue_metrics
@@ -108,6 +109,16 @@ _CLORO_RUNS = _int_env('CLORO_RUNS', 3)             # repeticiones por sede (con
 _CLORO_MAX_VENUES = _int_env('CLORO_MAX_VENUES', 5)  # tope de sedes comprobadas (coste)
 _CLORO_COUNTRY = os.environ.get('CLORO_COUNTRY', 'es').strip() or 'es'
 _CLORO_WORKERS = _int_env('CLORO_WORKERS', 5)        # sedes comprobadas en paralelo
+
+# Tope de sedes de Google que se auditan/muestran. Acota el mayor coste
+# variable (1 Details + hasta N señales SerpApi por sede) y da un nº fijo para
+# el "coste máximo" del estimador. Si se encuentran menos, sale más barato.
+_GOOGLE_MAX_RESULTS = _int_env('GOOGLE_MAX_RESULTS', 25)
+
+# Los action links de Google (1 llamada SerpApi por sede) solo se piden para
+# las N peores sedes por score — igual que Cloro — para ahorrar SerpApi. El
+# resto muestra N/D en "Links".
+_ACTION_LINKS_MAX_VENUES = _int_env('GOOGLE_ACTION_LINKS_MAX_VENUES', 5)
 
 
 # ── Background jobs (live progress polling) ─────────────────────
@@ -346,8 +357,10 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
             results['apple'] = _search_apple(name, city, extra_anchors=google_coords,
                                               google_places=google_places)
             emit(f'Apple Maps: {len(results["apple"])} sede(s) encontradas.')
-            if _APPLE_SERPAPI_ENABLED:
-                _enrich_apple_with_serpapi(results['apple'], progress=progress)
+            # El enriquecimiento SerpApi (de pago) se hace más tarde, tras
+            # clusterizar, y SOLO sobre las sedes Apple que machean con Google
+            # (ver _enrich_apple_clusters en _build_audit) — así no se gasta en
+            # POIs que no salen en el informe.
             set_status('apple', 'done', len(results['apple']))
         except Exception as e:
             app.logger.error(f'Apple error: {e}')
@@ -398,7 +411,8 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
     official_thread.join()
 
     emit('Cruzando y comparando datos entre plataformas…')
-    audit = _build_audit(results, has_official_data=bool(official_urls or csv_locations), city=city)
+    audit = _build_audit(results, has_official_data=bool(official_urls or csv_locations), city=city,
+                         progress=progress)
 
     # Fase opcional (opt-in por checkbox) y de pago: visibilidad en IA vía Cloro.
     if check_llm_visibility and _LLM_VISIBILITY_ENABLED:
@@ -455,7 +469,7 @@ def _google_places(google_results):
     return places
 
 
-def _build_audit(results, has_official_data, city):
+def _build_audit(results, has_official_data, city, progress=None):
     records = (
         [normalize.from_google(p) for p in results['google']]
         + [normalize.from_apple(p) for p in results['apple']]
@@ -464,11 +478,113 @@ def _build_audit(results, has_official_data, city):
     )
 
     clusters = matching.cluster_records(records)
+    # Enriquecer Apple (SerpApi, de pago) SOLO ahora que sabemos qué POIs
+    # machean con Google — antes de comparar campos en inconsistencies/metrics.
+    _enrich_apple_clusters(clusters, progress=progress)
     inconsistencies.detect_inconsistencies(clusters)
     reputation.compute_reputation(clusters)
     venue_metrics.compute_venue_metrics(clusters, has_official_data, city)
+    # Action links: solo para las N peores sedes (ya ordenadas por score) —
+    # ahorra SerpApi vs pedirlos para todas. Va después del sort.
+    _attach_action_links_worst(clusters, progress=progress)
 
     return {'clusters': clusters, 'summary': _audit_summary(clusters)}
+
+
+def _attach_action_links_worst(clusters, progress=None):
+    """Pide los action links de Google (SerpApi) solo para las
+    `_ACTION_LINKS_MAX_VENUES` peores sedes con Google (los clusters ya vienen
+    ordenados peor→mejor) y actualiza su métrica `action_links_google`. Best-
+    effort; el resto queda en N/D. Cacheado por place_id."""
+    if not _GOOGLE_SIGNALS_VIA_SERPAPI or not _REVIEW_SCRAPING_ENABLED:
+        return
+    worst = [c for c in clusters if 'google' in c['sources_present']][:_ACTION_LINKS_MAX_VENUES]
+    targets = [(c, (c['by_source']['google'].get('raw') or {})) for c in worst]
+    targets = [(c, raw) for c, raw in targets if raw.get('place_id')]
+    if not targets:
+        return
+
+    def emit(msg):
+        app.logger.info(msg)
+        if progress:
+            progress(msg)
+
+    emit(f'Analizando action links (top {len(targets)} peores sedes)…')
+
+    def _one(pair):
+        cluster, raw = pair
+        place_id = raw['place_id']
+        ck = f'action_links:{place_id}'
+        links = cache.get(ck)
+        if links is None:
+            links = google_signals.fetch_action_links(place_id)
+            if links:
+                cache.set(ck, links)
+        raw['scraped_action_links'] = links or []
+        cluster['venue_metrics']['action_links_google'] = (
+            venue_metrics._scraped_action_links(cluster['by_source']['google'])
+            or {'value': 'N/D', 'reason': venue_metrics._ACTION_LINKS_UNAVAILABLE_REASON})
+
+    with ThreadPoolExecutor(max_workers=_REVIEW_SCRAPE_WORKERS) as pool:
+        list(pool.map(_one, targets))
+
+
+def _enrich_apple_clusters(clusters, progress=None):
+    """Enriquece vía SerpApi (phone/web/horario/rating) SOLO los records Apple
+    que caen en un cluster con Google — las únicas sedes que se comparan y
+    salen en el informe. Recorta el coste de ~1 llamada por POI Apple a ≤1 por
+    sede con match en Google. Best-effort, threaded. No-op sin key."""
+    if not _APPLE_SERPAPI_ENABLED:
+        return
+    targets = [c['by_source']['apple'] for c in clusters
+               if 'google' in c['sources_present'] and 'apple' in c['by_source']]
+    if not targets:
+        return
+
+    def emit(msg):
+        app.logger.info(msg)
+        if progress:
+            progress(msg)
+
+    total = len(targets)
+    emit(f'Enriqueciendo Apple vía SerpApi (solo sedes con match en Google): 0/{total}…')
+    done, lock = 0, threading.Lock()
+
+    def _one(rec):
+        nonlocal done
+        _enrich_apple_record(rec)
+        with lock:
+            done += 1
+            if done == total or done % 5 == 0:
+                emit(f'Enriqueciendo Apple vía SerpApi: {done}/{total}…')
+
+    with ThreadPoolExecutor(max_workers=_APPLE_SERPAPI_WORKERS) as pool:
+        list(pool.map(_one, targets))
+
+
+def _enrich_apple_record(rec):
+    """Rellena un record Apple NORMALIZADO con datos de SerpApi (los campos que
+    el Server API de Apple no da: horario/rating/reseñas; y phone/web si faltan).
+    Los valores propios del Server API ganan. Best-effort."""
+    match = _serpapi_apple_lookup(rec.get('name'), rec.get('lat'), rec.get('lng'))
+    if not match:
+        return
+    if not rec.get('phone_display') and match.get('phone'):
+        rec['phone_display'] = match['phone']
+        rec['phone'] = normalize.phone_norm(match['phone'])
+    if not rec.get('website_display') and match.get('website'):
+        rec['website_display'] = match['website']
+        rec['website'] = normalize.website_norm(match['website'])
+    if not rec.get('category'):
+        rec['category'] = match.get('type') or (match.get('types') or [None])[0]
+    hours = _serpapi_weekly_hours_to_list(match.get('weekly_hours'))
+    if hours:
+        rec['opening_hours'] = hours
+    if match.get('rating') is not None:
+        rec['rating'] = match.get('rating')
+    if match.get('reviews') is not None:
+        rec['review_count'] = match.get('reviews')
+    (rec.setdefault('raw', {}))['serpapi_enriched'] = True
 
 
 def _audit_summary(clusters):
@@ -579,6 +695,7 @@ def report_from_data():
         'official_errors': data.get('official_errors') or [],
         'official_findings': data.get('official_findings') or [],
         'site_analysis': data.get('site_analysis') or [],
+        'locator_report': data.get('locator_report'),
     }
     name = (data.get('name') or '').strip()
     city = (data.get('city') or '').strip()
@@ -663,6 +780,19 @@ def job_cancel(job_id):
 
 
 # ── Histórico de auditorías ──────────────────────────────────────
+
+@app.route('/pricing')
+def pricing_route():
+    """Coste máximo estimado por auditoría (para el widget del input). Solo
+    precios/caps, sin secretos."""
+    est = pricing.estimate_max(
+        google_max=_GOOGLE_MAX_RESULTS,
+        reviews_pages=google_signals._reviews_max_pages(),
+        cloro_venues=_CLORO_MAX_VENUES, cloro_runs=_CLORO_RUNS,
+        action_links_venues=_ACTION_LINKS_MAX_VENUES)
+    est['llm_available'] = _LLM_VISIBILITY_ENABLED
+    return jsonify(est)
+
 
 @app.route('/audits/recent')
 def audits_recent():
@@ -752,6 +882,12 @@ NAME_MATCH_THRESHOLD = 60
 # noise like "Liwi" tops out ~75, so 80 keeps the real ones and drops it.
 AZURE_NAME_MATCH_THRESHOLD = 80
 
+# Apple's /v1/search is proximity-biased and returns nearby POIs that aren't
+# the prospect. We filter those by name like Bing, but a bit looser than Azure
+# (70): the autocomplete-by-name pass is exempt from this filter (see
+# _search_apple) so multi-brand stores like "Lowi/Vodafone Clot" survive.
+APPLE_NAME_MATCH_THRESHOLD = 70
+
 
 def _matches_prospect_name(query_name_norm, place_name, threshold=NAME_MATCH_THRESHOLD):
     return fuzz.token_set_ratio(query_name_norm, normalize.name_norm(place_name)) >= threshold
@@ -792,6 +928,9 @@ def _search_google(name, city, progress=None):
 
     query_name_norm = normalize.name_norm(name)
     places = [p for p in places if _matches_prospect_name(query_name_norm, p.get('name', ''))]
+    # Cap del nº de sedes auditadas (coste + tamaño del informe). Se aplica
+    # antes de pedir Details, así recorta también las señales SerpApi por sede.
+    places = places[:_GOOGLE_MAX_RESULTS]
 
     def _detail(place):
         r = requests.get(
@@ -913,7 +1052,10 @@ def _attach_scraped_reviews(places, progress=None):
         def _fetch_one(place):
             nonlocal done
             try:
-                signals = google_signals.fetch_place_signals(place['place_id'], months=_REVIEW_SCRAPE_MONTHS)
+                # Solo reseñas aquí; los action links se piden aparte y solo
+                # para las N peores sedes (ver _attach_action_links_worst).
+                signals = google_signals.fetch_place_signals(
+                    place['place_id'], months=_REVIEW_SCRAPE_MONTHS, include_action_links=False)
                 _store(place, signals)
             except Exception as e:
                 with done_lock:
@@ -1097,18 +1239,29 @@ def _search_apple(name, city, extra_anchors=None, google_places=None):
                 continue
         return results
 
+    # /v1/search is proximity-biased and pulls in unrelated nearby POIs, so
+    # filter those by prospect name (like Bing). The autocomplete pass below is
+    # NOT filtered — it's name-anchored already and carries the multi-brand
+    # stores a strict name filter would wrongly drop.
+    query_norm = normalize.name_norm(name)
+
+    def _named(items):
+        return [it for it in items
+                if _matches_prospect_name(query_norm, it.get('name', ''), APPLE_NAME_MATCH_THRESHOLD)]
+
     merged = {}
-    for item in _search_near(_geocode_city(city)):
+    for item in _named(_search_near(_geocode_city(city))):
         merged[item['id']] = item
 
     if extra_anchors:
         with ThreadPoolExecutor(max_workers=10) as pool:
             for batch in pool.map(_search_near, extra_anchors):
-                for item in batch:
+                for item in _named(batch):
                     merged.setdefault(item['id'], item)
 
     # Second pass: autocomplete each Google location by its OWN name — adds
-    # venues /v1/search misses (merged by id, never overwrites).
+    # venues /v1/search misses (merged by id, never overwrites). Exempt from the
+    # name filter above.
     if google_places:
         with ThreadPoolExecutor(max_workers=10) as pool:
             for batch in pool.map(_autocomplete_by_name, google_places):
@@ -1188,44 +1341,8 @@ def _serpapi_apple_lookup(name, lat, lng):
     return match
 
 
-def _enrich_apple_with_serpapi(apple_results, progress=None):
-    """Best-effort: fills each Apple Server-API location (name/address only)
-    with phone/website/hours/rating/reviews from SerpApi's Apple Maps engine.
-    One SerpApi search per location (paid), threaded. No-op without a key.
-    Existing Server-API values win; SerpApi only fills what's missing (except
-    hours/rating/reviews, which the Server API never provides at all)."""
-    if not _APPLE_SERPAPI_ENABLED or not apple_results:
-        return
-
-    def emit(message):
-        app.logger.info(message)
-        if progress:
-            progress(message)
-
-    total = len(apple_results)
-    emit(f'Enriqueciendo Apple vía SerpApi: 0/{total} sede(s)…')
-    done, lock = 0, threading.Lock()
-
-    def _enrich(item):
-        nonlocal done
-        match = _serpapi_apple_lookup(item.get('name'), item.get('lat'), item.get('lng'))
-        if match:
-            item['phone_number'] = item.get('phone_number') or match.get('phone')
-            item['url'] = item.get('url') or match.get('website')
-            item['category'] = item.get('category') or match.get('type') or (match.get('types') or [None])[0]
-            item['opening_hours'] = _serpapi_weekly_hours_to_list(match.get('weekly_hours'))
-            item['rating'] = match.get('rating')
-            item['review_count'] = match.get('reviews')
-            item['serpapi_enriched'] = True
-        with lock:
-            done += 1
-            if done == total or done % 10 == 0:
-                emit(f'Enriqueciendo Apple vía SerpApi: {done}/{total} sede(s)…')
-
-    with ThreadPoolExecutor(max_workers=_APPLE_SERPAPI_WORKERS) as pool:
-        list(pool.map(_enrich, apple_results))
-    enriched = sum(1 for i in apple_results if i.get('serpapi_enriched'))
-    emit(f'Apple enriquecido vía SerpApi: {enriched}/{total} sede(s) con datos ampliados.')
+# Apple enrichment now runs per-cluster (only venues matched to Google) in
+# _enrich_apple_clusters / _enrich_apple_record — see _build_audit.
 
 
 # ── Azure Maps ─────────────────────────────────────────────────
