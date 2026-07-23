@@ -695,6 +695,7 @@ def report_from_data():
         'official_errors': data.get('official_errors') or [],
         'official_findings': data.get('official_findings') or [],
         'site_analysis': data.get('site_analysis') or [],
+        'locator_report': data.get('locator_report'),
     }
     name = (data.get('name') or '').strip()
     city = (data.get('city') or '').strip()

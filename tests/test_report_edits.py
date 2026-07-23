@@ -105,7 +105,7 @@ def test_venue_rows_propagate_presenter_comment():
         'presenter_comment': 'Buen fit para el pitch',
     }
     venue_metrics.compute_venue_metrics([cluster], has_official_data=False, city='Barcelona')
-    rows = report._venue_rows([cluster])
+    rows = report._venue_cards([cluster])
     assert rows[0]['presenter_comment'] == 'Buen fit para el pitch'
 
 
@@ -120,5 +120,5 @@ def test_venue_rows_presenter_comment_defaults_to_none():
         'canonical_address': 'X',
     }
     venue_metrics.compute_venue_metrics([cluster], has_official_data=False, city='Barcelona')
-    rows = report._venue_rows([cluster])
+    rows = report._venue_cards([cluster])
     assert rows[0]['presenter_comment'] is None

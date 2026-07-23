@@ -827,6 +827,7 @@ function exportPDF() {
     official_errors: lastResult.official_errors || [],
     official_findings: lastResult.official_findings || [],
     site_analysis: lastResult.site_analysis || [],
+    locator_report: lastResult.locator_report || null,
     deleted_cluster_ids: Object.keys(deletedClusterIds),
     row_comments: commentEdits
   };
