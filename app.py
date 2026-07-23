@@ -841,6 +841,86 @@ def cache_clear():
     return jsonify({'ok': True})
 
 
+def _find_cluster(audit_id, cluster_id):
+    """(record, snapshot, audit, cluster) del histórico, o None si falta algo."""
+    record = history.get(audit_id)
+    if record is None:
+        return None
+    snapshot = record.get('snapshot') or {}
+    audit = snapshot.get('audit') or {}
+    cluster = next((c for c in audit.get('clusters', []) if c.get('cluster_id') == cluster_id), None)
+    if cluster is None:
+        return None
+    return record, snapshot, audit, cluster
+
+
+def _recompute_llm_summary(audit, city):
+    """Reconstruye summary['llm_visibility'] agregando todas las sedes que ya
+    tienen análisis (batch + on-demand)."""
+    per, checks, hits, runs = {}, 0, 0, _CLORO_RUNS
+    for cluster in audit.get('clusters', []):
+        vis = (cluster.get('venue_metrics') or {}).get('llm_visibility')
+        if vis and vis.get('runs'):
+            per[cluster['cluster_id']] = vis
+            checks += len(vis['runs'])
+            hits += vis.get('hits', 0)
+            runs = len(vis['runs'])
+    if not per:
+        return None
+    prev = (audit.get('summary') or {}).get('llm_visibility') or {}
+    return {'engine': 'chatgpt', 'prompt_template': prev.get('prompt_template') or f'{{categoría}} en {{zona}}, {city}',
+            'category': prev.get('category'), 'venues_checked': len(per), 'runs': runs,
+            'checks_total': checks, 'hits_total': hits, 'per_venue': per, 'calls': 0}
+
+
+@app.route('/venue/<audit_id>/<cluster_id>/llm', methods=['POST'])
+def venue_llm(audit_id, cluster_id):
+    """Analiza la visibilidad en IA de UNA sede a demanda (para sedes fuera del
+    top-5 automático). Persiste en el snapshot."""
+    if not _LLM_VISIBILITY_ENABLED:
+        return jsonify({'error': 'Visibilidad IA no configurada (falta CLORO_KEY).'}), 400
+    found = _find_cluster(audit_id, cluster_id)
+    if found is None:
+        return jsonify({'error': 'auditoría o sede no encontrada (histórico desactivado o expirado).'}), 404
+    record, snapshot, audit, cluster = found
+    category = ((request.get_json(force=True, silent=True) or {}).get('category') or '').strip()
+    vis = llm_visibility.fetch_llm_visibility(
+        [cluster], record['name'], record['city'], runs=_CLORO_RUNS, max_venues=1,
+        country=_CLORO_COUNTRY, workers=_CLORO_WORKERS, category=category)
+    per = (vis.get('per_venue') or {}).get(cluster_id)
+    if per is None:
+        return jsonify({'error': 'no se pudo analizar la visibilidad en IA.'}), 502
+    cluster.setdefault('venue_metrics', {})['llm_visibility'] = per
+    audit.setdefault('summary', {})['llm_visibility'] = _recompute_llm_summary(audit, record['city'])
+    history.save(audit_id, record['name'], record['city'], record['score'],
+                 record['total_locations'], snapshot)
+    return jsonify({'llm_visibility': per, 'summary_llm': audit['summary']['llm_visibility']})
+
+
+@app.route('/venue/<audit_id>/<cluster_id>/action-links', methods=['POST'])
+def venue_action_links(audit_id, cluster_id):
+    """Analiza los action links de Google de UNA sede a demanda. Persiste."""
+    if not (_GOOGLE_SIGNALS_VIA_SERPAPI and _REVIEW_SCRAPING_ENABLED):
+        return jsonify({'error': 'action links requieren SerpApi (SERPAPI_KEY).'}), 400
+    found = _find_cluster(audit_id, cluster_id)
+    if found is None:
+        return jsonify({'error': 'auditoría o sede no encontrada (histórico desactivado o expirado).'}), 404
+    record, snapshot, audit, cluster = found
+    google = (cluster.get('by_source') or {}).get('google') or {}
+    pid = (google.get('raw') or {}).get('place_id') or google.get('source_id')
+    if not pid:
+        return jsonify({'error': 'esta sede no tiene ficha de Google.'}), 400
+    links = google_signals.fetch_action_links(pid)
+    (google.setdefault('raw', {}))['scraped_action_links'] = links or []
+    al = (venue_metrics._scraped_action_links(google)
+          or {'value': 'N/D', 'reason': venue_metrics._ACTION_LINKS_UNAVAILABLE_REASON})
+    cluster.setdefault('venue_metrics', {})['action_links_google'] = al
+    cache.set(f'action_links:{pid}', links or [])
+    history.save(audit_id, record['name'], record['city'], record['score'],
+                 record['total_locations'], snapshot)
+    return jsonify({'action_links_google': al})
+
+
 @app.route('/audits/<audit_id>/edits', methods=['POST'])
 def audit_edits(audit_id):
     """Persiste ediciones manuales en el snapshot guardado: comentarios por
