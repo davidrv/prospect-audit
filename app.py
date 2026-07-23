@@ -808,6 +808,66 @@ def audit_get(audit_id):
     return jsonify(record)
 
 
+def _purge_audit_cache(snapshot):
+    """Borra de la caché las señales por-sede (reviews/action links) de los
+    place_id de esta auditoría, para que un re-análisis las vuelva a pedir
+    frescas (útil si una corrida quedó cacheada con datos malos)."""
+    clusters = ((snapshot or {}).get('audit') or {}).get('clusters') or []
+    for cluster in clusters:
+        google = (cluster.get('by_source') or {}).get('google') or {}
+        pid = (google.get('raw') or {}).get('place_id') or google.get('source_id')
+        if not pid:
+            continue
+        cache.delete(f'signals:api:{pid}:{_REVIEW_SCRAPE_MONTHS}')
+        cache.delete(f'signals:scrape:{pid}:{_REVIEW_SCRAPE_MONTHS}')
+        cache.delete(f'action_links:{pid}')
+
+
+@app.route('/audits/<audit_id>', methods=['DELETE'])
+def audit_delete(audit_id):
+    """Borra una auditoría del histórico y purga la caché de sus sedes, para
+    que re-auditarla parta de cero. Idempotente."""
+    record = history.get(audit_id)
+    if record is not None:
+        _purge_audit_cache(record.get('snapshot'))
+    history.delete(audit_id)
+    return jsonify({'ok': True})
+
+
+@app.route('/cache/clear', methods=['POST'])
+def cache_clear():
+    """Vacía toda la caché de análisis (reviews/enriquecimiento/IA)."""
+    cache.clear()
+    return jsonify({'ok': True})
+
+
+@app.route('/audits/<audit_id>/edits', methods=['POST'])
+def audit_edits(audit_id):
+    """Persiste ediciones manuales en el snapshot guardado: comentarios por
+    sede (presenter_comment) y el comentario del store locator
+    (official_comment). Fusiona lo enviado; enviar '' borra ese comentario.
+    Requiere que el histórico esté activo y la auditoría exista."""
+    record = history.get(audit_id)
+    if record is None:
+        return jsonify({'error': 'auditoría no encontrada (histórico desactivado o expirada)'}), 404
+
+    data = request.get_json(force=True, silent=True) or {}
+    snapshot = record.get('snapshot') or {}
+    comments = data.get('comments') or {}
+    if comments:
+        by_id = {c.get('cluster_id'): c for c in (snapshot.get('audit') or {}).get('clusters', [])}
+        for cid, raw in comments.items():
+            cluster = by_id.get(cid)
+            if cluster is not None:
+                cluster['presenter_comment'] = (str(raw).strip()[:_MAX_COMMENT_LEN] or None) if raw else None
+    if 'official_comment' in data:
+        snapshot['official_comment'] = (str(data['official_comment']).strip()[:_MAX_COMMENT_LEN] or '')
+
+    history.save(audit_id, record['name'], record['city'], record['score'],
+                 record['total_locations'], snapshot)
+    return jsonify({'ok': True})
+
+
 # ── Geocoding ────────────────────────────────────────────────────
 
 _geocode_cache = {}

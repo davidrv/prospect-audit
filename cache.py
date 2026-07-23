@@ -77,6 +77,33 @@ def get(key, ttl=None):
         return None
 
 
+def delete(key):
+    """Elimina una entrada. Never raises."""
+    if not _enabled():
+        return
+    try:
+        with _lock:
+            conn = _connection()
+            conn.execute('DELETE FROM cache WHERE k = ?', (key,))
+            conn.commit()
+    except Exception:
+        pass
+
+
+def clear():
+    """Vacía toda la caché (opción "nuclear" cuando una corrida mala dejó datos
+    envenenados). Never raises."""
+    if not _enabled():
+        return
+    try:
+        with _lock:
+            conn = _connection()
+            conn.execute('DELETE FROM cache')
+            conn.commit()
+    except Exception:
+        pass
+
+
 def set(key, value):
     """Stores `value` (JSON-serializable) under `key` with the current
     timestamp. Never raises."""

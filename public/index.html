@@ -142,7 +142,10 @@
   <p class="muted" style="font-size:12px; text-align:center; margin:0;">Tarda de segundos a minutos según el número de sedes.</p>
 
   <div class="card" id="recent-card" style="padding:16px 20px; display:none;">
-    <div style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3); margin-bottom:6px;">Auditorías recientes</div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <span style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);">Auditorías recientes</span>
+      <button onclick="clearCache()" title="Vacía la caché de reseñas/enriquecimiento/IA para que el próximo análisis se haga desde cero" style="margin-left:auto; background:none; border:none; color:var(--tx-3); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><span class="msr" style="font-size:14px;">mop</span>Vaciar caché</button>
+    </div>
     <div id="recent-list"></div>
   </div>
 </main>
@@ -253,6 +256,8 @@ var deletedClusterIds = {};
 var openVenueId = null;
 var ghostOpen = false, rawTab = 'google';
 var currentJobId = null;
+var lastAuditId = null;          // id en el histórico para persistir comentarios
+var officialCommentEdit = '';    // nota del store locator (editable en resultados)
 
 /* ═══════════════ tema ═══════════════ */
 (function initTheme() {
@@ -301,6 +306,46 @@ function reviewRateDisplay(rr) {
   return rr.value + '/' + rr.sample_size + ' (aprox.)';
 }
 function replyRateDisplay(rr) { if (!rr || rr.value === 'N/D' || rr.value == null) return 'N/D'; return rr.value + '%'; }
+
+/* ── Formateo compacto de horarios: "Lunes: 09:00–21:00; …" → "L–V 9–21, S 9–20, D cerrado" ── */
+var DAY_IDX = { lunes:0, martes:1, 'miércoles':2, miercoles:2, jueves:3, viernes:4, 'sábado':5, sabado:5, domingo:6,
+  monday:0, tuesday:1, wednesday:2, thursday:3, friday:4, saturday:5, sunday:6 };
+var DAY_ABBR = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+function _simplifyTime(t) {
+  var m = t.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t;
+  return m[2] === '00' ? String(parseInt(m[1], 10)) : parseInt(m[1], 10) + ':' + m[2];
+}
+function _simplifyRange(r) {
+  var low = r.toLowerCase();
+  if (low.indexOf('cerrad') !== -1 || low.indexOf('closed') !== -1) return 'cerrado';
+  return r.replace(/\s*[–—-]\s*/g, '–').split(',').map(function(seg) {
+    var mm = seg.trim().match(/^(\d{1,2}:\d{2})–(\d{1,2}:\d{2})$/);
+    return mm ? _simplifyTime(mm[1]) + '–' + _simplifyTime(mm[2]) : seg.trim();
+  }).join(', ');
+}
+function formatHours(input) {
+  if (!input || (Array.isArray(input) && !input.length)) return '—';
+  var lines = Array.isArray(input) ? input.slice() : String(input).split(/;\s*/);
+  var byDay = {}, ok = 0;
+  lines.forEach(function(line) {
+    var m = String(line).match(/^\s*([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s*:\s*(.+?)\s*$/);
+    if (!m) return;
+    var idx = DAY_IDX[m[1].toLowerCase()];
+    if (idx === undefined) return;
+    byDay[idx] = _simplifyRange(m[2]); ok++;
+  });
+  if (!ok) return Array.isArray(input) ? input.join('; ') : String(input);  // passthrough si no parsea
+  var order = Object.keys(byDay).map(Number).sort(function(a, b) { return a - b; });
+  var groups = [], cur = null;
+  order.forEach(function(idx) {
+    if (cur && idx === cur.end + 1 && byDay[idx] === cur.range) cur.end = idx;
+    else { cur = { start: idx, end: idx, range: byDay[idx] }; groups.push(cur); }
+  });
+  return groups.map(function(g) {
+    var days = g.start === g.end ? DAY_ABBR[g.start] : DAY_ABBR[g.start] + '–' + DAY_ABBR[g.end];
+    return days + ' ' + g.range;
+  }).join(', ');
+}
 
 /* ═══════════════ input ═══════════════ */
 function toggleOfficial() {
@@ -360,13 +405,24 @@ function loadRecent() {
     document.getElementById('recent-list').innerHTML = list.map(function(a) {
       var sc = sevFromScore(a.score); var col = sevColor(sc);
       var meta = esc(a.city || '') + ' · ' + relTime(a.created_at) + (a.total_locations != null ? ' · ' + a.total_locations + ' sedes' : '');
-      return '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; border-top:1px solid var(--border); background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
-        '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
-        '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
-        '<span class="muted">' + meta + '</span>' +
-        '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>';
+      return '<div style="display:flex; align-items:center; gap:10px; border-top:1px solid var(--border);">' +
+        '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="flex:1; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
+          '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
+          '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
+          '<span class="muted">' + meta + '</span>' +
+          '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>' +
+        '<button onclick="deleteAudit(\'' + esc(a.id) + '\', \'' + esc(a.name) + '\')" title="Borrar auditoría y limpiar su caché" style="background:none; border:none; color:var(--tx-3); cursor:pointer; padding:6px; display:grid; place-items:center;" onmouseover="this.style.color=\'var(--bad)\'" onmouseout="this.style.color=\'var(--tx-3)\'"><span class="msr" style="font-size:17px;">delete</span></button>' +
+        '</div>';
     }).join('');
   }).catch(function() {});
+}
+function deleteAudit(id, name) {
+  if (!confirm('¿Borrar la auditoría de "' + name + '"? Se elimina del histórico y se limpia su caché (un re-análisis partirá de cero).')) return;
+  fetch('/audits/' + id, { method: 'DELETE' }).then(function() { loadRecent(); }).catch(function() {});
+}
+function clearCache() {
+  if (!confirm('¿Vaciar toda la caché de análisis (reseñas, enriquecimiento, IA)? El próximo análisis de cualquier prospect se hará desde cero (más lento y con coste).')) return;
+  fetch('/cache/clear', { method: 'POST' }).catch(function() {});
 }
 function sevFromScore(s) { if (s == null) return 'sin_datos'; if (s < 33) return 'critico'; if (s < 50) return 'alto'; if (s < 70) return 'medio'; return 'ok'; }
 function relTime(ts) {
@@ -475,6 +531,7 @@ function cancelAudit() {
 
 function onDone(result) {
   lastResult = result;
+  lastAuditId = currentJobId;
   (result.audit && result.audit.clusters || []).forEach(function(c) {
     if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
   });
@@ -491,6 +548,7 @@ function renderResults() {
   var audit = lastResult.audit, summary = audit.summary || {};
   var ps = summary.presence_score || {};
   var score = ps.score;
+  officialCommentEdit = lastResult.official_comment || '';
 
   document.getElementById('results-eyebrow').textContent = 'Auditoría completada' + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
   document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="color:var(--faint);">·</span> ' + esc(lastQuery.city);
@@ -536,9 +594,14 @@ function renderLocator(report) {
   if (!report || !report.has_data) { card.style.display = 'none'; return; }
   card.style.display = 'flex';
   var CK = { ok: ['check_circle', 'var(--ok)'], warn: ['error', 'var(--warn)'], bad: ['cancel', 'var(--bad)'], na: ['remove', 'var(--tx-3)'] };
-  var badge = report.optimized
-    ? '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>'
-    : '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+  var badge;
+  if (report.analyzable === false) {
+    badge = '<span class="badge-cap" style="color:var(--tx-3); background:var(--surface-2);">No se puede analizar</span>';
+  } else if (report.optimized) {
+    badge = '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>';
+  } else {
+    badge = '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+  }
   var host = '';
   try { host = new URL(report.root_url).host; } catch (e) { host = report.root_url; }
   var checks = (report.checks || []).map(function(c) {
@@ -553,7 +616,41 @@ function renderLocator(report) {
       '<span class="card-title">Store locator y store pages</span>' +
       '<a href="' + safeHref(report.root_url) + '" target="_blank" rel="noopener" class="muted" style="font-size:13px;">' + esc(host) + '</a>' +
       '<span style="margin-left:auto;">' + badge + '</span></div>' +
-    '<div style="display:flex; flex-direction:column;">' + checks + '</div>';
+    '<div style="display:flex; flex-direction:column;">' + checks + '</div>' +
+    '<div style="display:flex; gap:8px; align-items:center;">' +
+      '<span class="msr" style="font-size:16px; color:var(--tx-3);">edit_note</span>' +
+      '<input id="loc-comment" value="' + esc(officialCommentEdit) + '" placeholder="Nota sobre el store locator para el informe (opcional)…" oninput="officialCommentEdit=this.value" ' +
+        'style="flex:1; border:1px dashed var(--border-2); border-radius:8px; padding:8px 12px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
+      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">Guardar nota</button></div>';
+}
+
+/* ── Guardado de comentarios (persisten en el histórico) ── */
+function saveEdits(payload) {
+  if (!lastAuditId) return Promise.resolve(false);
+  return fetch('/audits/' + lastAuditId + '/edits', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  }).then(function(r) { return r.ok; }).catch(function() { return false; });
+}
+function flashBtn(btn, okText) {
+  if (!btn) return; var prev = btn.textContent; btn.textContent = okText; btn.disabled = true;
+  setTimeout(function() { btn.textContent = prev; btn.disabled = false; }, 1500);
+}
+function saveOfficialComment() {
+  var btn = document.getElementById('loc-comment-btn');
+  saveEdits({ official_comment: officialCommentEdit }).then(function(ok) {
+    flashBtn(btn, ok ? 'Guardada ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+  });
+}
+function saveVenueComment(id, btn) {
+  var val = (id in commentEdits) ? commentEdits[id] : '';
+  saveEdits({ comments: (function() { var o = {}; o[id] = val; return o; })() }).then(function(ok) {
+    flashBtn(btn, ok ? 'Guardado ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+  });
+}
+function clearVenueComment(id) {
+  commentEdits[id] = '';
+  saveEdits({ comments: (function() { var o = {}; o[id] = ''; return o; })() });
+  renderVenues();
 }
 
 function renderLLM(vis) {
@@ -678,12 +775,13 @@ function renderVenueDetail(c) {
 
   var body = DETAIL_FIELDS.map(function(f) {
     var m = acc[f[0]] || { breakdown: {}, anchor_value: null };
+    var isHours = f[0] === 'opening_hours';
     var cells = [];
-    cells.push(detailCell(m.anchor_value || '—', 'ref'));
+    cells.push(detailCell(isHours ? formatHours(m.anchor_value) : (m.anchor_value || '—'), 'ref'));
     ['apple', 'azure', 'official'].forEach(function(s) {
       var b = (m.breakdown || {})[s] || { verdict: 'na', value: null };
       var val = b.value || (b.verdict === 'sin_dato' ? 'Sin dato' : (b.verdict === 'missing' ? 'No encontrada' : (b.verdict === 'na' ? 'N/D' : '—')));
-      cells.push(detailCell(val, b.verdict));
+      cells.push(detailCell(isHours && b.value ? formatHours(b.value) : val, b.verdict));
     });
     return '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
       '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + f[1] + '</span>' + cells.join('') + '</div>';
@@ -705,9 +803,14 @@ function renderVenueDetail(c) {
     '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Ficha</span>' + fichaCells + '</div>';
 
   var cur = comment(c);
-  var commentBox = '<input id="cmt-' + esc(c.cluster_id) + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
-    'oninput="setComment(\'' + esc(c.cluster_id) + '\', this.value)" onclick="event.stopPropagation();" ' +
-    'style="width:100%; box-sizing:border-box; margin-top:12px; border:1px dashed var(--border-2); border-radius:10px; padding:10px 14px; background:none; color:var(--tx); font-size:12.5px; outline:none;">';
+  var cid = esc(c.cluster_id);
+  var commentBox = '<div style="display:flex; gap:8px; align-items:center; margin-top:12px;">' +
+    '<input id="cmt-' + cid + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
+      'oninput="setComment(\'' + cid + '\', this.value)" onclick="event.stopPropagation();" ' +
+      'style="flex:1; box-sizing:border-box; border:1px dashed var(--border-2); border-radius:10px; padding:10px 14px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
+    '<button class="btn-ghost" onclick="event.stopPropagation(); saveVenueComment(\'' + cid + '\', this)">Guardar</button>' +
+    '<button class="btn-ghost" title="Borrar comentario" onclick="event.stopPropagation(); clearVenueComment(\'' + cid + '\')" style="padding:8px 10px;"><span class="msr" style="font-size:16px;">delete</span></button>' +
+    '</div>';
 
   return '<div style="padding:0 24px 20px; background:var(--row-hover); border-top:1px solid var(--border);">' +
     '<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:4px;">' + head + body + linksRow + fichaRow + '</div>' +
@@ -732,8 +835,10 @@ function llmDetailBlock(v) {
 }
 function detailCell(value, verdict) {
   var s = cellStyle(verdict);
-  var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + ';">' + s[2] + '</span>' : '';
-  return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:center; gap:5px;">' + icon + esc(value) + '</span>';
+  var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + '; flex-shrink:0; margin-top:1px;">' + s[2] + '</span>' : '';
+  // min-width:0 + overflow-wrap: sin esto una URL larga en la fila Web ensancha
+  // la columna 1fr y desalinea toda la rejilla.
+  return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:flex-start; gap:5px; min-width:0; overflow-wrap:anywhere; word-break:break-word;">' + icon + '<span>' + esc(value) + '</span></span>';
 }
 
 function toggleVenue(id) { openVenueId = (openVenueId === id) ? null : id; renderVenues(); }
@@ -798,7 +903,7 @@ function renderRawBody() {
   if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:24px 0; text-align:center;">No se aportaron datos de esta fuente en esta auditoría.</div>'; return; }
   var head = ['Nombre', 'Dirección', 'Teléfono', 'Web', 'Rating', 'Reseñas', 'Horarios', 'Ficha'];
   var rows = recs.map(function(r) {
-    var hours = (r.opening_hours && r.opening_hours.length) ? r.opening_hours.join('; ') : '—';
+    var hours = formatHours(r.opening_hours);
     var web = r.website_display || r.website;
     return '<tr style="border-top:1px solid var(--border);">' +
       td(r.name || '—', 'font-weight:600; color:var(--tx);') +
@@ -823,7 +928,7 @@ function exportPDF() {
   btn.disabled = true; btn.innerHTML = '<span class="msr spin" style="font-size:18px;">progress_activity</span>Generando…';
   var payload = {
     name: lastQuery.name, city: lastQuery.city,
-    official_comment: document.getElementById('official-comment').value.trim(),
+    official_comment: officialCommentEdit,
     audit: lastResult.audit,
     official_errors: lastResult.official_errors || [],
     official_findings: lastResult.official_findings || [],
@@ -850,6 +955,7 @@ function openAudit(id) {
       lastResult = rec.snapshot || {};
       lastResult._created_rel = relTime(rec.created_at);
       lastQuery = { name: rec.name, city: rec.city };
+      lastAuditId = rec.id;
       deletedClusterIds = {}; commentEdits = {}; openVenueId = null;
       (lastResult.audit && lastResult.audit.clusters || []).forEach(function(c) {
         if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
