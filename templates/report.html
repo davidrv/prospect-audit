@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <title>Auditoría {{ prospect_name }}</title>
 <style>
+  /* Inter embebida (OFL) — sin esto WeasyPrint no la encuentra offline y cae a
+     una fuente por defecto. Resuelta vía base_url del repo en report.py. */
+  @font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; src: url('assets/fonts/Inter-Regular.ttf') format('truetype'); }
+  @font-face { font-family: 'Inter'; font-weight: 500; font-style: normal; src: url('assets/fonts/Inter-Medium.ttf') format('truetype'); }
+  @font-face { font-family: 'Inter'; font-weight: 600; font-style: normal; src: url('assets/fonts/Inter-SemiBold.ttf') format('truetype'); }
+  @font-face { font-family: 'Inter'; font-weight: 700; font-style: normal; src: url('assets/fonts/Inter-Bold.ttf') format('truetype'); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
     --ink: #0f0f0f; --text: #1a1a19; --muted: #6b6a65; --hint: #94928b; --line: #e8e5df; --line-2: #d8d4cc;
@@ -96,9 +102,9 @@
     <h1 style="font-size:50px; line-height:1.05;">{{ prospect_name }}<br><span style="color:var(--hint); font-weight:500;">{{ city }}</span></h1>
     <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
       {% set score = summary.presence_score.score if summary.presence_score else none %}
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width:118px; height:118px; border-radius:50%; border:5px solid var(--accent); flex-shrink:0;">
+      <div style="position:relative; display:flex; align-items:center; justify-content:center; width:118px; height:118px; border-radius:50%; border:5px solid var(--accent); flex-shrink:0;">
         <div style="font-size:40px; font-weight:700; line-height:1;">{{ score if score is not none else '—' }}</div>
-        <div style="font-size:11px; color:var(--muted);">de 100</div>
+        <div style="position:absolute; bottom:18px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted);">de 100</div>
       </div>
       <div>
         <div style="font-size:15px; font-weight:600;">Local Presence Score</div>
