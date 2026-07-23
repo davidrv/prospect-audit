@@ -53,7 +53,9 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
     }
 
     html = render_template('report.html', **context)
-    return HTML(string=html).write_pdf()
+    # base_url = raíz del repo para que el @font-face de Inter resuelva
+    # url('assets/fonts/…') contra el disco.
+    return HTML(string=html, base_url=os.path.dirname(os.path.abspath(__file__))).write_pdf()
 
 
 def _overall_risk(summary):
