@@ -184,3 +184,16 @@ def test_attach_action_links_worst_noop_without_serpapi(monkeypatch):
                  'venue_metrics': {'action_links_google': {'value': 'N/D'}}}]
     app_module._attach_action_links_worst(clusters)
     assert called == []
+
+
+def test_matches_prospect_name_ignores_generic_sector_words():
+    # "NH hoteles" debe casar con "Hotel NH Barcelona…" (el token genérico
+    # "hoteles" no está en el nombre real y antes hundía el match → 0 sedes).
+    q = app_module.normalize.name_norm('NH hoteles')
+    assert app_module._matches_prospect_name(q, 'Hotel NH Barcelona Eixample')
+    assert app_module._matches_prospect_name(q, 'Hotel NH Collection Barcelona Gran Hotel Calderón')
+    assert not app_module._matches_prospect_name(q, 'Hotel Bohemian Entenza')
+    # "Zara tiendas" → núcleo "zara"
+    qz = app_module.normalize.name_norm('Zara tiendas')
+    assert app_module._matches_prospect_name(qz, 'Zara')
+    assert not app_module._matches_prospect_name(qz, 'Mango')
