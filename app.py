@@ -938,7 +938,8 @@ def _search_google(name, city, progress=None):
             params={
                 'place_id': place['place_id'],
                 'fields': 'place_id,name,formatted_address,formatted_phone_number,website,'
-                          'rating,user_ratings_total,opening_hours,geometry,reviews,types',
+                          'rating,user_ratings_total,opening_hours,geometry,reviews,types,'
+                          'address_component',
                 'reviews_sort': 'newest',
                 'language': 'es',
                 'key': key,

@@ -173,22 +173,34 @@ def _category_for(cluster):
     return 'negocio'
 
 
-def _area_from_address(address):
-    """Zona para el prompt: el primer segmento de la dirección (la calle),
-    sin el número, como ancla local por-sede. None si no hay nada usable."""
-    if not address:
-        return None
-    first = address.split(',')[0].strip()
-    first = re.sub(r'\s*\d+\s*$', '', first).strip()  # quita el número de portal final
-    return first or None
+# Tipos de Google Places, en orden de preferencia, que representan un
+# "barrio"/zona más granular que la ciudad pero sin exponer la calle exacta.
+_ZONE_TYPES = ('neighborhood', 'sublocality_level_1', 'sublocality',
+               'administrative_area_level_3')
+
+
+def _zone_for(cluster):
+    """Mejor zona tipo barrio del registro de Google (`raw.address_components`),
+    siguiendo la cascada de prioridad de `_ZONE_TYPES`; devuelve su `long_name`
+    o None si no hay ninguna coincidencia / no hay ficha de Google. NO cae al
+    parseo de la calle: devolver None es correcto (el prompt usará la ciudad)."""
+    google = (cluster.get('by_source') or {}).get('google') or {}
+    components = (google.get('raw') or {}).get('address_components') or []
+    for zone_type in _ZONE_TYPES:
+        for comp in components:
+            if zone_type in ((comp or {}).get('types') or []):
+                long_name = (comp or {}).get('long_name')
+                if long_name and long_name.strip():
+                    return long_name.strip()
+    return None
 
 
 def _build_prompt(cluster, city, category=None):
     # `category` manual (del input) tiene prioridad; si no, se infiere de Places.
     category = (category or '').strip() or _category_for(cluster)
-    area = _area_from_address(cluster.get('canonical_address') or '')
-    if area and normalize.name_norm(area) != normalize.name_norm(city):
-        return f'{category} en {area}, {city}'
+    zone = _zone_for(cluster)
+    if zone and normalize.name_norm(zone) != normalize.name_norm(city):
+        return f'{category} en {zone}, {city}'
     return f'{category} en {city}'
 
 

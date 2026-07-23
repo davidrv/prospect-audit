@@ -2,26 +2,52 @@ import llm_visibility as lv
 
 
 def _cluster(cid, name='Movistar', address='Gran Via 10, Barcelona', types=('cell_phone_store', 'store'),
-             present=('google',)):
+             present=('google',), address_components=None):
+    raw = {'types': list(types)}
+    if address_components is not None:
+        raw['address_components'] = address_components
     return {
         'cluster_id': cid,
         'sources_present': list(present),
         'canonical_label': name,
         'canonical_address': address,
-        'by_source': {'google': {'name': name, 'raw': {'types': list(types)}}},
+        'by_source': {'google': {'name': name, 'raw': raw}},
     }
 
 
 # ── prompt building ──────────────────────────────────────────────────
 
-def test_build_prompt_humanizes_category_and_uses_street_area():
-    p = lv._build_prompt(_cluster('c1', address='Gran Via de les Corts 10, Barcelona'), 'Barcelona')
-    assert p == 'tienda de telefonía móvil en Gran Via de les Corts, Barcelona'
+def test_build_prompt_humanizes_category_and_uses_zone():
+    c = _cluster('c1', address_components=[
+        {'long_name': 'Eixample', 'short_name': 'Eixample', 'types': ['neighborhood', 'political']},
+    ])
+    p = lv._build_prompt(c, 'Barcelona')
+    assert p == 'tienda de telefonía móvil en Eixample, Barcelona'
 
 
-def test_build_prompt_falls_back_to_city_without_area():
-    p = lv._build_prompt(_cluster('c1', address='Barcelona'), 'Barcelona')
+def test_build_prompt_falls_back_to_city_without_zone():
+    # sin address_components no hay zona → cae a la ciudad
+    p = lv._build_prompt(_cluster('c1'), 'Barcelona')
     assert p == 'tienda de telefonía móvil en Barcelona'
+
+
+def test_zone_for_picks_neighborhood():
+    c = _cluster('c1', address_components=[
+        {'long_name': 'Gràcia', 'short_name': 'Gràcia', 'types': ['neighborhood', 'political']},
+    ])
+    assert lv._zone_for(c) == 'Gràcia'
+
+
+def test_zone_for_prefers_neighborhood_over_sublocality():
+    c = _cluster('c1', address_components=[
+        {'long_name': 'Sant Gervasi', 'short_name': 'Sant Gervasi', 'types': ['sublocality', 'political']},
+        {'long_name': 'Gràcia', 'short_name': 'Gràcia', 'types': ['neighborhood', 'political']},
+    ])
+    assert lv._zone_for(c) == 'Gràcia'
+
+
+def test_zone_for_none_without_address_components():
+    assert lv._zone_for(_cluster('c1')) is None
 
 
 def test_category_prefers_specific_over_generic_store():
@@ -125,21 +151,25 @@ def test_fetch_uses_manual_category_override(monkeypatch):
     seen = []
     monkeypatch.setattr(lv, '_get_result', lambda session, prompt, country: seen.append(prompt) or {'text': 'x'})
     # types dirían "tienda", pero la categoría manual debe ganar
-    clusters = [_cluster('c1', address='Gran Via 10, Barcelona', types=('store',))]
+    clusters = [_cluster('c1', types=('store',), address_components=[
+        {'long_name': 'Eixample', 'short_name': 'Eixample', 'types': ['neighborhood', 'political']},
+    ])]
     out = lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=1, max_venues=1,
                                   category='proveedor de internet')
     assert out['category'] == 'proveedor de internet'
     assert out['prompt_template'] == 'proveedor de internet en {zona}, Barcelona'
-    assert seen[0] == 'proveedor de internet en Gran Via, Barcelona'
+    assert seen[0] == 'proveedor de internet en Eixample, Barcelona'
 
 
 def test_fetch_infers_category_when_no_override(monkeypatch):
     monkeypatch.setattr(lv, '_key', lambda: 'fake')
     seen = []
     monkeypatch.setattr(lv, '_get_result', lambda session, prompt, country: seen.append(prompt) or {'text': 'x'})
-    clusters = [_cluster('c1', address='Gran Via 10, Barcelona', types=('store',))]
+    clusters = [_cluster('c1', types=('store',), address_components=[
+        {'long_name': 'Eixample', 'short_name': 'Eixample', 'types': ['neighborhood', 'political']},
+    ])]
     lv.fetch_llm_visibility(clusters, 'Movistar', 'Barcelona', runs=1, max_venues=1)  # sin category
-    assert seen[0] == 'tienda en Gran Via, Barcelona'
+    assert seen[0] == 'tienda en Eixample, Barcelona'
 
 
 def test_fetch_best_effort_on_http_failure(monkeypatch):
