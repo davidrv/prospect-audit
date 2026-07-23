@@ -38,8 +38,18 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
         'official_findings': results.get('official_findings', []),
         'official_comment': official_comment,
         'site_analysis': _site_analysis_summary(results.get('site_analysis', [])),
+        'locator_report': results.get('locator_report'),
         'source_labels': SOURCE_LABELS,
-        'venue_rows': _venue_rows(clusters),
+        'venue_cards': _venue_cards(clusters),
+        'cover_blurb': _cover_blurb(audit['summary']),
+        'subscores': _subscores(audit['summary']),
+        'exec_stats': _exec_stats(audit['summary'], clusters),
+        'action_plan': _action_plan(audit['summary'], clusters, results.get('locator_report')),
+        'highlight_reviews': _highlight_reviews(clusters),
+        'ai_review_summary': _ai_review_summary(clusters),
+        'recent_reviews_total': _recent_reviews_total(clusters),
+        'llm': _llm_block(audit['summary']),
+        'ghost_count': sum(1 for c in clusters if 'google' not in c['sources_present']),
     }
 
     html = render_template('report.html', **context)
@@ -80,24 +90,6 @@ def _recommendations(summary, official_findings):
     return items
 
 
-_VERDICT_SYMBOLS = {'match': '✓', 'conflict': '✗', 'sin_dato': '–', 'missing': '–', 'na': '·'}
-_SOURCE_SHORT = {'apple': 'A', 'azure': 'B', 'official': 'O'}
-
-
-def _accuracy_note(metric):
-    """Compact per-source breakdown for a print medium with no hover — e.g.
-    'A✓ B✗ O·' (Apple matches, Bing conflicts, no official data this audit)."""
-    return ' '.join(f'{_SOURCE_SHORT[s]}{_VERDICT_SYMBOLS[metric["breakdown"][s]["verdict"]]}'
-                     for s in ('apple', 'azure', 'official'))
-
-
-def _presence_missing(detail):
-    """Sources this venue was NOT found on, each with a search-URL so the
-    absence can be verified live (google/apple/azure) — same purpose as the
-    UI's presence-column tooltip, just rendered inline since PDFs have no hover."""
-    return [{'label': SOURCE_LABELS[s], 'url': info['url']} for s, info in detail.items() if not info['present']]
-
-
 def _review_rate_display(review_rate):
     """A real scraped count (google_reviews_scraper.py) is already filtered
     to the last ~3 months, so 'value' and 'sample_size' are always equal —
@@ -117,42 +109,225 @@ def _reply_rate_display(reply_rate):
     return 'N/D' if value == 'N/D' else f'{value}%'
 
 
-def _posts_display(posts_metric):
-    value = posts_metric['value']
-    return 'N/D' if value == 'N/D' else str(value)
+_SEVERITY_LABEL = {'critico': 'Crítico', 'alto': 'Alto', 'medio': 'Medio', 'ok': 'OK', 'sin_datos': 'Sin datos'}
+_CMP_FIELDS = [('name', 'Nombre'), ('phone', 'Teléfono'), ('website', 'Web'), ('opening_hours', 'Horario')]
 
 
-def _venue_rows(clusters):
-    """Pre-formats venue_metrics into flat, template-ready rows — keeps the
-    per-source breakdown/search-link formatting logic in Python (testable)
-    rather than spread across Jinja conditionals."""
+def _cell_value(breakdown_entry):
+    """Texto a mostrar en una celda de comparación (mismo criterio que la UI):
+    el valor real si lo hay, o una etiqueta según el veredicto."""
+    value = breakdown_entry.get('value')
+    if value:
+        return value
+    return {'sin_dato': 'Sin dato', 'missing': 'No encontrada', 'na': 'N/D'}.get(
+        breakdown_entry.get('verdict'), '—')
+
+
+def _compare_rows(m):
+    """Filas de comparación por campo (Google = referencia vs Apple/Bing/web),
+    igual que el detalle expandible de la UI — solo lee accuracy.breakdown, no
+    inventa nada."""
+    acc = {'name': m['accuracy_name'], 'phone': m['accuracy_phone'],
+           'website': m['accuracy_website'], 'opening_hours': m['accuracy_hours']}
     rows = []
+    for key, label in _CMP_FIELDS:
+        a = acc[key]
+        cells = []
+        for source in ('apple', 'azure', 'official'):
+            b = (a.get('breakdown') or {}).get(source) or {'verdict': 'na', 'value': None}
+            cells.append({'verdict': b.get('verdict'), 'text': _cell_value(b)})
+        rows.append({'label': label, 'anchor': a.get('anchor_value') or '—', 'cells': cells})
+    return rows
+
+
+def _venue_cards(clusters):
+    """Una ficha por sede (mismo contenido que la fila + detalle de la UI):
+    score/severidad, qué falla, reputación, estado por plataforma, la
+    comparación por campo, el comentario manual del comercial y (si se pidió)
+    la visibilidad en IA. No añade métricas nuevas — solo reordena lo que ya
+    calcula venue_metrics."""
+    cards = []
     for cluster in clusters:
         m = cluster['venue_metrics']
-        rows.append({
-            'cluster_id': cluster['cluster_id'],
+        reputation = cluster.get('reputation') or {}
+        cards.append({
+            'id': cluster['cluster_id'],
             'label': cluster['canonical_label'],
             'address': cluster['canonical_address'],
-            'presenter_comment': cluster.get('presenter_comment'),
             'has_google': 'google' in cluster['sources_present'],
-            'presence_pct': m['presence_pct'],
-            'presence_missing': _presence_missing(m['presence_detail']),
-            'accuracy_hours': m['accuracy_hours']['avg'],
-            'accuracy_hours_note': _accuracy_note(m['accuracy_hours']),
-            'accuracy_phone': m['accuracy_phone']['avg'],
-            'accuracy_phone_note': _accuracy_note(m['accuracy_phone']),
-            'accuracy_website': m['accuracy_website']['avg'],
-            'accuracy_website_note': _accuracy_note(m['accuracy_website']),
-            'accuracy_name': m['accuracy_name']['avg'],
-            'accuracy_name_note': _accuracy_note(m['accuracy_name']),
-            'action_links': f"{m['action_links_google']['value']} / {m['action_links_apple']['value']}",
+            'score': m.get('score'),
+            'severity': m.get('severity'),
+            'severity_label': _SEVERITY_LABEL.get(m.get('severity'), '—'),
+            'issue_summary': m.get('issue_summary'),
+            'presenter_comment': cluster.get('presenter_comment'),
+            'platform_state': m.get('platform_state') or {},
             'rating': m['rating'],
             'review_count': m['review_count'],
             'review_rate_display': _review_rate_display(m['review_rate_3m']),
             'reply_rate_display': _reply_rate_display(m['reply_rate_3m']),
-            'posts_display': _posts_display(m['posts_3m']),
+            'action_links': m['action_links_google'].get('value'),
+            'compare': _compare_rows(m),
+            'llm': m.get('llm_visibility'),
+            'negative_samples': reputation.get('negative_samples') or [],
+            'ai_summary': reputation.get('ai_summary'),
         })
-    return rows
+    return cards
+
+
+def _tone(value, good=70, mid=50):
+    if value is None:
+        return 'na'
+    return 'ok' if value >= good else ('warn' if value >= mid else 'bad')
+
+
+def _geo_score(summary):
+    """Puntuación GEO derivada del Visibility Index (hits/comprobaciones) — no
+    es una métrica nueva, solo el % de apariciones ya calculado. None si no se
+    ejecutó la fase de IA."""
+    llm = summary.get('llm_visibility') or {}
+    checks = llm.get('checks_total') or 0
+    if not checks:
+        return None
+    return round(100 * (llm.get('hits_total') or 0) / checks)
+
+
+def _subscores(summary):
+    ps = summary.get('presence_score') or {}
+    out = [{'label': 'Presencia', 'value': ps.get('presence')},
+           {'label': 'Consistencia', 'value': ps.get('consistency')},
+           {'label': 'Reputación', 'value': ps.get('reputation')}]
+    geo = _geo_score(summary)
+    if geo is not None:
+        out.append({'label': 'GEO · visibilidad IA', 'value': geo})
+    for t in out:
+        t['tone'] = _tone(t['value'])
+    return out
+
+
+def _exec_stats(summary, clusters):
+    total = summary['total_locations']
+    scored = (summary.get('presence_score') or {}).get('venues_scored') or 0
+    stats = summary.get('stats') or {}
+    reply = stats.get('reply_rate_overall')
+    crit = summary['locations_with_critical_flags']
+    low = summary['low_rating']
+    miss_off = summary['missing_official']
+    inc = stats.get('inconsistent_locations') or 0
+    miss_plat = stats.get('missing_some_platform') or 0
+
+    def s(value, label, tone):
+        return {'value': value, 'label': label, 'tone': tone}
+
+    return [
+        s(crit, 'sedes con problemas críticos de datos', 'bad' if crit else 'ok'),
+        s(low, 'sedes con rating por debajo de 3,5', 'bad' if low else 'ok'),
+        s(f'{miss_off}/{total}' if total else '—', 'sedes ausentes del store locator oficial',
+          'bad' if miss_off else 'ok'),
+        s(f'{inc}/{scored}' if scored else str(inc), 'sedes con datos distintos entre plataformas',
+          'warn' if inc else 'ok'),
+        s(f'{reply}%' if reply is not None else 'N/D', 'de las reseñas recientes reciben respuesta', 'warn'),
+        s(miss_plat, 'sedes ausentes de Apple o Bing', 'ok' if not miss_plat else 'warn'),
+    ]
+
+
+def _cover_blurb(summary):
+    stats = summary.get('stats') or {}
+    scored = (summary.get('presence_score') or {}).get('venues_scored') or 0
+    inc = stats.get('inconsistent_locations') or 0
+    parts = []
+    if scored and inc:
+        parts.append(f'{inc} de {scored} sedes con datos incoherentes entre plataformas')
+    if summary['missing_official']:
+        parts.append('sedes sin publicar en la web oficial')
+    if not parts:
+        return 'Presencia local auditada en Google, Apple, Bing y la web oficial.'
+    return (' y '.join(parts) + '.').capitalize()
+
+
+def _action_plan(summary, clusters, locator_report):
+    """Plan de acción priorizado, DERIVADO de las mismas condiciones que las
+    recomendaciones. Los niveles de esfuerzo/impacto son etiquetas editoriales
+    fijas por tipo de acción (no se calculan a partir de datos)."""
+    stats = summary.get('stats') or {}
+    ghost = sum(1 for c in clusters if 'google' not in c['sources_present'])
+    inc = stats.get('inconsistent_locations') or 0
+    reply = stats.get('reply_rate_overall')
+    lr = locator_report or {}
+    quick, projects = [], []
+
+    if inc:
+        quick.append({'title': 'Unificar nombre, teléfono y horarios en Apple y Bing',
+                      'detail': f'{inc} sede(s) con datos distintos frente a Google.',
+                      'effort': 'Bajo', 'impact': 'Alto'})
+    if reply is not None and reply < 50:
+        quick.append({'title': 'Responder a las reseñas recientes',
+                      'detail': f'Hoy solo el {reply}% recibe respuesta; responder mejora rating y conversión.',
+                      'effort': 'Bajo', 'impact': 'Medio'})
+    if ghost:
+        quick.append({'title': f'Revisar las {ghost} fichas huérfanas en Apple y Bing',
+                      'detail': 'Posibles duplicados o sedes cerradas que siguen apareciendo a los clientes.',
+                      'effort': 'Medio', 'impact': 'Alto'})
+    if not quick:
+        quick.append({'title': 'Mantener la consistencia actual',
+                      'detail': 'No se detectaron incoherencias críticas; monitorizar periódicamente.',
+                      'effort': 'Bajo', 'impact': 'Medio'})
+
+    if summary['missing_official'] or (lr.get('has_data') and not lr.get('optimized')):
+        projects.append({'title': 'Store locator con página indexable por sede',
+                         'detail': 'Sin páginas de sede indexables, Google e IA no pueden citar la web oficial como fuente.',
+                         'effort': 'Alto', 'impact': 'Alto'})
+    projects.append({'title': 'Datos estructurados LocalBusiness + sitemap de sedes',
+                     'detail': 'Schema.org completo (horario, teléfono, geo) para que buscadores e IA lean la fuente oficial.',
+                     'effort': 'Medio', 'impact': 'Alto'})
+    if summary['low_rating']:
+        projects.append({'title': 'Programa continuo de reputación por sede',
+                         'detail': f'{summary["low_rating"]} sede(s) por debajo de 3,5 arrastran la percepción de la marca.',
+                         'effort': 'Medio', 'impact': 'Alto'})
+    return {'quick_wins': quick, 'projects': projects}
+
+
+def _highlight_reviews(clusters, limit=2):
+    out = []
+    for cluster in clusters:
+        for r in (cluster.get('reputation') or {}).get('negative_samples') or []:
+            out.append({'rating': r.get('rating'), 'label': cluster['canonical_label'],
+                        'text': r.get('text')})
+    out.sort(key=lambda x: x['rating'] if x['rating'] is not None else 5)
+    return out[:limit]
+
+
+def _ai_review_summary(clusters):
+    """Resumen IA de reseñas — solo disponible si Places API (New) devolvió uno
+    (gated por ENABLE_GOOGLE_REVIEW_SUMMARY, casi siempre vacío en España). No
+    tenemos un resumen agregado multi-mes propio (ver notas del informe)."""
+    for cluster in clusters:
+        s = (cluster.get('reputation') or {}).get('ai_summary')
+        if s:
+            return s
+    return None
+
+
+def _recent_reviews_total(clusters):
+    total, any_scraped = 0, False
+    for cluster in clusters:
+        rr = cluster['venue_metrics'].get('review_rate_3m') or {}
+        if rr.get('source') == 'scraped' and isinstance(rr.get('value'), int):
+            total += rr['value']
+            any_scraped = True
+    return total if any_scraped else None
+
+
+def _llm_block(summary):
+    llm = summary.get('llm_visibility')
+    if not llm or not llm.get('venues_checked'):
+        return None
+    positions = [r['position'] for v in (llm.get('per_venue') or {}).values()
+                 for r in (v.get('runs') or []) if r.get('position') is not None]
+    rng = None
+    if positions:
+        lo, hi = min(positions), max(positions)
+        rng = f'el {lo}º' if lo == hi else f'entre el {lo}º y el {hi}º'
+    return {**llm, 'position_range': rng}
 
 
 def _site_analysis_summary(site_analysis):

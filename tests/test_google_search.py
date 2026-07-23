@@ -144,3 +144,56 @@ def test_attach_scraped_reviews_api_path_never_raises(monkeypatch):
 
     app_module._attach_scraped_reviews(places)  # must not raise
     assert 'scraped_reviews' not in places[0]
+
+
+# ── action links: solo las N peores sedes ───────────────────────────
+
+def test_attach_action_links_worst_only_top_n(monkeypatch):
+    monkeypatch.setattr(app_module, '_GOOGLE_SIGNALS_VIA_SERPAPI', True)
+    monkeypatch.setattr(app_module, '_REVIEW_SCRAPING_ENABLED', True)
+    monkeypatch.setattr(app_module, '_ACTION_LINKS_MAX_VENUES', 2)
+
+    fetched = []
+
+    def fake_links(place_id, session=None):
+        fetched.append(place_id)
+        return [{'type': 'reservation', 'label': 'Reservar'}]
+
+    monkeypatch.setattr(app_module.google_signals, 'fetch_action_links', fake_links)
+
+    # 4 clusters con Google, ya en orden peor→mejor (p1 peor)
+    def _c(i):
+        return {'sources_present': ['google'],
+                'by_source': {'google': {'raw': {'place_id': f'p{i}'}}},
+                'venue_metrics': {'action_links_google': {'value': 'N/D'}}}
+    clusters = [_c(i) for i in range(4)]
+
+    app_module._attach_action_links_worst(clusters)
+
+    assert fetched == ['p0', 'p1']                              # solo las 2 peores
+    assert clusters[0]['venue_metrics']['action_links_google']['value'] == 'Reservar'
+    assert clusters[2]['venue_metrics']['action_links_google']['value'] == 'N/D'  # intacta
+
+
+def test_attach_action_links_worst_noop_without_serpapi(monkeypatch):
+    monkeypatch.setattr(app_module, '_GOOGLE_SIGNALS_VIA_SERPAPI', False)
+    called = []
+    monkeypatch.setattr(app_module.google_signals, 'fetch_action_links',
+                        lambda *a, **k: called.append(1) or [])
+    clusters = [{'sources_present': ['google'], 'by_source': {'google': {'raw': {'place_id': 'p0'}}},
+                 'venue_metrics': {'action_links_google': {'value': 'N/D'}}}]
+    app_module._attach_action_links_worst(clusters)
+    assert called == []
+
+
+def test_matches_prospect_name_ignores_generic_sector_words():
+    # "NH hoteles" debe casar con "Hotel NH Barcelona…" (el token genérico
+    # "hoteles" no está en el nombre real y antes hundía el match → 0 sedes).
+    q = app_module.normalize.name_norm('NH hoteles')
+    assert app_module._matches_prospect_name(q, 'Hotel NH Barcelona Eixample')
+    assert app_module._matches_prospect_name(q, 'Hotel NH Collection Barcelona Gran Hotel Calderón')
+    assert not app_module._matches_prospect_name(q, 'Hotel Bohemian Entenza')
+    # "Zara tiendas" → núcleo "zara"
+    qz = app_module.normalize.name_norm('Zara tiendas')
+    assert app_module._matches_prospect_name(qz, 'Zara')
+    assert not app_module._matches_prospect_name(qz, 'Mango')

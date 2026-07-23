@@ -66,42 +66,59 @@ def test_serpapi_apple_lookup_disabled_returns_none(monkeypatch):
 
 # ── enrichment merge ─────────────────────────────────────────────────────
 
-def test_enrich_apple_fills_missing_fields(monkeypatch):
-    monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
+def _apple_rec(name='Alain Afflelou', phone_display=None, website_display=None):
+    return normalize.from_apple({'id': 'a1', 'name': name, 'formatted_address': 'X',
+                                 'lat': 39.47, 'lng': -0.37,
+                                 'phone_number': phone_display, 'url': website_display})
+
+
+def test_enrich_apple_record_fills_missing_fields(monkeypatch):
     monkeypatch.setattr(app_module, '_serpapi_apple_lookup', lambda name, lat, lng: {
         'title': name, 'phone': '+34 963 94 02 59', 'website': 'afflelou.es',
         'weekly_hours': {'Monday': '09:00 – 20:00'}, 'rating': 4.3, 'reviews': 120,
         'type': 'Optician',
     })
-    apple = [{'id': 'a1', 'name': 'Alain Afflelou', 'lat': 39.47, 'lng': -0.37,
-              'phone_number': None, 'url': None, 'category': None}]
-    app_module._enrich_apple_with_serpapi(apple)
-    item = apple[0]
-    assert item['phone_number'] == '+34 963 94 02 59'
-    assert item['url'] == 'afflelou.es'
-    assert item['opening_hours'] == ['Lunes: 09:00–20:00']
-    assert item['rating'] == 4.3
-    assert item['review_count'] == 120
-    assert item['serpapi_enriched'] is True
+    rec = _apple_rec()
+    app_module._enrich_apple_record(rec)
+    assert rec['phone_display'] == '+34 963 94 02 59'
+    assert rec['website_display'] == 'afflelou.es'
+    assert rec['opening_hours'] == ['Lunes: 09:00–20:00']
+    assert rec['rating'] == 4.3
+    assert rec['review_count'] == 120
 
 
-def test_enrich_apple_keeps_existing_values(monkeypatch):
-    monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
+def test_enrich_apple_record_keeps_existing_values(monkeypatch):
     monkeypatch.setattr(app_module, '_serpapi_apple_lookup', lambda name, lat, lng: {
         'title': name, 'phone': '+34 000', 'website': 'serpapi-site.es',
     })
-    apple = [{'id': 'a1', 'name': 'X', 'lat': 1.0, 'lng': 2.0,
-              'phone_number': '+34 999 EXISTING', 'url': None, 'category': None}]
-    app_module._enrich_apple_with_serpapi(apple)
-    assert apple[0]['phone_number'] == '+34 999 EXISTING'  # existing Server-API value wins
-    assert apple[0]['url'] == 'serpapi-site.es'             # missing one gets filled
+    rec = _apple_rec(phone_display='+34 999 EXISTING')
+    app_module._enrich_apple_record(rec)
+    assert rec['phone_display'] == '+34 999 EXISTING'   # el valor propio del Server API gana
+    assert rec['website_display'] == 'serpapi-site.es'  # el que faltaba se rellena
 
 
-def test_enrich_apple_noop_when_disabled(monkeypatch):
+def test_enrich_apple_clusters_only_enriches_google_matched(monkeypatch):
+    monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
+    called = []
+    monkeypatch.setattr(app_module, '_serpapi_apple_lookup',
+                        lambda name, lat, lng: called.append(name) or {'title': name, 'phone': '+34 111'})
+    with_google = {'sources_present': ['google', 'apple'],
+                   'by_source': {'apple': _apple_rec(name='Con Google')}}
+    apple_only = {'sources_present': ['apple'],
+                  'by_source': {'apple': _apple_rec(name='Sin Google')}}
+    app_module._enrich_apple_clusters([with_google, apple_only])
+    assert called == ['Con Google']                       # solo el que machea con Google
+    assert with_google['by_source']['apple']['phone_display'] == '+34 111'
+    assert apple_only['by_source']['apple']['phone_display'] is None
+
+
+def test_enrich_apple_clusters_noop_when_disabled(monkeypatch):
     monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', False)
-    apple = [{'id': 'a1', 'name': 'X', 'lat': 1.0, 'lng': 2.0}]
-    app_module._enrich_apple_with_serpapi(apple)
-    assert 'serpapi_enriched' not in apple[0]
+    called = []
+    monkeypatch.setattr(app_module, '_serpapi_apple_lookup', lambda *a: called.append(1) or None)
+    cluster = {'sources_present': ['google', 'apple'], 'by_source': {'apple': _apple_rec()}}
+    app_module._enrich_apple_clusters([cluster])
+    assert called == []
 
 
 # ── from_apple carries the enriched fields ───────────────────────────────

@@ -11,62 +11,64 @@
 <style>
   :root {
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --bg: #FAF9F7; --surface: #FFFFFF; --surface-2: #F5F3F0; --border: #E7E4DF; --border-2: #D8D4CE;
-    --tx: #0F0F0F; --tx-2: #3A3A3A; --tx-3: #797979;
-    --acc: #FF5000; --acc-hover: #E64600; --acc-soft: #FFEDE4; --acc-on: #FFFFFF;
-    --ok: #0F6E56; --ok-soft: #E5F1ED; --warn: #854F0B; --warn-soft: #F8EFDD; --bad: #A32D2D; --bad-soft: #F8E9E9;
+    --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f1efe9; --border: #e8e5df; --border-2: #d8d4cc;
+    --tx: #1a1a19; --tx-2: #3a3a3a; --tx-3: #6b6a65; --faint: #94928b;
+    --acc: #FF5000; --acc-hover: #e64800; --acc-soft: #FFF0E8; --acc-on: #FFFFFF;
+    --ok: #0F6E56; --ok-soft: #E6F3EE; --warn: #E64600; --warn-soft: #FFF0E8; --bad: #C23500; --bad-soft: #FFE3D4;
+    --row-hover: #fbfaf7; --code-bg: #f4f2ee;
   }
   :root[data-theme="dark"] {
-    --bg: #161513; --surface: #201E1B; --surface-2: #2A2723; --border: #38342F; --border-2: #4A453F;
-    --tx: #F4F2EF; --tx-2: #C9C5BF; --tx-3: #8F8B84;
-    --acc: #FF6A26; --acc-hover: #FF8248; --acc-soft: rgba(255,80,0,0.16); --acc-on: #FFFFFF;
-    --ok: #55C29B; --ok-soft: rgba(85,194,155,0.14); --warn: #E0A34E; --warn-soft: rgba(224,163,78,0.14); --bad: #E07A7A; --bad-soft: rgba(224,122,122,0.14);
+    --bg: #141413; --surface: #1e1e1c; --surface-2: #2a2a27; --border: #33322e; --border-2: #454440;
+    --tx: #f0efec; --tx-2: #c9c5bf; --tx-3: #a3a19a; --faint: #7c7a73;
+    --acc: #FF6A26; --acc-hover: #ff8248; --acc-soft: #38200f; --acc-on: #FFFFFF;
+    --ok: #57c9a4; --ok-soft: #14312a; --warn: #FF9A6B; --warn-soft: #3d2113; --bad: #FF8A5C; --bad-soft: #451e0d;
+    --row-hover: #232322; --code-bg: #262624;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--tx-2); font-family: var(--font-sans); font-size: 14px; line-height: 1.4; -webkit-font-smoothing: antialiased; }
   a { color: var(--acc); text-decoration: none; }
   a:hover { color: var(--acc-hover); text-decoration: underline; }
-  h1, h2, h3 { margin: 0; color: var(--tx); font-weight: 700; }
+  h1, h2, h3 { margin: 0; color: var(--tx); font-weight: 700; letter-spacing: -0.01em; }
   input, textarea, button { font-family: var(--font-sans); }
-  input::placeholder, textarea::placeholder { color: var(--tx-3); }
+  input::placeholder, textarea::placeholder { color: var(--faint); }
+  input:focus, textarea:focus { outline: 2px solid var(--acc); outline-offset: -1px; }
   .msr { font-family: "Material Symbols Rounded"; font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; line-height: 1; display: inline-block; user-select: none; font-size: 20px; vertical-align: middle; }
   @keyframes paspin { to { transform: rotate(360deg); } }
   @keyframes shake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
   .spin { animation: paspin 1s linear infinite; }
   .shake { animation: shake .35s; }
 
-  header.topbar { display: flex; align-items: center; gap: 20px; padding: 0 24px; height: 56px; background: var(--surface); border-bottom: 2px solid var(--acc); position: sticky; top: 0; z-index: 30; }
+  header.topbar { display: flex; align-items: center; gap: 24px; padding: 0 32px; height: 56px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 30; }
   .brand { display: flex; align-items: center; gap: 8px; }
-  .brand .word { font-weight: 700; font-size: 17px; color: var(--tx); letter-spacing: -0.01em; }
-  .brand .sep { width: 1px; height: 20px; background: var(--border-2); margin: 0 6px; }
-  .brand .sub { font-weight: 600; font-size: 14px; color: var(--tx); }
-  nav.nav { display: flex; gap: 4px; margin-left: auto; }
-  nav.nav button { border: none; cursor: pointer; padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; background: transparent; color: var(--tx-3); }
-  nav.nav button.active { background: var(--acc); color: var(--acc-on); }
-  nav.nav button:not(.active):hover { background: var(--surface-2); }
+  .brand .word { font-weight: 700; font-size: 16px; color: var(--tx); letter-spacing: -0.02em; }
+  .brand .sep { color: var(--faint); margin: 0 2px; }
+  .brand .sub { font-weight: 500; color: var(--tx-3); }
+  nav.nav { display: flex; gap: 4px; margin-left: auto; align-self: stretch; }
+  nav.nav button { border: none; border-top: 2px solid transparent; border-bottom: 2px solid transparent; cursor: pointer; padding: 0 14px; font-size: 14px; font-weight: 500; background: transparent; color: var(--tx-3); }
+  nav.nav button.active { color: var(--tx); font-weight: 700; border-bottom-color: var(--acc); }
+  nav.nav button:not(.active):hover { color: var(--tx); }
   nav.nav button:disabled { opacity: .4; cursor: default; }
-  .theme-btn { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); background: var(--surface); color: var(--tx-2); border-radius: 8px; cursor: pointer; }
-  .theme-btn:hover { background: var(--surface-2); }
+  .theme-btn { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border); background: none; color: var(--tx-3); border-radius: 8px; cursor: pointer; }
+  .theme-btn:hover { border-color: var(--border-2); color: var(--tx); }
 
-  main { max-width: 1060px; margin: 0 auto; padding: 24px 24px 64px; display: flex; flex-direction: column; gap: 16px; }
-  main.narrow { max-width: 560px; padding-top: 48px; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 32px 80px; display: flex; flex-direction: column; gap: 20px; }
+  main.narrow { max-width: 560px; padding-top: 56px; }
   .eyebrow { font-size: 12px; color: var(--acc); font-weight: 600; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
-  .pad { padding: 20px 22px; }
-  .btn-acc { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: 8px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 700; font-size: 14px; cursor: pointer; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  .pad { padding: 24px 28px; }
+  .btn-acc { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: 10px; border: none; background: var(--acc); color: var(--acc-on); font-weight: 600; font-size: 14px; cursor: pointer; }
   .btn-acc:hover { background: var(--acc-hover); }
   .btn-acc:disabled { opacity: .6; cursor: default; }
   .btn-ghost { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-2); background: var(--surface); color: var(--tx-2); font-weight: 600; font-size: 12.5px; cursor: pointer; }
   .btn-ghost:hover { background: var(--surface-2); }
-  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--tx-3); }
-  label.field input, .txt { border: 1px solid var(--border-2); border-radius: 8px; padding: 10px 12px; font-size: 14px; background: var(--bg); color: var(--tx); outline: none; }
-  label.field input { font-weight: 400; letter-spacing: 0; text-transform: none; }
-  .txt:focus, label.field input:focus { border-color: var(--acc); }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--tx); }
+  label.field input, .txt { border: 1px solid var(--border-2); border-radius: 9px; padding: 11px 14px; font-size: 15px; background: var(--bg); color: var(--tx); outline: none; font-weight: 400; }
   .pill { min-width: 34px; text-align: center; padding: 3px 9px; border-radius: 999px; font-weight: 700; font-size: 12px; display: inline-block; }
-  .badge-cap { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+  .badge-cap { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; border-radius: 999px; padding: 4px 12px; }
   .muted { color: var(--tx-3); }
   .row-sep { border-bottom: 1px solid var(--border); }
+  .card-title { font-weight: 700; font-size: 15px; color: var(--tx); }
   table { border-collapse: collapse; width: 100%; }
 
   .toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; font-size: 13.5px; }
@@ -74,6 +76,7 @@
   .toast.success { background: var(--ok-soft); color: var(--ok); }
   .toast.warning { background: var(--warn-soft); color: var(--warn); }
   .toast.error { background: var(--bad-soft); color: var(--bad); }
+  @media (max-width: 760px) { .grid-2, .summary-grid { grid-template-columns: 1fr !important; } }
 </style>
 </head>
 <body>
@@ -82,7 +85,7 @@
   <div class="brand">
     <span class="msr" style="color: var(--acc); font-size: 24px;">pin_drop</span>
     <span class="word">localistico</span>
-    <span class="sep"></span>
+    <span class="sep">/</span>
     <span class="sub">Prospect Audit</span>
   </div>
   <nav class="nav" id="nav">
@@ -95,32 +98,33 @@
 
 <!-- ══════════ INPUT ══════════ -->
 <main class="narrow" id="screen-input" style="display:none;">
-  <div>
-    <div class="eyebrow">Herramienta interna · equipo comercial</div>
-    <h1 style="font-size: 28px; margin-top: 4px;">Auditar un prospecto</h1>
+  <div style="text-align:center; margin-bottom:8px;">
+    <span class="msr" style="color:var(--acc); font-size:44px;">travel_explore</span>
+    <h1 style="font-size:26px; margin:12px 0 6px;">Audita un prospect</h1>
+    <p class="muted" style="margin:0; line-height:1.5;">Comprobamos su presencia en Google Maps, Apple Maps, Bing Maps, su web y los asistentes de IA.</p>
   </div>
-  <div class="card pad" style="display:flex; flex-direction:column; gap:16px;">
-    <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:12px;">
-      <label class="field">Nombre del prospecto
-        <input id="prospect-name" placeholder="Ej.: Movistar" autofocus>
-      </label>
-      <label class="field">Ciudad
-        <input id="prospect-city" placeholder="Barcelona" value="Barcelona">
-      </label>
-    </div>
-    <button class="linkish" onclick="toggleOfficial()" style="display:flex; align-items:center; gap:8px; border:none; background:transparent; padding:0; cursor:pointer; font-size:13px; font-weight:600; color:var(--acc); align-self:flex-start;">
-      <span class="msr" id="official-chev" style="font-size:18px;">chevron_right</span>Datos oficiales del prospecto (opcional)
-    </button>
-    <div id="official-box" style="display:none; flex-direction:column; gap:12px; border:1px solid var(--border); border-radius:12px; padding:14px; background:var(--bg);">
-      <textarea id="official-urls" class="txt" rows="3" placeholder="Una URL de su store locator por línea. Ej.: https://tiendas.movistar.es" style="resize:vertical;"></textarea>
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <label class="btn-ghost" style="margin:0;"><span class="msr" style="font-size:16px;">upload_file</span>Subir CSV de sedes
-          <input id="official-csv" type="file" accept=".csv" style="display:none;" onchange="updateCsvLabel(this)">
-        </label>
-        <span id="csv-name" class="muted" style="font-size:12px;"></span>
-        <a href="/template_oficial.csv" style="font-size:12.5px;">Descargar plantilla</a>
+  <div class="card pad" style="display:flex; flex-direction:column; gap:18px;">
+    <label class="field">Nombre del prospect
+      <input id="prospect-name" placeholder="Ej.: Zara Home" autofocus>
+    </label>
+    <label class="field">Ciudad
+      <input id="prospect-city" placeholder="Barcelona" value="Barcelona">
+    </label>
+    <div style="border:1px solid var(--border); border-radius:10px;">
+      <button onclick="toggleOfficial()" style="width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; padding:12px 14px; font-size:13px; font-weight:600; color:var(--tx-3); cursor:pointer; text-align:left;">
+        <span class="msr" id="official-chev" style="font-size:18px;">chevron_right</span>Datos oficiales del prospect <span style="font-weight:400; color:var(--faint);">· opcional</span>
+      </button>
+      <div id="official-box" style="display:none; padding:0 14px 14px; flex-direction:column; gap:10px;">
+        <textarea id="official-urls" class="txt" rows="3" placeholder="URLs del store locator, una por línea…" style="resize:vertical; font-size:13px;"></textarea>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <label class="btn-ghost" style="margin:0; border-style:dashed;"><span class="msr" style="font-size:17px;">upload_file</span>Subir CSV de sedes
+            <input id="official-csv" type="file" accept=".csv" style="display:none;" onchange="updateCsvLabel(this)">
+          </label>
+          <span id="csv-name" class="muted" style="font-size:12px;"></span>
+          <a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>
+        </div>
+        <input id="official-comment" class="txt" placeholder="Comentario para el equipo (opcional)" style="font-size:13px;">
       </div>
-      <textarea id="official-comment" class="txt" rows="2" placeholder="Comentario general para el informe (opcional)…" style="resize:vertical; font-size:13px;"></textarea>
     </div>
     <label style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--tx-2); cursor:pointer;">
       <input type="checkbox" id="check-llm" onchange="toggleLlmCat()" style="margin-top:2px; accent-color:var(--acc);">
@@ -130,33 +134,39 @@
       <input id="llm-category" class="txt" placeholder="Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)" style="width:100%; font-size:13px;">
       <div class="muted" style="font-size:11.5px;">Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.</div>
     </div>
-    <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:12px; font-size:15px;"><span class="msr" style="font-size:20px;">search</span>Auditar presencia local</button>
-    <p class="muted" style="font-size:12px; text-align:center; margin:0;">Suele tardar 1–3 minutos. Puedes ver el progreso en vivo.</p>
+    <div id="cost-line" class="muted" style="display:none; font-size:12px; align-items:center; gap:6px;">
+      <span class="msr" style="font-size:15px;">payments</span><span id="cost-text"></span>
+    </div>
+    <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:13px; font-size:15px; font-weight:700;">Auditar</button>
   </div>
+  <p class="muted" style="font-size:12px; text-align:center; margin:0;">Tarda de segundos a minutos según el número de sedes.</p>
 
-  <div class="card pad" id="recent-card" style="padding:16px 20px; display:none;">
-    <div style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3); margin-bottom:6px;">Auditorías recientes</div>
+  <div class="card" id="recent-card" style="padding:16px 20px; display:none;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <span style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);">Auditorías recientes</span>
+      <button onclick="clearCache()" title="Vacía la caché de reseñas/enriquecimiento/IA para que el próximo análisis se haga desde cero" style="margin-left:auto; background:none; border:none; color:var(--tx-3); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><span class="msr" style="font-size:14px;">mop</span>Vaciar caché</button>
+    </div>
     <div id="recent-list"></div>
   </div>
 </main>
 
 <!-- ══════════ PROGRESO ══════════ -->
-<main class="narrow" id="screen-progress" style="display:none;">
-  <div>
-    <div class="eyebrow" id="progress-eyebrow">Auditando…</div>
-    <h1 style="font-size:28px; margin-top:4px;" id="progress-title">Auditando</h1>
+<main class="narrow" id="screen-progress" style="display:none; max-width:640px;">
+  <div style="text-align:center;">
+    <h1 style="font-size:24px; margin:0 0 6px;" id="progress-title">Auditando</h1>
+    <p class="muted" id="progress-eyebrow" style="margin:0;">Puedes dejar esta pestaña abierta; la auditoría corre en segundo plano.</p>
   </div>
   <div class="card pad" style="display:flex; flex-direction:column; gap:18px;">
     <div style="height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden;"><div id="progress-bar" style="height:100%; width:0%; border-radius:999px; background:var(--acc); transition:width .4s;"></div></div>
-    <div id="progress-steps" style="display:flex; flex-direction:column; gap:2px;"></div>
-    <div>
-      <button onclick="toggleLog()" style="display:flex; align-items:center; gap:6px; border:none; background:transparent; padding:0; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--tx-3);"><span class="msr" id="log-chev" style="font-size:16px;">expand_more</span>Registro detallado</button>
-      <div id="log-wrap" style="margin-top:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:12px 14px; font-size:12px; color:var(--tx-3); display:flex; flex-direction:column; gap:5px; max-height:220px; overflow:auto;">
-        <div id="progress-log" style="display:flex; flex-direction:column; gap:5px;"></div>
+    <div id="progress-steps" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+    <div style="border-top:1px solid var(--border); padding-top:14px;">
+      <button onclick="toggleLog()" style="display:flex; align-items:center; gap:6px; border:none; background:transparent; padding:0; cursor:pointer; font-size:13px; font-weight:600; color:var(--tx-3);"><span class="msr" id="log-chev" style="font-size:17px;">expand_more</span>Log de progreso</button>
+      <div id="log-wrap" style="margin-top:10px; background:var(--code-bg); border-radius:10px; padding:12px 16px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--tx-3); display:flex; flex-direction:column; gap:4px; max-height:200px; overflow:auto;">
+        <div id="progress-log" style="display:flex; flex-direction:column; gap:4px;"></div>
       </div>
     </div>
     <div id="progress-actions" style="display:flex; gap:8px;">
-      <button class="btn-acc" id="partial-btn" onclick="showScreen('results')" style="flex:1;" disabled>Ver resultados parciales</button>
+      <button class="btn-acc" id="partial-btn" onclick="showScreen('results')" style="flex:1;" disabled>Ver resultados</button>
       <button class="btn-ghost" id="cancel-btn" onclick="cancelAudit()">Cancelar</button>
     </div>
   </div>
@@ -164,81 +174,90 @@
 
 <!-- ══════════ RESULTADOS ══════════ -->
 <main id="screen-results" style="display:none;">
-  <div style="display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap;">
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+    <span class="msr" style="color:var(--ok); font-size:26px;">check_circle</span>
     <div>
-      <div class="eyebrow" id="results-eyebrow">Auditoría completada</div>
-      <h1 style="font-size:28px; margin-top:4px;" id="results-title">—</h1>
+      <div style="font-size:20px; font-weight:700; color:var(--tx);" id="results-eyebrow">Auditoría completada</div>
+      <div class="muted" id="results-title" style="margin-top:2px;">—</div>
     </div>
-    <button class="btn-acc" id="pdf-btn" onclick="exportPDF()" style="margin-left:auto;"><span class="msr" style="font-size:18px;">download</span>Exportar informe PDF</button>
+    <button class="btn-acc" id="pdf-btn" onclick="exportPDF()" style="margin-left:auto;"><span class="msr" style="font-size:18px;">picture_as_pdf</span>Exportar informe PDF</button>
   </div>
 
-  <!-- Resumen -->
-  <section class="card" style="padding:20px 24px; display:flex; align-items:center; gap:28px; flex-wrap:wrap;">
-    <svg width="96" height="96" viewBox="0 0 110 110" style="flex-shrink:0;">
-      <circle cx="55" cy="55" r="46" fill="none" stroke="var(--surface-2)" stroke-width="11"></circle>
-      <circle id="score-arc" cx="55" cy="55" r="46" fill="none" stroke="var(--acc)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 289" transform="rotate(-90 55 55)"></circle>
-      <text id="score-num" x="55" y="53" text-anchor="middle" style="font-size:30px; font-weight:700; fill:var(--tx);">—</text>
-      <text x="55" y="72" text-anchor="middle" style="font-size:10px; fill:var(--tx-3);">de 100</text>
-    </svg>
-    <div style="flex:1; min-width:240px;">
-      <div style="font-weight:700; color:var(--tx); font-size:15px;">Local Presence Score</div>
-      <p id="summary-desc" style="font-size:13.5px; color:var(--tx-2); margin-top:4px; max-width:460px;"></p>
+  <!-- Resumen (2 columnas) -->
+  <section class="card summary-grid" style="display:grid; grid-template-columns:300px 1fr; overflow:hidden;">
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:28px; border-right:1px solid var(--border);">
+      <div style="position:relative; width:150px; height:150px;">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="64" fill="none" stroke="var(--surface-2)" stroke-width="11"></circle>
+          <circle id="score-arc" cx="75" cy="75" r="64" fill="none" stroke="var(--acc)" stroke-width="11" stroke-linecap="round" stroke-dasharray="0 402" transform="rotate(-90 75 75)"></circle>
+        </svg>
+        <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+          <div id="score-num" style="font-size:44px; font-weight:700; letter-spacing:-0.03em; line-height:1; color:var(--tx);">—</div>
+          <div class="muted" style="font-size:12px; margin-top:2px;">de 100</div>
+        </div>
+      </div>
+      <div style="font-weight:600; color:var(--tx);">Local Presence Score</div>
     </div>
-    <div id="summary-stats" style="display:flex; gap:28px;"></div>
+    <div style="padding:24px 28px; display:flex; flex-direction:column; gap:18px; justify-content:center;">
+      <p id="summary-desc" style="margin:0; color:var(--tx-2); line-height:1.5;"></p>
+      <div id="summary-stats" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;"></div>
+    </div>
   </section>
 
-  <!-- Store locator -->
-  <section class="card" id="locator-card" style="padding:18px 22px; display:none; flex-direction:column; gap:12px;"></section>
-
-  <!-- Visibilidad en IA -->
-  <section class="card" id="llm-card" style="padding:18px 22px; display:none; flex-direction:column; gap:12px;"></section>
+  <!-- Store locator + IA (lado a lado) -->
+  <div id="cards-2col" class="grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:stretch;">
+    <section class="card" id="locator-card" style="padding:20px 24px; display:none; flex-direction:column; gap:12px;"></section>
+    <section class="card" id="llm-card" style="padding:20px 24px; display:none; flex-direction:column; gap:12px;"></section>
+  </div>
 
   <!-- Sedes -->
   <section class="card" style="overflow:hidden;">
-    <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
-      <h2 style="font-size:16px;">Sedes auditadas</h2>
-      <span class="muted" id="venues-subtitle" style="font-size:12.5px;"></span>
-      <div style="margin-left:auto; display:flex; align-items:center; gap:6px; border:1px solid var(--border); border-radius:8px; padding:6px 10px; background:var(--bg);">
-        <span class="msr" style="font-size:16px; color:var(--tx-3);">search</span>
-        <input id="venue-search" placeholder="Buscar sede…" oninput="renderVenues()" style="border:none; outline:none; background:transparent; color:var(--tx); font-size:13px; width:140px;">
+    <div style="display:flex; align-items:center; gap:12px; padding:18px 24px; flex-wrap:wrap;">
+      <span class="card-title">Sedes auditadas</span>
+      <span class="muted" id="venues-subtitle" style="font-size:13px;"></span>
+      <div style="margin-left:auto; display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:7px 12px; color:var(--faint);">
+        <span class="msr" style="font-size:17px;">search</span>
+        <input id="venue-search" placeholder="Buscar sede…" oninput="renderVenues()" style="border:none; outline:none; background:transparent; color:var(--tx); font-size:13px; width:150px;">
       </div>
     </div>
-    <div style="overflow-x:auto;"><div style="min-width:930px;">
-      <div style="display:grid; grid-template-columns:56px minmax(200px,1.2fr) minmax(170px,1fr) 128px 190px 76px; gap:14px; padding:8px 18px; border-bottom:1px solid var(--border); background:var(--surface-2); font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);">
+    <div style="overflow-x:auto;"><div style="min-width:960px;">
+      <div style="display:grid; grid-template-columns:70px minmax(200px,1.2fr) minmax(170px,1fr) 150px 130px 76px; gap:14px; padding:8px 24px; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--faint);">
         <span>Score</span><span>Sede</span><span>Qué falla</span><span>Reputación</span><span>Comprobar en</span><span></span>
       </div>
       <div id="venues-body"></div>
     </div></div>
 
-    <button id="ghost-toggle" onclick="toggleGhost()" style="width:100%; display:none; align-items:center; gap:10px; padding:13px 18px; border:none; background:var(--surface-2); cursor:pointer; font-size:13px; color:var(--tx-2); text-align:left;">
-      <span class="msr" id="ghost-chev" style="font-size:18px; color:var(--acc);">chevron_right</span>
+    <button id="ghost-toggle" onclick="toggleGhost()" style="width:100%; display:none; align-items:center; gap:10px; padding:14px 24px; border:none; border-top:1px solid var(--border); background:none; cursor:pointer; font-size:13px; color:var(--tx-2); text-align:left;">
+      <span class="msr" style="color:var(--warn); font-size:18px;">help</span>
       <span id="ghost-label" style="font-weight:600; color:var(--tx);"></span>
       <span class="muted">sin ficha en Google — no auditadas (posibles duplicados o bajas)</span>
-      <span style="margin-left:auto; font-size:12px; font-weight:600; color:var(--acc);" id="ghost-action">Revisar</span>
+      <span style="margin-left:auto; font-size:13px; font-weight:600; color:var(--acc);" id="ghost-action">Mostrar</span>
     </button>
-    <div id="ghost-body" style="display:none;"></div>
+    <div id="ghost-body" style="display:none; border-top:1px solid var(--border);"></div>
   </section>
 
-  <div style="display:flex; gap:18px; font-size:13px; color:var(--tx-3); padding:0 4px; flex-wrap:wrap;">
-    <a href="#" onclick="toggleRaw(event)" style="font-weight:600;" id="raw-link">Ver datos crudos por fuente</a>
-    <span id="discarded-count"></span>
-  </div>
+  <div style="font-size:13px; color:var(--tx-3); padding:0 4px;"><span id="discarded-count"></span></div>
 
-  <!-- Datos crudos (secundario) -->
-  <section class="card" id="raw-card" style="overflow:hidden; display:none;">
-    <div id="raw-tabs" style="display:flex; gap:4px; padding:12px 16px; border-bottom:1px solid var(--border); flex-wrap:wrap;"></div>
-    <div style="overflow-x:auto;"><div id="raw-body" style="min-width:760px; padding:4px 0;"></div></div>
+  <!-- Datos crudos por fuente (pestañas) -->
+  <section class="card" id="raw-card" style="overflow:hidden;">
+    <div style="display:flex; align-items:center; gap:16px; padding:16px 24px 0; flex-wrap:wrap;">
+      <span class="card-title">Ver datos crudos por fuente</span>
+      <div id="raw-tabs" style="display:flex; gap:2px; margin-left:auto; flex-wrap:wrap;"></div>
+    </div>
+    <div style="overflow-x:auto;"><div id="raw-body" style="min-width:760px; padding:14px 24px 20px;"></div></div>
   </section>
 </main>
 
 <script>
 /* ═══════════════ estado ═══════════════ */
-var lastResult = null;                 // full search result (or reopened snapshot)
+var lastResult = null;
 var lastQuery = { name: '', city: '' };
-var deletedClusterIds = {};            // cluster_id -> true (excluded from PDF)
-var openVenueId = null;                // expanded row
+var deletedClusterIds = {};
+var openVenueId = null;
 var ghostOpen = false, rawTab = 'google';
 var currentJobId = null;
+var lastAuditId = null;          // id en el histórico para persistir comentarios
+var officialCommentEdit = '';    // nota del store locator (editable en resultados)
 
 /* ═══════════════ tema ═══════════════ */
 (function initTheme() {
@@ -288,6 +307,46 @@ function reviewRateDisplay(rr) {
 }
 function replyRateDisplay(rr) { if (!rr || rr.value === 'N/D' || rr.value == null) return 'N/D'; return rr.value + '%'; }
 
+/* ── Formateo compacto de horarios: "Lunes: 09:00–21:00; …" → "L–V 9–21, S 9–20, D cerrado" ── */
+var DAY_IDX = { lunes:0, martes:1, 'miércoles':2, miercoles:2, jueves:3, viernes:4, 'sábado':5, sabado:5, domingo:6,
+  monday:0, tuesday:1, wednesday:2, thursday:3, friday:4, saturday:5, sunday:6 };
+var DAY_ABBR = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+function _simplifyTime(t) {
+  var m = t.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t;
+  return m[2] === '00' ? String(parseInt(m[1], 10)) : parseInt(m[1], 10) + ':' + m[2];
+}
+function _simplifyRange(r) {
+  var low = r.toLowerCase();
+  if (low.indexOf('cerrad') !== -1 || low.indexOf('closed') !== -1) return 'cerrado';
+  return r.replace(/\s*[–—-]\s*/g, '–').split(',').map(function(seg) {
+    var mm = seg.trim().match(/^(\d{1,2}:\d{2})–(\d{1,2}:\d{2})$/);
+    return mm ? _simplifyTime(mm[1]) + '–' + _simplifyTime(mm[2]) : seg.trim();
+  }).join(', ');
+}
+function formatHours(input) {
+  if (!input || (Array.isArray(input) && !input.length)) return '—';
+  var lines = Array.isArray(input) ? input.slice() : String(input).split(/;\s*/);
+  var byDay = {}, ok = 0;
+  lines.forEach(function(line) {
+    var m = String(line).match(/^\s*([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s*:\s*(.+?)\s*$/);
+    if (!m) return;
+    var idx = DAY_IDX[m[1].toLowerCase()];
+    if (idx === undefined) return;
+    byDay[idx] = _simplifyRange(m[2]); ok++;
+  });
+  if (!ok) return Array.isArray(input) ? input.join('; ') : String(input);  // passthrough si no parsea
+  var order = Object.keys(byDay).map(Number).sort(function(a, b) { return a - b; });
+  var groups = [], cur = null;
+  order.forEach(function(idx) {
+    if (cur && idx === cur.end + 1 && byDay[idx] === cur.range) cur.end = idx;
+    else { cur = { start: idx, end: idx, range: byDay[idx] }; groups.push(cur); }
+  });
+  return groups.map(function(g) {
+    var days = g.start === g.end ? DAY_ABBR[g.start] : DAY_ABBR[g.start] + '–' + DAY_ABBR[g.end];
+    return days + ' ' + g.range;
+  }).join(', ');
+}
+
 /* ═══════════════ input ═══════════════ */
 function toggleOfficial() {
   var box = document.getElementById('official-box');
@@ -302,6 +361,25 @@ function toggleLlmCat() {
   var on = document.getElementById('check-llm').checked;
   document.getElementById('llm-cat-wrap').style.display = on ? 'flex' : 'none';
   if (on) document.getElementById('llm-category').focus();
+  renderCost();
+}
+
+var pricing = null;
+function loadPricing() {
+  fetch('/pricing').then(function(r) { return r.json(); })
+    .then(function(p) { pricing = p; renderCost(); }).catch(function() {});
+}
+function eur(n) { return '€' + Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function renderCost() {
+  if (!pricing) return;
+  var line = document.getElementById('cost-line');
+  var withLlm = document.getElementById('check-llm').checked;
+  var total = pricing.maps_max + (withLlm ? pricing.llm_delta : 0);
+  var txt = 'Coste máximo estimado: ' + eur(total);
+  if (withLlm) txt += ' (incl. ' + eur(pricing.llm_delta) + ' visibilidad IA)';
+  txt += ' · máx. ' + pricing.assumptions.google_max + ' sedes; menos = más barato';
+  document.getElementById('cost-text').textContent = txt;
+  line.style.display = 'flex';
 }
 function buildFormData(name, city, officialUrls) {
   var fd = new FormData();
@@ -327,13 +405,24 @@ function loadRecent() {
     document.getElementById('recent-list').innerHTML = list.map(function(a) {
       var sc = sevFromScore(a.score); var col = sevColor(sc);
       var meta = esc(a.city || '') + ' · ' + relTime(a.created_at) + (a.total_locations != null ? ' · ' + a.total_locations + ' sedes' : '');
-      return '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="width:100%; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; border-top:1px solid var(--border); background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
-        '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
-        '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
-        '<span class="muted">' + meta + '</span>' +
-        '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>';
+      return '<div style="display:flex; align-items:center; gap:10px; border-top:1px solid var(--border);">' +
+        '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="flex:1; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
+          '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
+          '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
+          '<span class="muted">' + meta + '</span>' +
+          '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>' +
+        '<button onclick="deleteAudit(\'' + esc(a.id) + '\', \'' + esc(a.name) + '\')" title="Borrar auditoría y limpiar su caché" style="background:none; border:none; color:var(--tx-3); cursor:pointer; padding:6px; display:grid; place-items:center;" onmouseover="this.style.color=\'var(--bad)\'" onmouseout="this.style.color=\'var(--tx-3)\'"><span class="msr" style="font-size:17px;">delete</span></button>' +
+        '</div>';
     }).join('');
   }).catch(function() {});
+}
+function deleteAudit(id, name) {
+  if (!confirm('¿Borrar la auditoría de "' + name + '"? Se elimina del histórico y se limpia su caché (un re-análisis partirá de cero).')) return;
+  fetch('/audits/' + id, { method: 'DELETE' }).then(function() { loadRecent(); }).catch(function() {});
+}
+function clearCache() {
+  if (!confirm('¿Vaciar toda la caché de análisis (reseñas, enriquecimiento, IA)? El próximo análisis de cualquier prospect se hará desde cero (más lento y con coste).')) return;
+  fetch('/cache/clear', { method: 'POST' }).catch(function() {});
 }
 function sevFromScore(s) { if (s == null) return 'sin_datos'; if (s < 33) return 'critico'; if (s < 50) return 'alto'; if (s < 70) return 'medio'; return 'ok'; }
 function relTime(ts) {
@@ -359,8 +448,8 @@ function startAudit() {
   lastResult = null; deletedClusterIds = {}; openVenueId = null;
 
   document.getElementById('progress-log').innerHTML = '';
-  document.getElementById('progress-eyebrow').textContent = 'Auditando…';
-  document.getElementById('progress-title').innerHTML = esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
+  document.getElementById('progress-title').innerHTML = 'Auditando ' + esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
+  document.getElementById('progress-eyebrow').textContent = 'Puedes dejar esta pestaña abierta; la auditoría corre en segundo plano.';
   document.getElementById('progress-bar').style.width = '0%';
   document.getElementById('partial-btn').disabled = true;
   document.getElementById('cancel-btn').style.display = '';
@@ -375,24 +464,39 @@ function startAudit() {
 }
 
 function pollJob(jobId) {
-  var since = 0, intervalMs = 1200;
+  var since = 0, intervalMs = 1200, fails = 0, MAX_FAILS = 8;
   function tick() {
     fetch('/jobs/' + jobId + '/status?since=' + since)
-      .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); }); return r.json(); })
+      .then(function(r) {
+        if (r.status === 404) return r.json().then(function(d) { var e = new Error(d.error || 'job no encontrado'); e.fatal = true; throw e; });
+        if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); });
+        return r.json();
+      })
       .then(function(data) {
+        fails = 0;  // conexión recuperada
         since = data.progress_count;
         if (data.sources) renderSteps(data.sources);
         if (typeof data.percent === 'number') document.getElementById('progress-bar').style.width = data.percent + '%';
         if (data.progress && data.progress.length) {
           appendLog(data.progress.map(function(m) { return [nowClock(), m, 'var(--tx-2)']; }));
-          document.getElementById('progress-eyebrow').textContent = data.progress[data.progress.length - 1];
         }
         if (data.status === 'done') { onDone(data.result); return; }
         if (data.status === 'cancelled') { document.getElementById('progress-eyebrow').textContent = 'Auditoría cancelada.'; document.getElementById('cancel-btn').style.display = 'none'; return; }
         if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || 'desconocido'), 'var(--bad)']]); return; }
         setTimeout(tick, intervalMs);
       })
-      .catch(function(err) { appendLog([['—', 'Error: ' + err.message, 'var(--bad)']]); });
+      .catch(function(err) {
+        // Reintenta ante cortes transitorios (reinicio del server / blip de red)
+        // en vez de rendirse al primer fallo. Un 404 (job expirado) es fatal.
+        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — recarga y reintenta.', 'var(--bad)']]); return; }
+        fails++;
+        if (fails <= MAX_FAILS) {
+          appendLog([[nowClock(), 'Conexión perdida, reintentando… (' + fails + '/' + MAX_FAILS + ')', 'var(--warn)']]);
+          setTimeout(tick, Math.min(6000, intervalMs * fails));
+        } else {
+          appendLog([['—', 'Error: ' + err.message + ' — sin conexión con el servidor; recarga y reintenta.', 'var(--bad)']]);
+        }
+      });
   }
   tick();
 }
@@ -402,32 +506,31 @@ function appendLog(lines) {
   lines.forEach(function(l) {
     var row = document.createElement('div');
     row.style.cssText = 'display:flex; gap:8px;';
-    row.innerHTML = '<span style="min-width:56px;">' + esc(l[0]) + '</span><span style="color:' + l[2] + ';">' + esc(l[1]) + '</span>';
+    row.innerHTML = '<span style="min-width:56px; color:var(--faint);">' + esc(l[0]) + '</span><span style="color:' + l[2] + ';">' + esc(l[1]) + '</span>';
     log.appendChild(row);
   });
   var wrap = document.getElementById('log-wrap'); wrap.scrollTop = wrap.scrollHeight;
 }
-var STEP_META = {
-  pending: ['radio_button_unchecked', 'var(--tx-3)', 'en cola', false],
-  running: ['progress_activity', 'var(--acc)', 'en curso…', true],
-  done: ['check_circle', 'var(--ok)', '', false],
-  error: ['error', 'var(--bad)', 'error', false],
-  skipped: ['remove_circle', 'var(--tx-3)', 'omitido', false]
-};
 var SOURCE_LABEL = { google: 'Google Maps', apple: 'Apple Maps', azure: 'Bing Maps', official: 'Datos oficiales', llm: 'Visibilidad IA' };
+var STEP_CARD = {
+  pending: { icon: 'circle', ib: 'var(--surface-2)', ic: 'var(--faint)', status: 'en cola', bg: 'var(--surface)', spin: false },
+  running: { icon: 'progress_activity', ib: 'var(--acc-soft)', ic: 'var(--acc)', status: 'analizando…', bg: 'var(--surface)', spin: true },
+  done: { icon: 'check', ib: 'var(--ok)', ic: '#fff', status: 'completado', bg: 'var(--ok-soft)', spin: false },
+  error: { icon: 'error', ib: 'var(--bad-soft)', ic: 'var(--bad)', status: 'error', bg: 'var(--surface)', spin: false },
+  skipped: { icon: 'remove', ib: 'var(--surface-2)', ic: 'var(--faint)', status: 'omitido', bg: 'var(--surface)', spin: false }
+};
 function renderSteps(sources) {
-  // 'llm' solo se muestra si se pidió (no 'skipped') para no ensuciar cuando el checkbox está off.
   var order = ['google', 'apple', 'azure', 'official', 'llm'].filter(function(s) {
     return s !== 'llm' || (sources.llm && sources.llm.state !== 'skipped');
   });
   document.getElementById('progress-steps').innerHTML = order.map(function(s) {
     var st = (sources[s] || { state: 'pending' });
-    var meta = STEP_META[st.state] || STEP_META.pending;
-    var status = st.state === 'done' ? ((st.count != null ? st.count : '') + ' sedes') : meta[2];
-    return '<div style="display:flex; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13.5px;">' +
-      '<span class="msr ' + (meta[3] ? 'spin' : '') + '" style="font-size:20px; color:' + meta[1] + ';">' + meta[0] + '</span>' +
-      '<span style="font-weight:600; color:var(--tx);">' + SOURCE_LABEL[s] + '</span>' +
-      '<span style="margin-left:auto; font-weight:600; font-size:12.5px; color:' + meta[1] + ';">' + esc(status) + '</span></div>';
+    var m = STEP_CARD[st.state] || STEP_CARD.pending;
+    var status = (st.state === 'done' && st.count != null) ? (st.count + ' sedes') : m.status;
+    return '<div style="flex:1; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:9px; padding:16px 8px; border:1px solid var(--border); border-radius:10px; background:' + m.bg + ';">' +
+      '<span style="display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:' + m.ib + '; color:' + m.ic + ';"><span class="msr ' + (m.spin ? 'spin' : '') + '" style="font-size:20px;">' + m.icon + '</span></span>' +
+      '<span style="font-weight:600; font-size:13px; color:var(--tx); text-align:center;">' + SOURCE_LABEL[s] + '</span>' +
+      '<span class="muted" style="font-size:11px;">' + esc(status) + '</span></div>';
   }).join('');
 }
 function toggleLog() {
@@ -444,8 +547,7 @@ function cancelAudit() {
 
 function onDone(result) {
   lastResult = result;
-  // Sedes sin ficha en Google se excluyen del informe por defecto (se revisan
-  // en el bloque "solo en Bing/Apple"); el comercial puede reincluirlas.
+  lastAuditId = currentJobId;
   (result.audit && result.audit.clusters || []).forEach(function(c) {
     if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
   });
@@ -462,36 +564,41 @@ function renderResults() {
   var audit = lastResult.audit, summary = audit.summary || {};
   var ps = summary.presence_score || {};
   var score = ps.score;
+  officialCommentEdit = lastResult.official_comment || '';
 
   document.getElementById('results-eyebrow').textContent = 'Auditoría completada' + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
-  document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(lastQuery.city) + '</span>';
+  document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="color:var(--faint);">·</span> ' + esc(lastQuery.city);
 
-  // Gauge
-  var circ = 289, dash = (score == null ? 0 : Math.max(0, Math.min(100, score)) / 100 * circ);
+  // Gauge (r=64 → circunferencia ≈ 402)
+  var circ = 402, dash = (score == null ? 0 : Math.max(0, Math.min(100, score)) / 100 * circ);
   var arc = document.getElementById('score-arc');
   arc.setAttribute('stroke-dasharray', dash.toFixed(0) + ' ' + circ);
   arc.setAttribute('stroke', sevColor(sevFromScore(score))[0]);
   document.getElementById('score-num').textContent = (score == null ? '—' : score);
 
-  // Descripción
   var stats = summary.stats || {};
   var audited = ps.venues_scored || 0;
   document.getElementById('summary-desc').innerHTML =
-    'Auditadas las <strong style="color:var(--tx);">' + audited + ' sedes con ficha en Google Maps</strong> (fuente de referencia): ' +
+    'Auditadas las <strong style="color:var(--tx);">' + audited + ' sedes</strong> con ficha en Google Maps (fuente de referencia): ' +
     '<strong style="color:var(--warn);">' + (stats.inconsistent_locations || 0) + ' con datos distintos</strong> en Apple o Bing y ' +
     '<strong style="color:var(--bad);">' + (stats.missing_some_platform || 0) + ' faltan</strong> en alguna plataforma.';
 
   document.getElementById('summary-stats').innerHTML = [
     [stats.inconsistent_locations != null ? stats.inconsistent_locations + '/' + audited : '—', 'con datos distintos entre plataformas', 'var(--warn)'],
-    [stats.missing_some_platform != null ? stats.missing_some_platform : '—', 'faltan en alguna plataforma', 'var(--bad)'],
-    [stats.reply_rate_overall != null ? stats.reply_rate_overall + '%' : 'N/D', 'reseñas respondidas', 'var(--warn)']
+    [stats.missing_some_platform != null ? stats.missing_some_platform : '—', 'faltan en alguna plataforma', 'var(--ok)'],
+    [stats.reply_rate_overall != null ? stats.reply_rate_overall + '%' : 'N/D', 'reseñas respondidas', 'var(--bad)']
   ].map(function(s) {
-    return '<div style="text-align:center;"><div style="font-size:26px; font-weight:700; color:' + s[2] + ';">' + s[0] + '</div>' +
-      '<div class="muted" style="font-size:12px; max-width:110px;">' + s[1] + '</div></div>';
+    return '<div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px;">' +
+      '<div style="font-size:26px; font-weight:700; color:' + s[2] + ';">' + s[0] + '</div>' +
+      '<div class="muted" style="font-size:13px; margin-top:2px;">' + s[1] + '</div></div>';
   }).join('');
 
   renderLocator(lastResult.locator_report);
   renderLLM(summary.llm_visibility);
+  // 2 columnas solo si ambas tarjetas están visibles
+  var loc = document.getElementById('locator-card'), llmC = document.getElementById('llm-card');
+  var shown = (loc.style.display !== 'none' ? 1 : 0) + (llmC.style.display !== 'none' ? 1 : 0);
+  document.getElementById('cards-2col').style.gridTemplateColumns = shown === 2 ? '1fr 1fr' : '1fr';
   renderVenues();
   renderGhost();
   renderRawTabs();
@@ -503,24 +610,63 @@ function renderLocator(report) {
   if (!report || !report.has_data) { card.style.display = 'none'; return; }
   card.style.display = 'flex';
   var CK = { ok: ['check_circle', 'var(--ok)'], warn: ['error', 'var(--warn)'], bad: ['cancel', 'var(--bad)'], na: ['remove', 'var(--tx-3)'] };
-  var badge = report.optimized
-    ? '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>'
-    : '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+  var badge;
+  if (report.analyzable === false) {
+    badge = '<span class="badge-cap" style="color:var(--tx-3); background:var(--surface-2);">No se puede analizar</span>';
+  } else if (report.optimized) {
+    badge = '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>';
+  } else {
+    badge = '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+  }
   var host = '';
   try { host = new URL(report.root_url).host; } catch (e) { host = report.root_url; }
   var checks = (report.checks || []).map(function(c) {
     var m = CK[c.status] || CK.na;
-    return '<div style="display:flex; align-items:center; gap:8px; font-size:13px; padding:6px 0; border-bottom:1px solid var(--border);">' +
-      '<span class="msr" style="font-size:17px; color:' + m[1] + ';">' + m[0] + '</span>' +
-      '<span style="color:var(--tx);">' + esc(c.label) + '</span>' +
-      '<span style="margin-left:auto; font-size:12.5px; font-weight:600; color:' + m[1] + ';">' + esc(c.detail) + '</span></div>';
+    return '<div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--border);">' +
+      '<span class="msr" style="font-size:18px; color:' + m[1] + ';">' + m[0] + '</span>' +
+      '<span style="flex:1; color:var(--tx); line-height:1.4;">' + esc(c.label) + '</span>' +
+      '<span style="font-size:13px; font-weight:600; color:' + m[1] + '; text-align:right;">' + esc(c.detail) + '</span></div>';
   }).join('');
   card.innerHTML =
     '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
-      '<h2 style="font-size:16px;">Store locator y store pages</h2>' +
-      '<a href="' + safeHref(report.root_url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:4px; font-size:12.5px; font-weight:600;">' + esc(host) + '<span class="msr" style="font-size:13px;">open_in_new</span></a>' +
+      '<span class="card-title">Store locator y store pages</span>' +
+      '<a href="' + safeHref(report.root_url) + '" target="_blank" rel="noopener" class="muted" style="font-size:13px;">' + esc(host) + '</a>' +
       '<span style="margin-left:auto;">' + badge + '</span></div>' +
-    '<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:8px 20px;">' + checks + '</div>';
+    '<div style="display:flex; flex-direction:column;">' + checks + '</div>' +
+    '<div style="display:flex; gap:8px; align-items:center;">' +
+      '<span class="msr" style="font-size:16px; color:var(--tx-3);">edit_note</span>' +
+      '<input id="loc-comment" value="' + esc(officialCommentEdit) + '" placeholder="Nota sobre el store locator para el informe (opcional)…" oninput="officialCommentEdit=this.value" ' +
+        'style="flex:1; border:1px dashed var(--border-2); border-radius:8px; padding:8px 12px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
+      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">Guardar nota</button></div>';
+}
+
+/* ── Guardado de comentarios (persisten en el histórico) ── */
+function saveEdits(payload) {
+  if (!lastAuditId) return Promise.resolve(false);
+  return fetch('/audits/' + lastAuditId + '/edits', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+  }).then(function(r) { return r.ok; }).catch(function() { return false; });
+}
+function flashBtn(btn, okText) {
+  if (!btn) return; var prev = btn.textContent; btn.textContent = okText; btn.disabled = true;
+  setTimeout(function() { btn.textContent = prev; btn.disabled = false; }, 1500);
+}
+function saveOfficialComment() {
+  var btn = document.getElementById('loc-comment-btn');
+  saveEdits({ official_comment: officialCommentEdit }).then(function(ok) {
+    flashBtn(btn, ok ? 'Guardada ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+  });
+}
+function saveVenueComment(id, btn) {
+  var val = (id in commentEdits) ? commentEdits[id] : '';
+  saveEdits({ comments: (function() { var o = {}; o[id] = val; return o; })() }).then(function(ok) {
+    flashBtn(btn, ok ? 'Guardado ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+  });
+}
+function clearVenueComment(id) {
+  commentEdits[id] = '';
+  saveEdits({ comments: (function() { var o = {}; o[id] = ''; return o; })() });
+  renderVenues();
 }
 
 function renderLLM(vis) {
@@ -531,23 +677,23 @@ function renderLLM(vis) {
   var ratio = checks ? hits / checks : 0;
   var col = ratio === 0 ? ['var(--bad)', 'var(--bad-soft)'] : (ratio < 0.5 ? ['var(--warn)', 'var(--warn-soft)'] : ['var(--ok)', 'var(--ok-soft)']);
   var others = ['Claude', 'Gemini', 'Copilot'].map(function(n) {
-    return '<span style="display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border-2); border-radius:999px; padding:4px 11px; font-weight:600; color:var(--tx-3);"><span class="msr" style="font-size:14px;">add</span>' + n + '</span>';
+    return '<span style="background:var(--surface-2); color:var(--tx-3); border-radius:999px; padding:4px 12px;">' + n + '</span>';
   }).join('');
   card.innerHTML =
-    '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
-      '<h2 style="font-size:16px;">Visibilidad en IA · Visibility Index</h2>' +
-      '<span class="muted" style="font-size:12.5px;">' + vis.venues_checked + ' sedes · ' + vis.runs + ' repeticiones por sede</span>' +
-      '<span class="badge-cap" style="margin-left:auto; color:' + col[0] + '; background:' + col[1] + ';">Aparece en ' + hits + ' de ' + checks + ' comprobaciones</span></div>' +
-    '<div style="display:flex; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:13px;">' +
-      '<span class="msr" style="font-size:16px; color:var(--tx-3);">chat</span>' +
-      '<span style="color:var(--tx); font-style:italic;">"' + esc(vis.prompt_template || '') + '"</span>' +
-      '<span class="muted" style="margin-left:auto; font-size:12px;">categoría del perfil de Google + zona · resultado por sede en su fila (chip IA)</span></div>' +
-    '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12.5px; color:var(--tx-3);">' +
-      '<span style="display:inline-flex; align-items:center; gap:5px; border:1px solid var(--acc); background:var(--acc-soft); color:var(--acc); border-radius:999px; padding:4px 11px; font-weight:600;"><span class="msr" style="font-size:14px;">check</span>ChatGPT · auditado</span>' +
-      others + '<span>también auditables bajo demanda</span></div>' +
-    '<div style="display:flex; gap:8px; align-items:flex-start; background:var(--acc-soft); border-radius:8px; padding:10px 12px; font-size:12.5px; color:var(--tx-2); line-height:1.45;">' +
-      '<span class="msr" style="font-size:15px; color:var(--acc); margin-top:1px;">info</span>' +
-      '<span>Esto es solo una muestra. El <strong style="color:var(--tx);">Visibility Index</strong> completo se basa en decenas de prompts y repeticiones por sede y categoría, para medir consistencia y obtener un resultado determinista.</span></div>';
+    '<div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">' +
+      '<span class="card-title">Visibilidad en IA · Visibility Index</span>' +
+      '<span class="muted" style="font-size:13px;">' + vis.venues_checked + ' sedes · ' + vis.runs + ' repeticiones por sede</span></div>' +
+    '<div style="align-self:flex-start;"><span class="badge-cap" style="color:' + col[0] + '; background:' + col[1] + ';">Aparece en ' + hits + ' de ' + checks + ' comprobaciones</span></div>' +
+    '<div style="display:flex; align-items:flex-start; gap:10px; background:var(--code-bg); border-radius:10px; padding:12px 14px;">' +
+      '<span class="msr" style="font-size:18px; color:var(--tx-3); margin-top:1px;">chat</span>' +
+      '<div><div style="font-weight:600; color:var(--tx);">"' + esc(vis.prompt_template || '') + '"</div>' +
+      '<div class="muted" style="font-size:12px; margin-top:2px;">categoría del perfil de Google + zona · resultado por sede en su fila (chip IA)</div></div></div>' +
+    '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px;">' +
+      '<span style="display:inline-flex; align-items:center; gap:6px; background:var(--acc-soft); color:var(--acc); border:1px solid var(--acc); border-radius:999px; padding:4px 12px; font-weight:600;"><span class="msr" style="font-size:15px;">smart_toy</span>ChatGPT · auditado</span>' +
+      others + '<span class="muted" style="font-size:12px;">también auditables bajo demanda</span></div>' +
+    '<div style="display:flex; gap:8px; align-items:flex-start; color:var(--tx-3); font-size:12px; line-height:1.5; margin-top:auto;">' +
+      '<span class="msr" style="font-size:16px; color:var(--faint); margin-top:1px;">info</span>' +
+      '<span>Esto es solo una muestra. El Visibility Index completo se basa en decenas de prompts y repeticiones por sede y categoría, para medir consistencia y obtener un resultado determinista.</span></div>';
 }
 
 function platHref(det, source) { return (det && det[source] && det[source].url) || '#'; }
@@ -585,7 +731,7 @@ function renderVenues() {
   var total = (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('google') !== -1; }).length;
   document.getElementById('venues-subtitle').textContent = total + ' con ficha en Google · de peor a mejor · clic en una fila para el detalle';
   document.getElementById('venues-body').innerHTML = rows.map(renderVenueRow).join('') ||
-    '<div class="muted" style="padding:16px 18px;">Sin sedes que coincidan.</div>';
+    '<div class="muted" style="padding:16px 24px;">Sin sedes que coincidan.</div>';
 }
 
 function renderVenueRow(c) {
@@ -601,21 +747,21 @@ function renderVenueRow(c) {
     var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
     var title = SOURCE_LABEL[p[0]] + (stt === 'ok' ? ' — correcto' : stt === 'issue' ? ' — con errores' : ' — no encontrada');
     return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="' + esc(title) + '" ' +
-      'style="width:34px; height:30px; border-radius:8px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
+      'style="width:30px; height:28px; border-radius:7px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
   }).join('');
   pills += llmPill(vm.llm_visibility);
 
   var html =
     '<div class="row-sep" style="opacity:' + (discarded ? .45 : 1) + ';">' +
-      '<div onclick="toggleVenue(\'' + esc(c.cluster_id) + '\')" style="display:grid; grid-template-columns:56px minmax(200px,1.2fr) minmax(170px,1fr) 128px 190px 76px; gap:14px; padding:13px 18px; align-items:center; cursor:pointer; background:' + (open ? 'var(--surface-2)' : 'transparent') + ';">' +
-        '<span class="pill" style="background:' + col[1] + '; color:' + col[0] + ';">' + (vm.score == null ? '—' : vm.score) + '</span>' +
-        '<div><div style="font-weight:600; color:var(--tx); font-size:13.5px;">' + esc(c.canonical_label) + '</div>' +
-          '<div class="muted" style="font-size:12px; margin-top:1px;">' + esc(c.canonical_address || '') + '</div></div>' +
-        '<div style="font-size:13px; color:var(--tx-2);">' + esc(vm.issue_summary || 'Sin problemas detectados') +
+      '<div onclick="toggleVenue(\'' + esc(c.cluster_id) + '\')" style="display:grid; grid-template-columns:70px minmax(200px,1.2fr) minmax(170px,1fr) 150px 130px 76px; gap:14px; padding:14px 24px; align-items:start; cursor:pointer; background:' + (open ? 'var(--row-hover)' : 'transparent') + ';">' +
+        '<span style="display:inline-grid; place-items:center; width:40px; height:40px; border-radius:10px; font-weight:700; font-size:15px; background:' + col[1] + '; color:' + col[0] + ';">' + (vm.score == null ? '—' : vm.score) + '</span>' +
+        '<div><div style="font-weight:600; color:var(--tx);">' + esc(c.canonical_label) + '</div>' +
+          '<div class="muted" style="font-size:13px; margin-top:2px;">' + esc(c.canonical_address || '') + '</div></div>' +
+        '<div style="font-size:13px; color:var(--tx); line-height:1.45;">' + esc(vm.issue_summary || 'Sin problemas detectados') +
           (note ? '<div style="display:flex; align-items:center; gap:5px; margin-top:3px; font-size:12px; color:var(--acc);"><span class="msr" style="font-size:14px;">edit_note</span>' + esc(note) + '</div>' : '') + '</div>' +
-        '<div style="font-size:12.5px;"><div style="display:flex; align-items:center; gap:4px;"><span class="msr" style="font-size:15px; color:' + ratColor + ';">star</span>' +
-          '<span style="font-weight:700; color:' + ratColor + ';">' + (vm.rating == null ? '—' : vm.rating) + '</span><span class="muted">· ' + fmtNum(vm.review_count) + '</span></div>' +
-          '<div class="muted" style="margin-top:2px;">' + reviewRateDisplay(vm.review_rate_3m) + ' en 3m · ' + replyRateDisplay(vm.reply_rate_3m) + ' resp.</div></div>' +
+        '<div style="font-size:13px; white-space:nowrap;"><div style="display:flex; align-items:center; gap:4px;"><span class="msr" style="font-size:16px; color:' + ratColor + ';">star</span>' +
+          '<strong style="color:' + ratColor + ';">' + (vm.rating == null ? '—' : vm.rating) + '</strong><span class="muted">· ' + fmtNum(vm.review_count) + '</span></div>' +
+          '<div class="muted" style="margin-top:4px;">' + reviewRateDisplay(vm.review_rate_3m) + ' en 3m · ' + replyRateDisplay(vm.reply_rate_3m) + ' resp.</div></div>' +
         '<div style="display:flex; gap:5px;">' + pills + '</div>' +
         '<div style="display:flex; gap:4px; justify-content:flex-end;">' +
           '<button onclick="event.stopPropagation(); toggleDiscard(\'' + esc(c.cluster_id) + '\')" title="' + (discarded ? 'Reincluir' : 'Excluir del informe') + '" style="width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--tx-3); cursor:pointer; display:grid; place-items:center;"><span class="msr" style="font-size:16px;">' + (discarded ? 'undo' : 'close') + '</span></button>' +
@@ -629,42 +775,40 @@ function renderVenueRow(c) {
 
 var DETAIL_FIELDS = [['name', 'Nombre'], ['phone', 'Teléfono'], ['website', 'Web'], ['opening_hours', 'Horario']];
 function cellStyle(verdict) {
-  // ref (google), ok, bad, na
   if (verdict === 'ref') return ['var(--acc-soft)', 'var(--tx-2)', '', ''];
   if (verdict === 'match') return ['transparent', 'var(--tx-2)', 'check', 'var(--ok)'];
   if (verdict === 'conflict' || verdict === 'sin_dato') return ['var(--bad-soft)', 'var(--bad)', 'priority_high', 'var(--bad)'];
-  return ['transparent', 'var(--tx-3)', '', '']; // missing / na
+  return ['transparent', 'var(--tx-3)', '', ''];
 }
 function renderVenueDetail(c) {
   var vm = c.venue_metrics || {};
   var acc = { name: vm.accuracy_name, phone: vm.accuracy_phone, website: vm.accuracy_website, opening_hours: vm.accuracy_hours };
   var det = vm.presence_detail || {};
 
-  var head = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--tx-3); border-bottom:1px solid var(--border);">' +
+  var head = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); border-bottom:1px solid var(--border);">' +
     '<span style="padding:8px 12px;"></span><span style="padding:8px 12px; color:var(--acc);">Google · ref.</span>' +
     '<span style="padding:8px 12px;">Apple</span><span style="padding:8px 12px;">Bing</span><span style="padding:8px 12px;">Web oficial</span></div>';
 
   var body = DETAIL_FIELDS.map(function(f) {
     var m = acc[f[0]] || { breakdown: {}, anchor_value: null };
+    var isHours = f[0] === 'opening_hours';
     var cells = [];
-    cells.push(detailCell(m.anchor_value || '—', 'ref'));
+    cells.push(detailCell(isHours ? formatHours(m.anchor_value) : (m.anchor_value || '—'), 'ref'));
     ['apple', 'azure', 'official'].forEach(function(s) {
       var b = (m.breakdown || {})[s] || { verdict: 'na', value: null };
       var val = b.value || (b.verdict === 'sin_dato' ? 'Sin dato' : (b.verdict === 'missing' ? 'No encontrada' : (b.verdict === 'na' ? 'N/D' : '—')));
-      cells.push(detailCell(val, b.verdict));
+      cells.push(detailCell(isHours && b.value ? formatHours(b.value) : val, b.verdict));
     });
     return '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
       '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + f[1] + '</span>' + cells.join('') + '</div>';
   }).join('');
 
-  // Links row (action links de Google)
   var al = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
   var linksRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
     '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Links</span>' +
     detailCell(al, al === 'Ninguno detectado' ? 'conflict' : 'ref') +
     detailCell('N/D', 'na') + detailCell('—', 'na') + detailCell('—', 'na') + '</div>';
 
-  // Ficha row (enlaces por fuente)
   var fichaCells = ['google', 'apple', 'azure', 'official'].map(function(s) {
     var url = (det[s] && det[s].url) || '';
     var present = det[s] && det[s].present;
@@ -675,14 +819,66 @@ function renderVenueDetail(c) {
     '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Ficha</span>' + fichaCells + '</div>';
 
   var cur = comment(c);
-  var commentBox = '<div style="display:flex; gap:10px; margin-top:12px; align-items:center;">' +
-    '<input id="cmt-' + esc(c.cluster_id) + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
-    'oninput="setComment(\'' + esc(c.cluster_id) + '\', this.value)" onclick="event.stopPropagation();" ' +
-    'style="flex:1; border:1px solid var(--border-2); border-radius:8px; padding:8px 12px; background:var(--surface); color:var(--tx); font-size:13px; outline:none;"></div>';
+  var cid = esc(c.cluster_id);
+  var commentBox = '<div style="display:flex; gap:8px; align-items:center; margin-top:12px;">' +
+    '<input id="cmt-' + cid + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
+      'oninput="setComment(\'' + cid + '\', this.value)" onclick="event.stopPropagation();" ' +
+      'style="flex:1; box-sizing:border-box; border:1px dashed var(--border-2); border-radius:10px; padding:10px 14px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
+    '<button class="btn-ghost" onclick="event.stopPropagation(); saveVenueComment(\'' + cid + '\', this)">Guardar</button>' +
+    '<button class="btn-ghost" title="Borrar comentario" onclick="event.stopPropagation(); clearVenueComment(\'' + cid + '\')" style="padding:8px 10px;"><span class="msr" style="font-size:16px;">delete</span></button>' +
+    '</div>';
 
-  return '<div style="padding:16px 18px 18px; background:var(--surface-2); border-top:1px solid var(--border);">' +
-    '<div style="background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden;">' + head + body + linksRow + fichaRow + '</div>' +
-    llmDetailBlock(vm.llm_visibility) + commentBox + '</div>';
+  return '<div style="padding:0 24px 20px; background:var(--row-hover); border-top:1px solid var(--border);">' +
+    '<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:4px;">' + head + body + linksRow + fichaRow + '</div>' +
+    llmDetailBlock(vm.llm_visibility) + ondemandBar(c) + commentBox + '</div>';
+}
+/* Botones "analizar bajo demanda" para sedes fuera del top-5 automático.
+   Solo tienen sentido en sedes con ficha de Google. */
+function ondemandBar(c) {
+  var vm = c.venue_metrics || {};
+  var det = vm.presence_detail || {};
+  if (!(det.google && det.google.present) || !lastAuditId) return '';
+  var cid = esc(c.cluster_id);
+  var btns = [];
+  if (!vm.llm_visibility) {
+    btns.push('<button class="btn-ghost" id="odllm-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLLM(\'' + cid + '\', this)">' +
+      '<span class="msr" style="font-size:16px;">smart_toy</span>Analizar visibilidad IA</button>');
+  }
+  var al = vm.action_links_google;
+  if (!al || al.value === 'N/D' || !al.value) {
+    btns.push('<button class="btn-ghost" id="odal-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLinks(\'' + cid + '\', this)">' +
+      '<span class="msr" style="font-size:16px;">link</span>Analizar action links</button>');
+  }
+  if (!btns.length) return '';
+  return '<div style="display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap;">' + btns.join('') + '</div>';
+}
+function _venueCluster(cid) { return (lastResult.audit.clusters || []).find(function(x) { return x.cluster_id === cid; }); }
+function analyzeVenueLLM(cid, btn) {
+  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  var orig = btn.innerHTML; btn.disabled = true;
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando IA…';
+  var cat = ((lastResult.audit.summary || {}).llm_visibility || {}).category || '';
+  fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/llm', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: cat })
+  }).then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
+    .then(function(d) {
+      var c = _venueCluster(cid); if (c) { c.venue_metrics = c.venue_metrics || {}; c.venue_metrics.llm_visibility = d.llm_visibility; }
+      lastResult.audit.summary = lastResult.audit.summary || {}; lastResult.audit.summary.llm_visibility = d.summary_llm;
+      renderResults();
+    })
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudo analizar la visibilidad en IA: ' + err.message); });
+}
+function analyzeVenueLinks(cid, btn) {
+  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  var orig = btn.innerHTML; btn.disabled = true;
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando links…';
+  fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/action-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
+    .then(function(d) {
+      var c = _venueCluster(cid); if (c) { c.venue_metrics = c.venue_metrics || {}; c.venue_metrics.action_links_google = d.action_links_google; }
+      renderVenues();
+    })
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudieron analizar los action links: ' + err.message); });
 }
 function llmDetailBlock(v) {
   if (!v || !v.runs) return '';
@@ -695,16 +891,18 @@ function llmDetailBlock(v) {
     return '<span title="Repetición ' + (i + 1) + ': ' + tip + '" style="min-width:26px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10.5px; font-weight:700; padding:0 5px; background:' + bg + '; color:' + color + ';">' + label + '</span>';
   }).join('');
   var hits = v.hits || 0, total = v.runs.length;
-  return '<div style="display:flex; align-items:center; gap:8px; margin-top:10px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-size:12.5px; flex-wrap:wrap;">' +
-    '<span class="msr" style="font-size:16px; color:var(--acc);">smart_toy</span><strong style="color:var(--tx);">ChatGPT</strong>' +
+  return '<div style="display:flex; align-items:center; gap:8px; margin-top:12px; background:var(--acc-soft); border:1px solid var(--acc); border-radius:10px; padding:10px 14px; font-size:12.5px; flex-wrap:wrap;">' +
+    '<span class="msr" style="font-size:18px; color:var(--acc);">smart_toy</span><strong style="color:var(--tx);">ChatGPT</strong>' +
     '<span style="font-style:italic; color:var(--tx-2);">"' + esc(v.prompt || '') + '"</span>' +
     '<span style="display:flex; gap:4px;">' + runs + '</span>' +
-    '<span class="muted">aparece en ' + hits + ' de ' + total + ' repeticiones</span></div>';
+    '<span class="muted" style="margin-left:auto;">aparece en ' + hits + ' de ' + total + ' repeticiones</span></div>';
 }
 function detailCell(value, verdict) {
   var s = cellStyle(verdict);
-  var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + ';">' + s[2] + '</span>' : '';
-  return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:center; gap:5px;">' + icon + esc(value) + '</span>';
+  var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + '; flex-shrink:0; margin-top:1px;">' + s[2] + '</span>' : '';
+  // min-width:0 + overflow-wrap: sin esto una URL larga en la fila Web ensancha
+  // la columna 1fr y desalinea toda la rejilla.
+  return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:flex-start; gap:5px; min-width:0; overflow-wrap:anywhere; word-break:break-word;">' + icon + '<span>' + esc(value) + '</span></span>';
 }
 
 function toggleVenue(id) { openVenueId = (openVenueId === id) ? null : id; renderVenues(); }
@@ -735,28 +933,22 @@ function renderGhost() {
     var vm = c.venue_metrics || {}; var st = vm.platform_state || {}; var det = vm.presence_detail || {};
     var pills = PLAT.map(function(p) {
       var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
-      return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" title="' + esc(SOURCE_LABEL[p[0]]) + '" style="width:34px; height:28px; border-radius:8px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
+      return '<span title="' + esc(SOURCE_LABEL[p[0]]) + '" style="width:22px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10px; font-weight:700; background:' + pc[0] + '; color:' + pc[1] + ';">' + p[1] + '</span>';
     }).join('');
     var included = !deletedClusterIds[c.cluster_id];
-    return '<div style="display:grid; grid-template-columns:1fr 190px 130px; gap:14px; padding:10px 18px; border-top:1px solid var(--border); align-items:center; font-size:12.5px; color:var(--tx-3);">' +
-      '<span><span style="color:var(--tx-2); font-weight:600;">' + esc(c.canonical_label) + '</span> · ' + esc(c.canonical_address || '') + '</span>' +
-      '<div style="display:flex; gap:5px;">' + pills + '</div>' +
-      '<button onclick="toggleDiscard(\'' + esc(c.cluster_id) + '\'); renderGhost();" class="btn-ghost" style="padding:5px 10px; font-size:12px;">' + (included ? 'Incluida ✓' : 'Incluir en informe') + '</button></div>';
+    return '<div style="display:flex; align-items:center; gap:12px; padding:10px 24px; border-top:1px solid var(--border); font-size:13px;">' +
+      '<span style="flex:1;"><strong style="color:var(--tx);">' + esc(c.canonical_label) + '</strong> <span class="muted">· ' + esc(c.canonical_address || '') + '</span></span>' +
+      '<span style="display:flex; gap:5px;">' + pills + '</span>' +
+      '<button onclick="toggleDiscard(\'' + esc(c.cluster_id) + '\'); renderGhost();" style="background:' + (included ? 'var(--ok-soft)' : 'none') + '; color:' + (included ? 'var(--ok)' : 'var(--acc)') + '; border:1px solid ' + (included ? 'transparent' : 'var(--acc)') + '; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;">' + (included ? '✓ Incluida' : 'Incluir en informe') + '</button></div>';
   }).join('');
 }
 function toggleGhost() {
   ghostOpen = !ghostOpen;
   document.getElementById('ghost-body').style.display = ghostOpen ? 'block' : 'none';
-  document.getElementById('ghost-chev').textContent = ghostOpen ? 'expand_less' : 'chevron_right';
-  document.getElementById('ghost-action').textContent = ghostOpen ? 'Ocultar' : 'Revisar';
+  document.getElementById('ghost-action').textContent = ghostOpen ? 'Ocultar' : 'Mostrar';
 }
 
 /* ── Datos crudos por fuente ── */
-function toggleRaw(e) {
-  if (e) e.preventDefault();
-  var card = document.getElementById('raw-card');
-  card.style.display = card.style.display === 'none' ? 'block' : 'none';
-}
 function rawRecordsFor(source) {
   return (lastResult.audit.clusters || []).filter(function(c) { return c.by_source && c.by_source[source]; })
     .map(function(c) { return c.by_source[source]; });
@@ -766,22 +958,22 @@ function renderRawTabs() {
   document.getElementById('raw-tabs').innerHTML = sources.map(function(s) {
     var n = rawRecordsFor(s[0]).length;
     var active = rawTab === s[0];
-    return '<button onclick="rawTab=\'' + s[0] + '\'; renderRawTabs();" class="btn-ghost" style="' + (active ? 'background:var(--acc); color:var(--acc-on); border-color:var(--acc);' : '') + '">' + s[1] + ' <span style="opacity:.7;">' + n + '</span></button>';
+    return '<button onclick="rawTab=\'' + s[0] + '\'; renderRawTabs();" style="background:' + (active ? 'var(--surface-2)' : 'none') + '; border:none; border-radius:8px 8px 0 0; padding:8px 14px; font-size:13px; font-weight:' + (active ? 700 : 500) + '; color:' + (active ? 'var(--tx)' : 'var(--tx-3)') + '; cursor:pointer;">' + s[1] + ' <span style="opacity:.6; font-weight:400;">' + n + '</span></button>';
   }).join('');
   renderRawBody();
 }
 function renderRawBody() {
   var recs = rawRecordsFor(rawTab);
-  if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:16px;">Sin registros.</div>'; return; }
+  if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:24px 0; text-align:center;">No se aportaron datos de esta fuente en esta auditoría.</div>'; return; }
   var head = ['Nombre', 'Dirección', 'Teléfono', 'Web', 'Rating', 'Reseñas', 'Horarios', 'Ficha'];
   var rows = recs.map(function(r) {
-    var hours = (r.opening_hours && r.opening_hours.length) ? r.opening_hours.join('; ') : '—';
+    var hours = formatHours(r.opening_hours);
     var web = r.website_display || r.website;
     return '<tr style="border-top:1px solid var(--border);">' +
       td(r.name || '—', 'font-weight:600; color:var(--tx);') +
       td(r.formatted_address || '—') +
       td(r.phone_display || r.phone || '—') +
-      td(web ? '<a href="' + safeHref(web) + '" target="_blank" rel="noopener">' + esc(web) + '</a>' : '—', '', true) +
+      td(web ? '<a href="' + safeHref(web) + '" target="_blank" rel="noopener">' + esc(web) + '</a>' : '—', 'word-break:break-all; max-width:220px;', true) +
       td(r.rating == null ? '—' : r.rating) +
       td(fmtNum(r.review_count)) +
       td(hours) +
@@ -789,9 +981,9 @@ function renderRawBody() {
       '</tr>';
   }).join('');
   document.getElementById('raw-body').innerHTML =
-    '<table><thead><tr>' + head.map(function(h) { return '<th style="text-align:left; padding:8px 12px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--tx-3); font-weight:600;">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    '<table><thead><tr>' + head.map(function(h) { return '<th style="text-align:left; padding:8px 12px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:600; border-bottom:1px solid var(--border);">' + h + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
 }
-function td(html, style, isHtml) { return '<td style="padding:8px 12px; font-size:12.5px; color:var(--tx-2); ' + (style || '') + '">' + (isHtml ? html : esc(html)) + '</td>'; }
+function td(html, style, isHtml) { return '<td style="padding:9px 12px; font-size:12.5px; color:var(--tx-2); ' + (style || '') + '">' + (isHtml ? html : esc(html)) + '</td>'; }
 
 /* ── PDF ── */
 function exportPDF() {
@@ -800,11 +992,12 @@ function exportPDF() {
   btn.disabled = true; btn.innerHTML = '<span class="msr spin" style="font-size:18px;">progress_activity</span>Generando…';
   var payload = {
     name: lastQuery.name, city: lastQuery.city,
-    official_comment: document.getElementById('official-comment').value.trim(),
+    official_comment: officialCommentEdit,
     audit: lastResult.audit,
     official_errors: lastResult.official_errors || [],
     official_findings: lastResult.official_findings || [],
     site_analysis: lastResult.site_analysis || [],
+    locator_report: lastResult.locator_report || null,
     deleted_cluster_ids: Object.keys(deletedClusterIds),
     row_comments: commentEdits
   };
@@ -816,7 +1009,7 @@ function exportPDF() {
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     })
     .catch(function(err) { alert('Error generando el PDF: ' + err.message); })
-    .finally(function() { btn.disabled = false; btn.innerHTML = '<span class="msr" style="font-size:18px;">download</span>Exportar informe PDF'; });
+    .finally(function() { btn.disabled = false; btn.innerHTML = '<span class="msr" style="font-size:18px;">picture_as_pdf</span>Exportar informe PDF'; });
 }
 
 /* ── Reabrir del histórico ── */
@@ -826,6 +1019,7 @@ function openAudit(id) {
       lastResult = rec.snapshot || {};
       lastResult._created_rel = relTime(rec.created_at);
       lastQuery = { name: rec.name, city: rec.city };
+      lastAuditId = rec.id;
       deletedClusterIds = {}; commentEdits = {}; openVenueId = null;
       (lastResult.audit && lastResult.audit.clusters || []).forEach(function(c) {
         if ((c.sources_present || []).indexOf('google') === -1) deletedClusterIds[c.cluster_id] = true;
@@ -839,6 +1033,7 @@ function openAudit(id) {
 /* ── init ── */
 document.getElementById('prospect-name').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
 document.getElementById('prospect-city').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
+loadPricing();
 showScreen('input');
 </script>
 </body>

@@ -84,6 +84,19 @@ def recent(limit=10):
     ]
 
 
+def delete(audit_id):
+    """Elimina una auditoría del histórico. Never raises."""
+    if not _enabled():
+        return
+    try:
+        with _lock:
+            conn = _connection()
+            conn.execute('DELETE FROM audits WHERE id = ?', (audit_id,))
+            conn.commit()
+    except Exception:
+        pass
+
+
 def get(audit_id):
     """El snapshot completo de una auditoría (para reabrir Resultados), o None."""
     if not _enabled():
