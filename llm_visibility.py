@@ -213,9 +213,17 @@ def _venue_visibility(prompt, name_q, runs, country, session):
     if cached is not None:
         return {**cached, '_calls': 0}
 
+    # Las `runs` repeticiones del mismo prompt son independientes → en paralelo.
+    # Junto con el pool de sedes de fetch_llm_visibility, las N sedes × R runs
+    # corren a la vez (acotado por el plan de Cloro, ~100 concurrentes).
+    def _one(_):
+        return _get_result(session, prompt, country)
+
+    with ThreadPoolExecutor(max_workers=max(1, runs)) as pool:
+        raw_results = list(pool.map(_one, range(runs)))
+
     run_results, calls = [], 0
-    for _ in range(runs):
-        result = _get_result(session, prompt, country)
+    for result in raw_results:
         calls += 1
         run_results.append(_detect(result, name_q) if result is not None
                            else {'appears': None, 'position': None, 'label': None})

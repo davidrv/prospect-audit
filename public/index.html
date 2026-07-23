@@ -830,7 +830,55 @@ function renderVenueDetail(c) {
 
   return '<div style="padding:0 24px 20px; background:var(--row-hover); border-top:1px solid var(--border);">' +
     '<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:4px;">' + head + body + linksRow + fichaRow + '</div>' +
-    llmDetailBlock(vm.llm_visibility) + commentBox + '</div>';
+    llmDetailBlock(vm.llm_visibility) + ondemandBar(c) + commentBox + '</div>';
+}
+/* Botones "analizar bajo demanda" para sedes fuera del top-5 automático.
+   Solo tienen sentido en sedes con ficha de Google. */
+function ondemandBar(c) {
+  var vm = c.venue_metrics || {};
+  var det = vm.presence_detail || {};
+  if (!(det.google && det.google.present) || !lastAuditId) return '';
+  var cid = esc(c.cluster_id);
+  var btns = [];
+  if (!vm.llm_visibility) {
+    btns.push('<button class="btn-ghost" id="odllm-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLLM(\'' + cid + '\', this)">' +
+      '<span class="msr" style="font-size:16px;">smart_toy</span>Analizar visibilidad IA</button>');
+  }
+  var al = vm.action_links_google;
+  if (!al || al.value === 'N/D' || !al.value) {
+    btns.push('<button class="btn-ghost" id="odal-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLinks(\'' + cid + '\', this)">' +
+      '<span class="msr" style="font-size:16px;">link</span>Analizar action links</button>');
+  }
+  if (!btns.length) return '';
+  return '<div style="display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap;">' + btns.join('') + '</div>';
+}
+function _venueCluster(cid) { return (lastResult.audit.clusters || []).find(function(x) { return x.cluster_id === cid; }); }
+function analyzeVenueLLM(cid, btn) {
+  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  var orig = btn.innerHTML; btn.disabled = true;
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando IA…';
+  var cat = ((lastResult.audit.summary || {}).llm_visibility || {}).category || '';
+  fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/llm', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: cat })
+  }).then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
+    .then(function(d) {
+      var c = _venueCluster(cid); if (c) { c.venue_metrics = c.venue_metrics || {}; c.venue_metrics.llm_visibility = d.llm_visibility; }
+      lastResult.audit.summary = lastResult.audit.summary || {}; lastResult.audit.summary.llm_visibility = d.summary_llm;
+      renderResults();
+    })
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudo analizar la visibilidad en IA: ' + err.message); });
+}
+function analyzeVenueLinks(cid, btn) {
+  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  var orig = btn.innerHTML; btn.disabled = true;
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando links…';
+  fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/action-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
+    .then(function(d) {
+      var c = _venueCluster(cid); if (c) { c.venue_metrics = c.venue_metrics || {}; c.venue_metrics.action_links_google = d.action_links_google; }
+      renderVenues();
+    })
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudieron analizar los action links: ' + err.message); });
 }
 function llmDetailBlock(v) {
   if (!v || !v.runs) return '';
