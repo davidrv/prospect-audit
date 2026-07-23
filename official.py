@@ -271,7 +271,11 @@ def build_locator_report(urls, site_analysis, locations):
                else 'sí') if sitemap['present'] else 'no encontrado'),
     ]
     optimized = all(c['status'] == 'ok' for c in checks)
-    return {'has_data': True, 'root_url': root, 'checks': checks, 'optimized': optimized}
+    # `analyzable` = se pudo acceder al menos a una página del locator. Si no
+    # (todo inaccesible), la UI/PDF muestran "No se puede analizar" en vez de
+    # "No optimizado" (no es que esté mal optimizado, es que no lo pudimos leer).
+    return {'has_data': True, 'root_url': root, 'checks': checks,
+            'optimized': optimized, 'analyzable': bool(reachable)}
 
 
 def _coverage_status(x, n):

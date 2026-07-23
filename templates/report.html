@@ -218,7 +218,12 @@
   {% endif %}
 
   {% if locator_report and locator_report.has_data %}
-  <h3 class="sub" style="margin-top:18px;">Web oficial · store locator</h3>
+  <h3 class="sub" style="margin-top:18px;">Web oficial · store locator
+    {% if locator_report.analyzable == false %}<span class="badge" style="background:var(--surface); color:var(--muted); margin-left:6px;">No se puede analizar</span>{% endif %}
+  </h3>
+  {% if locator_report.analyzable == false %}
+  <p class="narrative">No hemos podido acceder automáticamente al store locator (bloqueo o error de acceso), así que no se ha podido evaluar. Recomendamos aportar un CSV de sedes.</p>
+  {% else %}
   <div class="grid-2">
     {% for c in locator_report.checks %}
     <div class="check"><span class="dot {{ c.status }}"></span>{{ c.label }} — <strong>{{ c.detail }}</strong></div>
@@ -226,6 +231,7 @@
   </div>
   {% if not locator_report.optimized %}
   <p class="narrative" style="margin-top:10px;">Consecuencia: <strong>la web oficial no actúa como fuente de verdad</strong>. Google, Apple, Bing y los asistentes de IA construyen la ficha de cada tienda con datos de terceros, sin que la marca controle el resultado.</p>
+  {% endif %}
   {% endif %}
   {% endif %}
 </section>

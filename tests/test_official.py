@@ -771,3 +771,17 @@ def test_build_locator_report_all_ok(monkeypatch):
     assert by_key['schema_completeness']['status'] == 'ok'
     assert by_key['store_pages_coverage']['status'] == 'ok'  # 1 individual of 1
     assert report['optimized'] is True
+
+
+def test_locator_report_not_analyzable_when_inaccessible(monkeypatch):
+    monkeypatch.setenv('DISABLE_SITEMAP_FETCH', '1')
+    site_analysis = [{'url': 'https://x.es', 'status': 'inaccessible', 'location_count': 0, 'page_type': 'store_page'}]
+    report = official.build_locator_report(['https://x.es'], site_analysis, [])
+    assert report['analyzable'] is False
+
+
+def test_locator_report_analyzable_when_reachable(monkeypatch):
+    monkeypatch.setenv('DISABLE_SITEMAP_FETCH', '1')
+    site_analysis = [{'url': 'https://x.es', 'status': 'no_schema', 'location_count': 3, 'page_type': 'index'}]
+    report = official.build_locator_report(['https://x.es'], site_analysis, [])
+    assert report['analyzable'] is True

@@ -37,6 +37,14 @@ def test_get_missing_returns_none(tmp_path, monkeypatch):
     assert history.get('nope') is None
 
 
+def test_delete_removes_audit(tmp_path, monkeypatch):
+    _fresh_history(tmp_path, monkeypatch)
+    history.save('a', 'A', 'Madrid', 10, 1, {'x': 1})
+    history.delete('a')
+    assert history.get('a') is None
+    assert history.recent() == []
+
+
 def test_disabled_is_noop(tmp_path, monkeypatch):
     monkeypatch.setenv('DISABLE_AUDIT_HISTORY', '1')
     monkeypatch.setenv('AUDIT_HISTORY_PATH', str(tmp_path / 'history.sqlite'))
