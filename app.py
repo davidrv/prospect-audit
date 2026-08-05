@@ -120,6 +120,17 @@ _GOOGLE_MAX_RESULTS = _int_env('GOOGLE_MAX_RESULTS', 25)
 # resto muestra N/D en "Links".
 _ACTION_LINKS_MAX_VENUES = _int_env('GOOGLE_ACTION_LINKS_MAX_VENUES', 5)
 
+# Enriquecimiento de Bing vía SerpApi (engine bing_maps). La BÚSQUEDA (1 llamada
+# por sede con match en Google) da el ypid → enlace a la ficha real + ancla la
+# comparación (tel/web) al perfil correcto (Azure a veces machea el POI
+# equivocado). Las HORAS necesitan una 2ª llamada (detalle por ypid), que solo
+# se pide para las N peores sedes (foco del informe) para acotar coste.
+_BING_SERPAPI_ENABLED = bool(_SERPAPI_KEY) and os.environ.get('DISABLE_BING_SERPAPI', '').strip() != '1'
+_BING_SERPAPI_WORKERS = _int_env('BING_SERPAPI_WORKERS', 5)
+_BING_SERPAPI_NAME_SIM_MIN = _int_env('BING_SERPAPI_NAME_SIM_MIN', 70)
+_BING_SERPAPI_MAX_KM = 3.0          # descarta un match de bing_maps a >3 km de la sede
+_BING_HOURS_MAX_VENUES = _int_env('BING_HOURS_MAX_VENUES', 5)  # sedes que reciben la 2ª llamada (horas)
+
 
 # ── Background jobs (live progress polling) ─────────────────────
 #
@@ -481,12 +492,19 @@ def _build_audit(results, has_official_data, city, progress=None):
     # Enriquecer Apple (SerpApi, de pago) SOLO ahora que sabemos qué POIs
     # machean con Google — antes de comparar campos en inconsistencies/metrics.
     _enrich_apple_clusters(clusters, progress=progress)
+    _enrich_bing_clusters(clusters, city, progress=progress)  # ypid + tel/web del perfil real
     inconsistencies.detect_inconsistencies(clusters)
     reputation.compute_reputation(clusters)
     venue_metrics.compute_venue_metrics(clusters, has_official_data, city)
     # Action links: solo para las N peores sedes (ya ordenadas por score) —
     # ahorra SerpApi vs pedirlos para todas. Va después del sort.
     _attach_action_links_worst(clusters, progress=progress)
+    # Horas de Bing: 2ª llamada SerpApi solo para las peores sedes. Como cambian
+    # la comparación de horario, se refrescan flags y métricas (ambos idempotentes;
+    # compute_venue_metrics re-lee scraped_action_links, así que no se pierden).
+    if _attach_bing_hours_worst(clusters, city, progress=progress):
+        inconsistencies.detect_inconsistencies(clusters)
+        venue_metrics.compute_venue_metrics(clusters, has_official_data, city)
 
     return {'clusters': clusters, 'summary': _audit_summary(clusters)}
 
@@ -597,6 +615,214 @@ def _enrich_apple_record(rec):
     if match.get('place_id'):
         raw['apple_place_id'] = match.get('place_id')
         raw['apple_provider_id'] = match.get('provider_id')
+
+
+# ── Bing enrichment (SerpApi bing_maps) ─────────────────────────
+
+def _haversine_km(lat1, lng1, lat2, lng2):
+    import math
+    radius = 6371.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi, dlmb = math.radians(lat2 - lat1), math.radians(lng2 - lng1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dlmb / 2) ** 2
+    return 2 * radius * math.asin(math.sqrt(a))
+
+
+def _serpapi_bing_lookup(name, city, lat, lng):
+    """Busca en SerpApi bing_maps la ficha cuyo nombre coincide con el prospecto
+    y que está MÁS CERCA de (lat,lng) —dentro de `_BING_SERPAPI_MAX_KM`—, para
+    no anclar en el POI equivocado. Devuelve el item (place_id=ypid, phone,
+    website, type, gps_coordinates) o None. Cacheado por nombre+coords (incl.
+    negativos). Best-effort: cualquier fallo/miss → None."""
+    if not _BING_SERPAPI_ENABLED or lat is None or lng is None or not name:
+        return None
+    cache_key = f'serpapi_bing:{normalize.name_norm(name)}:{lat:.5f}:{lng:.5f}'
+    hit = cache.get(cache_key)
+    if hit is not None:
+        return hit.get('match')
+
+    try:
+        r = requests.get('https://serpapi.com/search', params={
+            'engine': 'bing_maps', 'q': f'{name} {city}'.strip(), 'api_key': _SERPAPI_KEY,
+        }, timeout=15)
+        if not r.ok:
+            app.logger.warning(f'SerpApi Bing {r.status_code}: {r.text[:150]}')
+            return None  # transitorio → no cachear, reintentar en la próxima
+        results = r.json().get('local_results') or []
+        # bing_maps anida los sitios en local_results[0]['items']
+        items = (results[0].get('items') if results and isinstance(results[0], dict)
+                 and 'items' in results[0] else results) or []
+    except Exception as e:
+        app.logger.warning(f'SerpApi Bing lookup failed for {name!r}: {e}')
+        return None
+
+    query_norm = normalize.name_norm(name)
+    best, best_km = None, None
+    for it in items:
+        if fuzz.token_set_ratio(query_norm, normalize.name_norm(it.get('title', ''))) < _BING_SERPAPI_NAME_SIM_MIN:
+            continue
+        gps = it.get('gps_coordinates') or {}
+        ilat, ilng = gps.get('latitude'), gps.get('longitude')
+        if ilat is None or ilng is None:
+            continue
+        km = _haversine_km(lat, lng, ilat, ilng)
+        if km <= _BING_SERPAPI_MAX_KM and (best_km is None or km < best_km):
+            best, best_km = it, km
+    cache.set(cache_key, {'match': best})  # cachea acierto Y 'no match' limpio
+    return best
+
+
+def _serpapi_bing_details(ypid):
+    """Detalle de una ficha Bing (SerpApi bing_maps por ypid) → dict de horas
+    ({'Monday': ['10 AM - 10 PM'], …}) o None. Cacheado por ypid. Best-effort."""
+    if not _BING_SERPAPI_ENABLED or not ypid:
+        return None
+    cache_key = f'serpapi_bing_details:{ypid}'
+    hit = cache.get(cache_key)
+    if hit is not None:
+        return hit.get('hours')
+    try:
+        r = requests.get('https://serpapi.com/search', params={
+            'engine': 'bing_maps', 'place_id': ypid, 'api_key': _SERPAPI_KEY,
+        }, timeout=15)
+        if not r.ok:
+            app.logger.warning(f'SerpApi Bing details {r.status_code}: {r.text[:150]}')
+            return None
+        pr = r.json().get('place_results') or {}
+        if isinstance(pr, list):
+            pr = pr[0] if pr else {}
+        hours = pr.get('hours')
+    except Exception as e:
+        app.logger.warning(f'SerpApi Bing details failed for {ypid}: {e}')
+        return None
+    cache.set(cache_key, {'hours': hours})
+    return hours
+
+
+def _bing_hours_to_list(hours):
+    """Convierte las horas de SerpApi bing_maps ({'Monday': ['10 AM - 10 PM'], …})
+    a la lista normalizada ['Lunes: 10:00–22:00', …] que usa el comparador.
+    'Closed' se omite; 'Open 24 hours' → 00:00–24:00."""
+    if not isinstance(hours, dict):
+        return None
+
+    def _t(s):
+        s = s.strip()
+        for fmt in ('%I:%M %p', '%I %p', '%H:%M'):
+            try:
+                return datetime.datetime.strptime(s, fmt).strftime('%H:%M')
+            except ValueError:
+                pass
+        return None
+
+    out = []
+    for day, ranges in hours.items():
+        idx = normalize._day_index(str(day)) if day else None
+        if idx is None or not ranges:
+            continue
+        parts = []
+        for rg in ranges:
+            rg, low = str(rg), str(rg).lower()
+            if 'closed' in low:
+                continue
+            if '24' in rg and 'hour' in low:
+                parts.append('00:00–24:00')
+                continue
+            span = re.split(r'\s*[–—-]\s*', rg, maxsplit=1)
+            if len(span) == 2 and _t(span[0]) and _t(span[1]):
+                parts.append(f'{_t(span[0])}–{_t(span[1])}')
+        if parts:
+            out.append((idx, f'{_DAY_NAMES_ES[idx]}: {", ".join(parts)}'))
+    out.sort(key=lambda pair: pair[0])
+    return [line for _, line in out] or None
+
+
+def _enrich_bing_record(rec, city):
+    """Fija el enlace a la ficha real de Bing (ypid) y ancla tel/web al perfil
+    correcto (SerpApi bing_maps). Los datos de SerpApi ganan a los de Azure,
+    que a veces machea el POI equivocado. Best-effort."""
+    match = _serpapi_bing_lookup(rec.get('name'), city, rec.get('lat'), rec.get('lng'))
+    if not match:
+        return
+    ypid = match.get('place_id')
+    if ypid:
+        rec['verify_url'] = normalize.bing_place_url(ypid)
+        (rec.setdefault('raw', {}))['bing_ypid'] = ypid
+    if match.get('phone'):
+        rec['phone_display'] = match['phone']
+        rec['phone'] = normalize.phone_norm(match['phone'])
+    if match.get('website'):
+        rec['website_display'] = match['website']
+        rec['website'] = normalize.website_norm(match['website'])
+    if not rec.get('category') and match.get('type'):
+        rec['category'] = match['type']
+    rec.setdefault('raw', {})['serpapi_bing_enriched'] = True
+
+
+def _enrich_bing_clusters(clusters, city, progress=None):
+    """Enriquece Bing vía SerpApi (1 búsqueda por sede) SOLO las sedes con match
+    en Google — enlace real de ficha + comparación anclada al perfil correcto.
+    Best-effort, threaded. No-op sin key."""
+    if not _BING_SERPAPI_ENABLED:
+        return
+    targets = [c['by_source']['azure'] for c in clusters
+               if 'google' in c['sources_present'] and 'azure' in c['by_source']]
+    if not targets:
+        return
+
+    def emit(msg):
+        app.logger.info(msg)
+        if progress:
+            progress(msg)
+
+    total = len(targets)
+    emit(f'Enriqueciendo Bing vía SerpApi (solo sedes con match en Google): 0/{total}…')
+    done, lock = 0, threading.Lock()
+
+    def _one(rec):
+        nonlocal done
+        _enrich_bing_record(rec, city)
+        with lock:
+            done += 1
+            if done == total or done % 5 == 0:
+                emit(f'Enriqueciendo Bing vía SerpApi: {done}/{total}…')
+
+    with ThreadPoolExecutor(max_workers=_BING_SERPAPI_WORKERS) as pool:
+        list(pool.map(_one, targets))
+
+
+def _attach_bing_hours_worst(clusters, city, progress=None):
+    """2ª llamada SerpApi (detalle por ypid) SOLO para las `_BING_HOURS_MAX_VENUES`
+    peores sedes con ficha Bing enriquecida → horas reales de Bing. Devuelve el
+    nº de sedes con horas nuevas (para recomputar comparación/flags). Best-effort."""
+    if not _BING_SERPAPI_ENABLED:
+        return 0
+    worst = [c for c in clusters
+             if 'google' in c['sources_present'] and 'azure' in c['by_source']
+             and (c['by_source']['azure'].get('raw') or {}).get('bing_ypid')][:_BING_HOURS_MAX_VENUES]
+    if not worst:
+        return 0
+
+    def emit(msg):
+        app.logger.info(msg)
+        if progress:
+            progress(msg)
+
+    emit(f'Obteniendo horas de Bing (top {len(worst)} peores sedes)…')
+    changed, lock = 0, threading.Lock()
+
+    def _one(cluster):
+        nonlocal changed
+        rec = cluster['by_source']['azure']
+        hours = _bing_hours_to_list(_serpapi_bing_details(rec['raw']['bing_ypid']))
+        if hours:
+            rec['opening_hours'] = hours
+            with lock:
+                changed += 1
+
+    with ThreadPoolExecutor(max_workers=_BING_SERPAPI_WORKERS) as pool:
+        list(pool.map(_one, worst))
+    return changed
 
 
 def _audit_summary(clusters):
@@ -820,7 +1046,8 @@ def pricing_route():
         google_max=_GOOGLE_MAX_RESULTS,
         reviews_pages=google_signals._reviews_max_pages(),
         cloro_venues=_CLORO_MAX_VENUES, cloro_runs=_CLORO_RUNS,
-        action_links_venues=_ACTION_LINKS_MAX_VENUES)
+        action_links_venues=_ACTION_LINKS_MAX_VENUES,
+        bing_hours_venues=_BING_HOURS_MAX_VENUES)
     est['llm_available'] = _LLM_VISIBILITY_ENABLED
     return jsonify(est)
 
