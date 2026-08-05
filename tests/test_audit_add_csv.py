@@ -103,3 +103,39 @@ def test_add_csv_empty_csv_is_400(monkeypatch):
     c = app_module.app.test_client()
     r = _post_csv(c, audit, b'name,address\n')  # solo cabecera
     assert r.status_code == 400
+
+
+def _fresh_history(tmp_path, monkeypatch):
+    import history
+    monkeypatch.delenv('DISABLE_AUDIT_HISTORY', raising=False)
+    monkeypatch.setenv('AUDIT_HISTORY_PATH', str(tmp_path / 'h.sqlite'))
+    monkeypatch.setattr(history, '_conn', None)
+    return history
+
+
+def test_add_csv_persists_merge_to_history(tmp_path, monkeypatch):
+    history = _fresh_history(tmp_path, monkeypatch)
+    monkeypatch.setattr(app_module, '_fill_missing_coords', _fake_geocode((40.4, -3.7)))
+    audit = _audit([_google_cluster()])
+    history.save('aud1', 'Foo', 'Madrid', 50, 1, {'audit': audit})
+    c = app_module.app.test_client()
+    r = _post_csv_with_id(c, audit, b'name,address\nZara Home,Calle X 1 Madrid\n', 'aud1')
+    assert r.status_code == 200 and r.get_json()['persisted'] is True
+    # al reabrir del histórico, la fusión sigue ahí
+    snap = history.get('aud1')['snapshot']['audit']
+    assert 'official' in snap['clusters'][0]['sources_present']
+
+
+def test_add_csv_without_audit_id_not_persisted(tmp_path, monkeypatch):
+    _fresh_history(tmp_path, monkeypatch)
+    monkeypatch.setattr(app_module, '_fill_missing_coords', _fake_geocode((40.4, -3.7)))
+    audit = _audit([_google_cluster()])
+    c = app_module.app.test_client()
+    r = _post_csv(c, audit, b'name,address\nZara Home,Calle X 1 Madrid\n')
+    assert r.status_code == 200 and r.get_json()['persisted'] is False
+
+
+def _post_csv_with_id(client, audit, csv_bytes, audit_id, city='Madrid'):
+    return client.post('/audit/add_csv', content_type='multipart/form-data', data={
+        'audit': json.dumps(audit), 'city': city, 'audit_id': audit_id,
+        'official_csv': (BytesIO(csv_bytes), 'sedes.csv')})

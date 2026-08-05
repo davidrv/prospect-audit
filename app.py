@@ -1048,7 +1048,22 @@ def audit_add_csv():
     audit['summary'] = _audit_summary(clusters)
     audit['summary']['llm_visibility'] = _recompute_llm_summary(audit, city)
 
-    return jsonify({'audit': audit, 'matched': matched,
+    # Persistir en el histórico para que la fusión sobreviva a una recarga
+    # (reabrir /audits/<id> devuelve el snapshot). Best-effort.
+    audit_id = (request.form.get('audit_id') or '').strip()
+    persisted = False
+    if audit_id:
+        record = history.get(audit_id)
+        if record is not None:
+            snapshot = record.get('snapshot') or {}
+            snapshot['audit'] = audit
+            score = (audit['summary'].get('presence_score') or {}).get('score')
+            history.save(audit_id, record['name'], record['city'],
+                         score if score is not None else record['score'],
+                         audit['summary'].get('total_locations') or record['total_locations'], snapshot)
+            persisted = True
+
+    return jsonify({'audit': audit, 'matched': matched, 'persisted': persisted,
                     'unmatched': len(officials) - matched, 'csv_errors': parsed['errors']})
 
 
