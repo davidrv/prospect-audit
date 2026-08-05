@@ -94,3 +94,9 @@ def test_summary_stats_missing_field_is_not_inconsistent():
         _cluster(['google'], verdicts={'apple': 'missing'}),
     ]
     assert scoring.summary_stats(clusters)['inconsistent_locations'] == 0
+
+
+def test_summary_stats_counts_address_conflict():
+    c = _cluster(['google'])
+    c['venue_metrics']['accuracy_address'] = {'breakdown': {'apple': {'verdict': 'conflict'}}}
+    assert scoring.summary_stats([c])['inconsistent_locations'] == 1

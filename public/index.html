@@ -823,7 +823,7 @@ function renderVenueRow(c) {
   return html + '</div>';
 }
 
-var DETAIL_FIELDS = [['name', 'Nombre'], ['phone', 'Teléfono'], ['website', 'Web'], ['opening_hours', 'Horario']];
+var DETAIL_FIELDS = [['name', 'Nombre'], ['address', 'Dirección'], ['phone', 'Teléfono'], ['website', 'Web'], ['opening_hours', 'Horario']];
 function cellStyle(verdict) {
   if (verdict === 'ref') return ['var(--acc-soft)', 'var(--tx-2)', '', ''];
   if (verdict === 'match') return ['transparent', 'var(--tx-2)', 'check', 'var(--ok)'];
@@ -832,7 +832,7 @@ function cellStyle(verdict) {
 }
 function renderVenueDetail(c) {
   var vm = c.venue_metrics || {};
-  var acc = { name: vm.accuracy_name, phone: vm.accuracy_phone, website: vm.accuracy_website, opening_hours: vm.accuracy_hours };
+  var acc = { name: vm.accuracy_name, address: vm.accuracy_address, phone: vm.accuracy_phone, website: vm.accuracy_website, opening_hours: vm.accuracy_hours };
   var det = vm.presence_detail || {};
 
   var head = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); border-bottom:1px solid var(--border);">' +

@@ -432,3 +432,27 @@ def test_google_present_group_ranked_before_no_google():
     ordered = venue_metrics.compute_venue_metrics([no_google, with_google], has_official_data=False,
                                                   city='Barcelona')
     assert 'google' in ordered[0]['sources_present']            # las con Google van primero como grupo
+
+
+# ── accuracy_address (check de dirección, tolerante, fuera del score) ─────
+def test_accuracy_address_conflict_only_when_clearly_different():
+    g = _rec('google', address='Calle de Alcalá, 21, 28014 Madrid')
+    same = _rec('apple', address='Calle de Alcalá 21, Madrid, ES')      # mismo sitio, otro formato
+    diff = _rec('azure', address='Avenida Diagonal 500, Barcelona')      # otra calle/ciudad
+    m = _compute(_cluster({'google': g, 'apple': same, 'azure': diff}))
+    assert m['accuracy_address']['breakdown']['apple']['verdict'] == 'match'
+    assert m['accuracy_address']['breakdown']['azure']['verdict'] == 'conflict'
+
+
+def test_accuracy_address_excluded_from_numeric_score():
+    # Cambiar SOLO la dirección no debe mover accuracy_avg (la dirección se
+    # muestra y cuenta como incoherencia, pero no entra al score numérico).
+    def avg_with(addr_azure):
+        g = _rec('google', address='Calle de Alcalá 21, Madrid')
+        ap = _rec('apple', address='Calle de Alcalá 21, Madrid')
+        az = _rec('azure', address=addr_azure)
+        return _compute(_cluster({'google': g, 'apple': ap, 'azure': az}))
+    same = avg_with('Calle de Alcalá 21, Madrid')
+    diff = avg_with('Avenida Diagonal 500, Barcelona')
+    assert same['accuracy_avg'] == diff['accuracy_avg']
+    assert diff['accuracy_address']['breakdown']['azure']['verdict'] == 'conflict'
