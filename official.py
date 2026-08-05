@@ -62,7 +62,9 @@ from urllib.parse import urljoin, urlparse
 import requests
 from bs4 import BeautifulSoup
 
-from normalize import address_norm, make_record, name_norm
+from normalize import _day_index, address_norm, make_record, name_norm
+
+_DAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
 _HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; ProspectAuditBot/1.0; internal Localistico tool)'}
 
@@ -87,13 +89,15 @@ _DAY_MAP = {
 def parse_official_csv(file_obj):
     """Parses an uploaded CSV of official locations into normalized records.
 
-    Expected columns (case-insensitive, order-independent): name, address
-    (or formatted_address), phone (optional), opening_hours (optional — free
-    text; only feeds the hours-comparison rules if it matches the
-    "Día: HH:MM–HH:MM" format the rest of the app uses), url (optional — a
-    link to check this row live, e.g. the prospect's own store page).
+    Admite DOS formatos (autodetectados por las columnas):
+    1. Plantilla simple: name, address (o formatted_address), phone, url,
+       opening_hours (texto "Día: HH:MM–HH:MM" separado por ';').
+    2. Export de Localistico (columnas location_name/location_lat/…): usa
+       location_name, location_lat/lng (así NO hace falta geocodificar),
+       location_full_address, phone, website, y `hours`
+       ("Mon:07:00-22:00|Tue:…" → lista normalizada).
 
-    Returns {"locations": [...], "errors": [{"row", "reason"}]}.
+    Returns {"locations": [...], "errors": [{"url", "reason"}]}.
     """
     text = file_obj.read()
     if isinstance(text, bytes):
@@ -102,27 +106,82 @@ def parse_official_csv(file_obj):
     reader = csv.DictReader(io.StringIO(text))
     if reader.fieldnames:
         reader.fieldnames = [f.strip().lower() for f in reader.fieldnames]
+    is_localistico = 'location_name' in (reader.fieldnames or [])
 
     locations, errors = [], []
     for i, row in enumerate(reader, start=2):  # row 1 is the header
-        name = (row.get('name') or '').strip()
-        address = (row.get('address') or row.get('formatted_address') or '').strip()
-        if not name or not address:
-            errors.append({'url': f'CSV fila {i}', 'reason': 'falta "name" o "address"'})
-            continue
-
-        hours = (row.get('opening_hours') or '').strip()
-        row_url = (row.get('url') or '').strip() or None
-        locations.append(make_record(
-            'official', f'csv-row-{i}#{name_norm(name)}',
-            name=name, formatted_address=address,
-            phone=(row.get('phone') or '').strip() or None,
-            opening_hours=[h.strip() for h in hours.split(';') if h.strip()] if hours else None,
-            verify_url=row_url,
-            raw={'_via': 'csv', '_row': i},
-        ))
+        rec, err = (_row_from_localistico(row, i) if is_localistico else _row_from_simple(row, i))
+        if err:
+            errors.append(err)
+        elif rec:
+            locations.append(rec)
 
     return {'locations': _dedupe(locations), 'errors': errors}
+
+
+def _row_from_simple(row, i):
+    name = (row.get('name') or '').strip()
+    address = (row.get('address') or row.get('formatted_address') or '').strip()
+    if not name or not address:
+        return None, {'url': f'CSV fila {i}', 'reason': 'falta "name" o "address"'}
+    hours = (row.get('opening_hours') or '').strip()
+    return make_record(
+        'official', f'csv-row-{i}#{name_norm(name)}',
+        name=name, formatted_address=address,
+        phone=(row.get('phone') or '').strip() or None,
+        opening_hours=[h.strip() for h in hours.split(';') if h.strip()] if hours else None,
+        verify_url=(row.get('url') or '').strip() or None,
+        raw={'_via': 'csv', '_row': i},
+    ), None
+
+
+def _parse_float(value):
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_localistico_hours(text):
+    """'Mon:07:00-22:00|Tue:07:00-22:00|…' → ['Lunes: 07:00–22:00', …]. Varios
+    tramos por día (separados por coma) se conservan. Devuelve None si vacío."""
+    if not text:
+        return None
+    out = []
+    for part in str(text).split('|'):
+        part = part.strip()
+        if ':' not in part:
+            continue
+        day_label, times = part.split(':', 1)  # 'Mon' | '07:00-22:00'
+        idx = _day_index(day_label)
+        if idx is None or not times.strip():
+            continue
+        ranges = []
+        for rg in times.split(','):
+            span = [t.strip() for t in rg.split('-')]
+            if len(span) == 2 and span[0] and span[1]:
+                ranges.append(f'{span[0]}–{span[1]}')
+        if ranges:
+            out.append((idx, f'{_DAY_NAMES_ES[idx]}: {", ".join(ranges)}'))
+    out.sort(key=lambda pair: pair[0])
+    return [line for _, line in out] or None
+
+
+def _row_from_localistico(row, i):
+    name = (row.get('location_name') or row.get('localistico_business_name') or '').strip()
+    address = (row.get('location_full_address') or row.get('validated_location_full_address')
+               or row.get('street_address') or '').strip()
+    if not name or not address:
+        return None, {'url': f'CSV fila {i}', 'reason': 'falta location_name o dirección'}
+    return make_record(
+        'official', f'csv-row-{i}#{name_norm(name)}',
+        name=name, formatted_address=address,
+        lat=_parse_float(row.get('location_lat')), lng=_parse_float(row.get('location_lng')),
+        phone=(row.get('phone') or '').strip() or None,
+        website=(row.get('website') or '').strip() or None,
+        opening_hours=_parse_localistico_hours(row.get('hours')),
+        raw={'_via': 'csv-localistico', '_row': i, 'location_code': row.get('location_code')},
+    ), None
 
 
 def _fold(s):

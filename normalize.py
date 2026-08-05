@@ -73,6 +73,8 @@ _DAY_INDEX = {
     'friday': 4, 'viernes': 4, 'divendres': 4,
     'saturday': 5, 'sabado': 5, 'dissabte': 5,
     'sunday': 6, 'domingo': 6, 'diumenge': 6,
+    # abreviaturas inglesas (p.ej. export de Localistico: 'Mon:07:00-22:00')
+    'mon': 0, 'tue': 1, 'wed': 2, 'thu': 3, 'fri': 4, 'sat': 5, 'sun': 6,
 }
 _TIME_RE = re.compile(r'(\d{1,2}):(\d{2})\s*([ap]\.?m\.?)?', re.IGNORECASE)
 _CLOSED_WORDS = ('cerrado', 'closed', 'tancat')
