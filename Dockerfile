@@ -34,6 +34,7 @@ EXPOSE 8080
 #   ~half the time and 404s. Audits are I/O-bound and already fan out across
 #   threads internally, so a single worker with many threads serves concurrent
 #   audits fine. (Scale past this later with a shared store: Redis/DB.)
-# --timeout 180: a full multi-source audit + PDF render for a large chain can
-#   take longer than gunicorn's 30s default worker timeout.
-CMD exec gunicorn --bind 0.0.0.0:${PORT} --workers 1 --threads 8 --timeout 180 app:app
+# --timeout 300: las auditorías van en background (polling), pero los endpoints
+#   síncronos (/report, /report/from_data, /audit/add_csv con geocoding) pueden
+#   tardar en cadenas grandes — margen sobre los 30s por defecto de gunicorn.
+CMD exec gunicorn --bind 0.0.0.0:${PORT} --workers 1 --threads 8 --timeout 300 app:app

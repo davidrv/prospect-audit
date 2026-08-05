@@ -278,6 +278,9 @@ def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors,
 
 @app.before_request
 def _require_basic_auth():
+    # Health check (Render y otros) debe responder 200 sin credenciales.
+    if request.path == '/healthz':
+        return None
     # Only enforced when both are set — e.g. unset for frictionless local dev,
     # required in deployment via the platform's env vars/secrets.
     if not _BASIC_AUTH_USER or not _BASIC_AUTH_PASS:
@@ -292,6 +295,12 @@ def _require_basic_auth():
     if not valid:
         return Response('Autenticación requerida', 401, {'WWW-Authenticate': 'Basic realm="Prospect Audit"'})
     return None
+
+
+@app.route('/healthz')
+def healthz():
+    """Health check para el hosting (Render) — sin auth, sin tocar SQLite/APIs."""
+    return jsonify({'status': 'ok'}), 200
 
 
 @app.route('/')

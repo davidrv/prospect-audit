@@ -1,0 +1,48 @@
+# Render.com Blueprint — Prospect Audit (Docker web service + disco persistente).
+#
+# Deploy: Render → New → Blueprint → apuntar a este repo. Luego, en el dashboard:
+#   - Environment: rellenar los valores con `sync: false` (secretos).
+#   - Secret Files: crear `AuthKey.p8` con el contenido del .p8 de Apple Maps
+#     (se monta en /etc/secrets/AuthKey.p8, ya apuntado por APPLE_MAPS_PRIVATE_KEY_PATH).
+services:
+  - type: web
+    name: prospect-audit
+    runtime: docker
+    plan: starter            # el disco persistente requiere plan de pago
+    region: frankfurt        # más cerca de ES que el default (oregon)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeploy: true         # deploy automático al hacer push a la rama por defecto (main)
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      # Estado persistente en el disco montado en /data
+      - key: AUDIT_CACHE_PATH
+        value: /data/.audit_cache.sqlite
+      - key: AUDIT_HISTORY_PATH
+        value: /data/.audit_history.sqlite
+      # .p8 de Apple vía Secret File (ruta absoluta → funciona con os.path.join)
+      - key: APPLE_MAPS_PRIVATE_KEY_PATH
+        value: /etc/secrets/AuthKey.p8
+      # Tunables no secretos (ajustables)
+      - key: GOOGLE_MAX_RESULTS
+        value: "25"
+      # ── Secretos: se rellenan en el dashboard, NO se versionan ──
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: SERPAPI_KEY
+        sync: false
+      - key: CLORO_KEY
+        sync: false
+      - key: AZURE_MAPS_SUBSCRIPTION_KEY
+        sync: false
+      - key: APPLE_MAPS_TEAM_ID
+        sync: false
+      - key: APPLE_MAPS_KEY_ID
+        sync: false
+      - key: BASIC_AUTH_USERNAME
+        sync: false
+      - key: BASIC_AUTH_PASSWORD
+        sync: false

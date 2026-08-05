@@ -38,3 +38,13 @@ def test_auth_accepts_correct_credentials(monkeypatch):
     client = app_module.app.test_client()
     resp = client.get('/', headers=_basic_header('sales', 'secret'))
     assert resp.status_code == 200
+
+
+def test_healthz_is_public_even_with_auth_configured(monkeypatch):
+    # El health check del hosting debe responder 200 sin credenciales.
+    monkeypatch.setattr(app_module, '_BASIC_AUTH_USER', 'sales')
+    monkeypatch.setattr(app_module, '_BASIC_AUTH_PASS', 'secret')
+    client = app_module.app.test_client()
+    resp = client.get('/healthz')  # sin cabecera Authorization
+    assert resp.status_code == 200
+    assert resp.get_json()['status'] == 'ok'
