@@ -634,7 +634,8 @@ function _csvUploadHtml() {
     '<span class="muted" style="font-size:12.5px;">¿El locator no da datos? Sube un CSV de sedes para comparar:</span>' +
     '<label class="btn-ghost" style="margin:0; border-style:dashed; cursor:pointer;"><span class="msr" style="font-size:16px;">upload_file</span>Subir CSV' +
       '<input type="file" accept=".csv" style="display:none;" onchange="uploadResultsCsv(this)"></label>' +
-    '<a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>' + merged + '</div>';
+    '<a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>' +
+    '<span class="muted" style="font-size:11.5px;">(plantilla simple o export de Localistico)</span>' + merged + '</div>';
 }
 function uploadResultsCsv(input) {
   if (!input.files.length || !lastResult || !lastResult.audit) return;

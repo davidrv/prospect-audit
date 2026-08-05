@@ -87,6 +87,37 @@ def test_parse_official_csv_reads_optional_url_column():
     assert result['locations'][0]['verify_url'] == 'https://example.com/foo'
 
 
+def test_parse_official_csv_localistico_format():
+    import io
+    header = ('localistico_business_name,location_name,location_code,location_lat,location_lng,'
+              'location_full_address,phone,website,hours')
+    row = ('Starbucks,Starbucks Alcalá 21,SF1,40.418,-3.699,'
+           '"Calle de Alcalá, 21, 28014 Madrid, ES",+34912758111,https://www.starbucks.es,'
+           'Mon:07:00-22:00|Tue:07:00-22:00|Sat:08:00-23:00')
+    result = official.parse_official_csv(io.BytesIO((header + '\n' + row + '\n').encode()))
+    loc = result['locations'][0]
+    assert loc['name'] == 'Starbucks Alcalá 21'
+    assert loc['lat'] == 40.418 and loc['lng'] == -3.699        # coords → sin geocodificar
+    assert loc['phone_display'] == '+34912758111'
+    assert 'starbucks.es' in loc['website_display']
+    assert loc['opening_hours'][0] == 'Lunes: 07:00–22:00'
+    assert loc['opening_hours'][-1] == 'Sábado: 08:00–23:00'    # ordenado por día
+
+
+def test_parse_localistico_hours_multiple_ranges_and_abbrev():
+    out = official._parse_localistico_hours('Mon:09:00-14:00,16:00-20:00|Sun:10:00-15:00')
+    assert out[0] == 'Lunes: 09:00–14:00, 16:00–20:00'          # dos tramos en un día
+    assert out[1] == 'Domingo: 10:00–15:00'
+    assert official._parse_localistico_hours('') is None
+
+
+def test_parse_official_csv_simple_format_still_works():
+    import io
+    result = official.parse_official_csv(io.BytesIO(b'name,address,phone\nFoo,Calle X,+34 900\n'))
+    loc = result['locations'][0]
+    assert loc['name'] == 'Foo' and loc['lat'] is None
+
+
 def test_extract_one_no_structured_data(monkeypatch):
     class FakeResponse:
         ok = True
