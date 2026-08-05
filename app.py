@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import base64
 import datetime
+import json
 import logging
 import os
 import re
@@ -964,6 +965,77 @@ def audit_recompute():
         return jsonify({'error': 'Falta el audit a recalcular'}), 400
     _apply_report_edits(audit, data.get('deleted_cluster_ids'), data.get('row_comments'))
     return jsonify({'summary': audit['summary']})
+
+
+def _best_cluster_for_official(off, clusters):
+    """El cluster ya auditado que mejor casa con una fila oficial (mismo criterio
+    que el clustering: nombre+coords), desempatando por cercanía. None si nada
+    casa lo suficiente."""
+    best, best_dist = None, None
+    for c in clusters:
+        recs = list((c.get('by_source') or {}).values())
+        if not any(matching._is_match(off, r) for r in recs):
+            continue
+        clat, clng = c.get('lat'), c.get('lng')
+        dist = (matching.haversine_m(off['lat'], off['lng'], clat, clng)
+                if off.get('lat') is not None and clat is not None else float('inf'))
+        if best is None or dist < best_dist:
+            best, best_dist = c, dist
+    return best
+
+
+@app.route('/audit/add_csv', methods=['POST'])
+def audit_add_csv():
+    """Sube un CSV de sedes oficiales DESDE Resultados y lo fusiona en la
+    auditoría actual (para cuando el store locator no se puede leer). Matchea
+    cada fila a una sede ya auditada (sin re-clusterizar → se conservan
+    cluster_id/comentarios/descartes) y la adjunta como fuente 'official',
+    recomputando la comparación. No re-consulta mapas (solo geocodifica el CSV)."""
+    audit_raw = request.form.get('audit')
+    if not audit_raw:
+        return jsonify({'error': 'Falta el audit.'}), 400
+    try:
+        audit = json.loads(audit_raw)
+    except ValueError:
+        return jsonify({'error': 'audit inválido.'}), 400
+    if not isinstance(audit, dict) or 'clusters' not in audit:
+        return jsonify({'error': 'audit inválido.'}), 400
+    city = (request.form.get('city') or '').strip() or 'Barcelona'
+
+    csv_file = request.files.get('official_csv')
+    if not csv_file or not csv_file.filename:
+        return jsonify({'error': 'Falta el CSV.'}), 400
+    parsed = parse_official_csv(csv_file.stream)
+    officials = _fill_missing_coords(parsed['locations'])  # geocodifica para poder matchear
+    if not officials:
+        return jsonify({'error': 'El CSV no tiene filas válidas (columnas name y address).',
+                        'csv_errors': parsed['errors']}), 400
+
+    clusters = audit['clusters']
+    matched = 0
+    for off in officials:
+        cluster = _best_cluster_for_official(off, clusters)
+        if cluster is None or 'official' in (cluster.get('by_source') or {}):
+            continue
+        cluster.setdefault('by_source', {})['official'] = off
+        if 'official' not in cluster['sources_present']:
+            cluster['sources_present'] = sorted(cluster['sources_present'] + ['official'])
+        cluster.setdefault('records', []).append(off)
+        matched += 1
+
+    # Recomputa la comparación CON datos oficiales, preservando el análisis IA
+    # por sede (compute_venue_metrics reconstruye venue_metrics desde cero).
+    prev_llm = {c['cluster_id']: (c.get('venue_metrics') or {}).get('llm_visibility') for c in clusters}
+    inconsistencies.detect_inconsistencies(clusters)
+    venue_metrics.compute_venue_metrics(clusters, True, city)
+    for c in clusters:
+        if prev_llm.get(c['cluster_id']):
+            c['venue_metrics']['llm_visibility'] = prev_llm[c['cluster_id']]
+    audit['summary'] = _audit_summary(clusters)
+    audit['summary']['llm_visibility'] = _recompute_llm_summary(audit, city)
+
+    return jsonify({'audit': audit, 'matched': matched,
+                    'unmatched': len(officials) - matched, 'csv_errors': parsed['errors']})
 
 
 # ── Background job endpoints (live progress polling) ────────────
