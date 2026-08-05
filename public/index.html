@@ -955,12 +955,21 @@ function renderGhost() {
     var vm = c.venue_metrics || {}; var st = vm.platform_state || {}; var det = vm.presence_detail || {};
     var pills = PLAT.map(function(p) {
       var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
-      return '<span title="' + esc(SOURCE_LABEL[p[0]]) + '" style="width:22px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10px; font-weight:700; background:' + pc[0] + '; color:' + pc[1] + ';">' + p[1] + '</span>';
+      var d = det[p[0]] || {};
+      var pill = '<span title="' + esc(SOURCE_LABEL[p[0]]) + '" style="width:22px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10px; font-weight:700; background:' + pc[0] + '; color:' + pc[1] + ';">' + p[1] + '</span>';
+      // si la ficha está presente y tenemos su enlace, la pill abre el perfil real
+      return (d.present && d.url)
+        ? '<a href="' + safeHref(d.url) + '" target="_blank" rel="noopener" title="Abrir ficha en ' + esc(SOURCE_LABEL[p[0]]) + '" style="text-decoration:none;">' + pill + '</a>'
+        : pill;
     }).join('');
+    // enlace del nombre → primera ficha presente (Apple > Bing)
+    var primary = (det.apple && det.apple.present && det.apple.url) || (det.azure && det.azure.present && det.azure.url) || '';
+    var name = '<strong style="color:var(--tx);">' + esc(c.canonical_label) + '</strong>';
+    if (primary) name = '<a href="' + safeHref(primary) + '" target="_blank" rel="noopener" style="color:var(--tx); text-decoration:none;">' + name + ' <span class="msr" style="font-size:13px; color:var(--tx-3); vertical-align:middle;">open_in_new</span></a>';
     var included = !deletedClusterIds[c.cluster_id];
     return '<div style="display:flex; align-items:center; gap:12px; padding:10px 24px; border-top:1px solid var(--border); font-size:13px;">' +
-      '<span style="flex:1;"><strong style="color:var(--tx);">' + esc(c.canonical_label) + '</strong> <span class="muted">· ' + esc(c.canonical_address || '') + '</span></span>' +
-      '<span style="display:flex; gap:5px;">' + pills + '</span>' +
+      '<span style="flex:1;">' + name + ' <span class="muted">· ' + esc(c.canonical_address || '') + '</span></span>' +
+      '<span style="display:flex; gap:5px; align-items:center;">' + pills + '</span>' +
       '<button onclick="toggleDiscard(\'' + esc(c.cluster_id) + '\'); renderGhost();" style="background:' + (included ? 'var(--ok-soft)' : 'none') + '; color:' + (included ? 'var(--ok)' : 'var(--acc)') + '; border:1px solid ' + (included ? 'transparent' : 'var(--acc)') + '; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;">' + (included ? '✓ Incluida' : 'Incluir en informe') + '</button></div>';
   }).join('');
 }

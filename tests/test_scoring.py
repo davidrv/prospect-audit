@@ -40,14 +40,19 @@ def test_severity_bands():
 # ── audit_score / summary_stats ─────────────────────────────────────
 
 def _cluster(present, score=50, presence_pct=100, accuracy_avg=50, rep_score=0, platform_state=None,
-             reply_rate=None):
+             reply_rate=None, verdicts=None):
+    # verdicts: {source: verdict} en el campo 'name' (basta para el recuento de
+    # 'conflict' de summary_stats).
+    vm = {
+        'score': score, 'presence_pct': presence_pct, 'accuracy_avg': accuracy_avg,
+        'platform_state': platform_state or {}, 'reply_rate_3m': reply_rate or {'value': 'N/D'},
+    }
+    if verdicts:
+        vm['accuracy_name'] = {'breakdown': {s: {'verdict': v} for s, v in verdicts.items()}}
     return {
         'sources_present': present,
         'reputation': {'score': rep_score},
-        'venue_metrics': {
-            'score': score, 'presence_pct': presence_pct, 'accuracy_avg': accuracy_avg,
-            'platform_state': platform_state or {}, 'reply_rate_3m': reply_rate or {'value': 'N/D'},
-        },
+        'venue_metrics': vm,
     }
 
 
@@ -68,16 +73,24 @@ def test_audit_score_empty_when_no_google():
     assert result['venues_scored'] == 0
 
 
-def test_summary_stats_counts_issue_and_off():
+def test_summary_stats_counts_conflict_and_off():
     clusters = [
-        _cluster(['google'], platform_state={'apple': 'issue', 'azure': 'ok', 'official': 'off'},
-                 reply_rate={'value': 20}),
+        _cluster(['google'], verdicts={'apple': 'conflict'}, reply_rate={'value': 20}),
         _cluster(['google'], platform_state={'apple': 'off', 'azure': 'off', 'official': 'off'},
                  reply_rate={'value': 0}),
-        _cluster(['google'], platform_state={'apple': 'ok', 'azure': 'ok', 'official': 'ok'},
+        _cluster(['google'], verdicts={'apple': 'match', 'azure': 'match'},
                  reply_rate={'value': 'N/D'}),
     ]
     stats = scoring.summary_stats(clusters)
-    assert stats['inconsistent_locations'] == 1   # only the first has an 'issue'
-    assert stats['missing_some_platform'] == 1     # only the second is off in apple/azure
-    assert stats['reply_rate_overall'] == 10       # mean of 20 and 0 (N/D excluded)
+    assert stats['inconsistent_locations'] == 1   # solo la 1ª tiene un 'conflict'
+    assert stats['missing_some_platform'] == 1     # solo la 2ª está off en apple/azure
+    assert stats['reply_rate_overall'] == 10       # media de 20 y 0 (N/D excluido)
+
+
+def test_summary_stats_missing_field_is_not_inconsistent():
+    # Bing presente pero sin horario (sin_dato) NO es "datos distintos".
+    clusters = [
+        _cluster(['google'], verdicts={'azure': 'sin_dato', 'apple': 'match'}),
+        _cluster(['google'], verdicts={'apple': 'missing'}),
+    ]
+    assert scoring.summary_stats(clusters)['inconsistent_locations'] == 0
