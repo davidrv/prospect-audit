@@ -634,6 +634,7 @@ function uploadResultsCsv(input) {
   fd.append('official_csv', input.files[0]);
   fd.append('audit', JSON.stringify(lastResult.audit));
   fd.append('city', lastQuery.city || '');
+  fd.append('audit_id', lastAuditId || '');  // para persistir la fusión en el histórico
   fetch('/audit/add_csv', { method: 'POST', body: fd })
     .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
     .then(function(d) {
@@ -641,7 +642,8 @@ function uploadResultsCsv(input) {
       renderResults();
       alert('CSV fusionado: ' + d.matched + ' sede(s) emparejada(s)' +
             (d.unmatched ? ' · ' + d.unmatched + ' fila(s) sin match' : '') +
-            ((d.csv_errors && d.csv_errors.length) ? ' · ' + d.csv_errors.length + ' fila(s) inválida(s)' : ''));
+            ((d.csv_errors && d.csv_errors.length) ? ' · ' + d.csv_errors.length + ' fila(s) inválida(s)' : '') +
+            (d.persisted ? '' : ' · ⚠ no persistido (sin histórico)'));
     })
     .catch(function(err) { alert('Error subiendo el CSV: ' + err.message); })
     .finally(function() { input.value = ''; });
