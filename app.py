@@ -42,6 +42,11 @@ truststore.inject_into_ssl()
 load_dotenv()
 
 app = Flask(__name__, static_folder='public')
+# Werkzeug 3.1 limita los campos de formulario a 500 KB por defecto. El audit
+# completo (con los `raw` de las APIs) se envía como campo de form en
+# /audit/add_csv y suele superarlo → daba un 413 (página HTML). Lo subimos a
+# 64 MB para admitir auditorías grandes.
+app.config['MAX_FORM_MEMORY_SIZE'] = 64 * 1024 * 1024
 
 # Flask's app.logger defaults to WARNING regardless of debug mode — raise it
 # so the review-scraping progress logs (app.logger.info below) are actually

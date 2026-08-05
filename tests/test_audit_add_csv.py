@@ -71,6 +71,18 @@ def test_add_csv_preserves_per_venue_llm(monkeypatch):
     assert body['audit']['summary']['llm_visibility']['hits_total'] == 1
 
 
+def test_add_csv_accepts_large_audit(monkeypatch):
+    # El audit real (con los `raw` de las APIs) supera el límite de 500 KB de
+    # Werkzeug para campos de formulario → antes daba 413 (HTML). No debe pasar.
+    monkeypatch.setattr(app_module, '_fill_missing_coords', _fake_geocode((40.4, -3.7)))
+    cluster = _google_cluster()
+    cluster['by_source']['google']['raw'] = {'big': 'x' * 700000}  # >500 KB en el campo de form
+    audit = _audit([cluster])
+    c = app_module.app.test_client()
+    r = _post_csv(c, audit, b'name,address\nZara Home,Calle X 1 Madrid\n')
+    assert r.status_code == 200  # no 413
+
+
 def test_add_csv_rejects_missing_audit():
     c = app_module.app.test_client()
     r = c.post('/audit/add_csv', content_type='multipart/form-data',
