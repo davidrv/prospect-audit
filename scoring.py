@@ -89,6 +89,22 @@ def audit_score(clusters):
     }
 
 
+_ACCURACY_FIELDS = ('accuracy_name', 'accuracy_phone', 'accuracy_website', 'accuracy_hours')
+
+
+def _has_conflict(cluster):
+    """True si alguna plataforma (Apple/Bing/web) tiene un valor que CONTRADICE
+    a Google en algún campo (veredicto 'conflict'). Ignora 'sin_dato'/'missing'
+    (dato ausente), que no es una incoherencia."""
+    vm = cluster.get('venue_metrics') or {}
+    for key in _ACCURACY_FIELDS:
+        breakdown = (vm.get(key) or {}).get('breakdown') or {}
+        if any((breakdown.get(s) or {}).get('verdict') == 'conflict'
+               for s in ('apple', 'azure', 'official')):
+            return True
+    return False
+
+
 def summary_stats(clusters):
     """Los tres números destacados del resumen del mockup, derivados del
     `platform_state`/reputación ya calculados. Solo cuenta sedes con ficha en
@@ -103,9 +119,12 @@ def summary_stats(clusters):
     def states(c):
         return (c.get('venue_metrics') or {}).get('platform_state') or {}
 
-    inconsistent = sum(
-        1 for c in scored
-        if any(states(c).get(s) == 'issue' for s in ('apple', 'azure', 'official')))
+    # "Datos DISTINTOS" = solo veredictos 'conflict' reales (valor de Apple/Bing/
+    # web que contradice a Google). NO se cuenta 'sin_dato' (el campo falta en
+    # esa plataforma): como Apple/Bing a menudo no traen horario/teléfono, contar
+    # los faltantes inflaba la cifra a "todas las sedes". Los ausentes son otra
+    # cosa (missing_some_platform / N/D), no una incoherencia.
+    inconsistent = sum(1 for c in scored if _has_conflict(c))
     missing_some = sum(
         1 for c in scored
         if any(states(c).get(s) == 'off' for s in ('apple', 'azure')))
