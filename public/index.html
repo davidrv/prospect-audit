@@ -627,10 +627,45 @@ function recomputeSummary() {
     }).catch(function() {});
 }
 
+function _csvUploadHtml() {
+  var withOfficial = (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('official') !== -1; }).length;
+  var merged = withOfficial ? '<span style="font-size:12px; color:var(--ok);">✓ ' + withOfficial + ' sede(s) con datos oficiales</span>' : '';
+  return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:12px;">' +
+    '<span class="muted" style="font-size:12.5px;">¿El locator no da datos? Sube un CSV de sedes para comparar:</span>' +
+    '<label class="btn-ghost" style="margin:0; border-style:dashed; cursor:pointer;"><span class="msr" style="font-size:16px;">upload_file</span>Subir CSV' +
+      '<input type="file" accept=".csv" style="display:none;" onchange="uploadResultsCsv(this)"></label>' +
+    '<a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>' + merged + '</div>';
+}
+function uploadResultsCsv(input) {
+  if (!input.files.length || !lastResult || !lastResult.audit) return;
+  var fd = new FormData();
+  fd.append('official_csv', input.files[0]);
+  fd.append('audit', JSON.stringify(lastResult.audit));
+  fd.append('city', lastQuery.city || '');
+  fetch('/audit/add_csv', { method: 'POST', body: fd })
+    .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
+    .then(function(d) {
+      lastResult.audit = d.audit;
+      renderResults();
+      alert('CSV fusionado: ' + d.matched + ' sede(s) emparejada(s)' +
+            (d.unmatched ? ' · ' + d.unmatched + ' fila(s) sin match' : '') +
+            ((d.csv_errors && d.csv_errors.length) ? ' · ' + d.csv_errors.length + ' fila(s) inválida(s)' : ''));
+    })
+    .catch(function(err) { alert('Error subiendo el CSV: ' + err.message); })
+    .finally(function() { input.value = ''; });
+}
 function renderLocator(report) {
   var card = document.getElementById('locator-card');
-  if (!report || !report.has_data) { card.style.display = 'none'; return; }
   card.style.display = 'flex';
+  if (!report || !report.has_data) {
+    // Sin store locator analizable: igual permitimos subir CSV para comparar.
+    card.innerHTML =
+      '<div style="display:flex; align-items:center; gap:10px;"><span class="card-title">Store locator y datos oficiales</span>' +
+        '<span class="badge-cap" style="margin-left:auto; color:var(--tx-3); background:var(--surface-2);">Sin datos</span></div>' +
+      '<div class="muted" style="font-size:13px; line-height:1.5;">No se analizó ningún store locator. Si tienes las sedes en un CSV, súbelo para compararlas con Google, Apple y Bing.</div>' +
+      _csvUploadHtml();
+    return;
+  }
   var CK = { ok: ['check_circle', 'var(--ok)'], warn: ['error', 'var(--warn)'], bad: ['cancel', 'var(--bad)'], na: ['remove', 'var(--tx-3)'] };
   var badge;
   if (report.analyzable === false) {
@@ -659,7 +694,8 @@ function renderLocator(report) {
       '<span class="msr" style="font-size:16px; color:var(--tx-3);">edit_note</span>' +
       '<input id="loc-comment" value="' + esc(officialCommentEdit) + '" placeholder="Nota sobre el store locator para el informe (opcional)…" oninput="officialCommentEdit=this.value" ' +
         'style="flex:1; border:1px dashed var(--border-2); border-radius:8px; padding:8px 12px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
-      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">Guardar nota</button></div>';
+      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">Guardar nota</button></div>' +
+    _csvUploadHtml();
 }
 
 /* ── Guardado de comentarios (persisten en el histórico) ── */
