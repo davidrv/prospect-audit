@@ -110,7 +110,8 @@ def _reply_rate_display(reply_rate):
 
 
 _SEVERITY_LABEL = {'critico': 'Crítico', 'alto': 'Alto', 'medio': 'Medio', 'ok': 'OK', 'sin_datos': 'Sin datos'}
-_CMP_FIELDS = [('name', 'Nombre'), ('phone', 'Teléfono'), ('website', 'Web'), ('opening_hours', 'Horario')]
+_CMP_FIELDS = [('name', 'Nombre'), ('address', 'Dirección'), ('phone', 'Teléfono'),
+               ('website', 'Web'), ('opening_hours', 'Horario')]
 
 
 def _cell_value(breakdown_entry):
@@ -127,7 +128,7 @@ def _compare_rows(m):
     """Filas de comparación por campo (Google = referencia vs Apple/Bing/web),
     igual que el detalle expandible de la UI — solo lee accuracy.breakdown, no
     inventa nada."""
-    acc = {'name': m['accuracy_name'], 'phone': m['accuracy_phone'],
+    acc = {'name': m['accuracy_name'], 'address': m['accuracy_address'], 'phone': m['accuracy_phone'],
            'website': m['accuracy_website'], 'opening_hours': m['accuracy_hours']}
     rows = []
     for key, label in _CMP_FIELDS:

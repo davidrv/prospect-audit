@@ -89,7 +89,8 @@ def audit_score(clusters):
     }
 
 
-_ACCURACY_FIELDS = ('accuracy_name', 'accuracy_phone', 'accuracy_website', 'accuracy_hours')
+_ACCURACY_FIELDS = ('accuracy_name', 'accuracy_phone', 'accuracy_website', 'accuracy_hours',
+                    'accuracy_address')
 
 
 def _has_conflict(cluster):

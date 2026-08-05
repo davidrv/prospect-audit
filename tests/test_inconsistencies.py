@@ -143,11 +143,15 @@ def test_name_case_difference_alone_does_not_flag_r9():
 
 
 def test_ambiguous_match_flags_r3():
-    a = _rec('google', name='Foo A', address='X', lat=41.0, lng=2.0)
-    b = _rec('google', name='Foo B', address='Y', lat=41.0, lng=2.0)
-    c = _rec('official', name='Foo', address='Z', lat=41.0, lng=2.0)
-    flags = inconsistencies._flags_for_cluster(_cluster([a, b, c]))
-    assert any(f['rule'] == 'R3' for f in flags)
+    # Dos fichas de la misma fuente (official) para una sede de Google → ambiguo.
+    g = _rec('google', name='Foo', address='X', lat=41.0, lng=2.0)
+    o1 = _rec('official', name='Foo', address='Y', lat=41.0, lng=2.0)
+    o2 = _rec('official', name='Foo', address='Z', lat=41.0, lng=2.0)
+    cluster = _cluster([g, o1, o2])
+    assert cluster['ambiguous'] is True
+    flags = inconsistencies._flags_for_cluster(cluster)
+    r3 = [f for f in flags if f['rule'] == 'R3']
+    assert r3 and r3[0]['severity'] == 'moderate'
 
 
 def test_conflicting_phone_flag_carries_verify_links():
@@ -177,3 +181,18 @@ def test_detect_inconsistencies_sets_flags_on_all_clusters():
     clusters = matching.cluster_records([_rec('official', name='Foo', address='X')])
     inconsistencies.detect_inconsistencies(clusters)
     assert 'flags' in clusters[0]
+
+
+def test_address_conflict_flags_r8():
+    g = _rec('google', name='Foo', address='Calle de Alcalá 21, Madrid', lat=41.0, lng=2.0)
+    a = _rec('apple', name='Foo', address='Avenida Diagonal 500, Barcelona', lat=41.0, lng=2.00001)
+    flags = inconsistencies._flags_for_cluster(_cluster([g, a]))
+    r8 = [f for f in flags if f['rule'] == 'R8']
+    assert r8 and r8[0]['severity'] == 'moderate'
+
+
+def test_same_address_different_format_no_r8():
+    g = _rec('google', name='Foo', address='Calle de Alcalá, 21, 28014 Madrid', lat=41.0, lng=2.0)
+    a = _rec('apple', name='Foo', address='Calle de Alcalá 21, Madrid, ES', lat=41.0, lng=2.00001)
+    flags = inconsistencies._flags_for_cluster(_cluster([g, a]))
+    assert not any(f['rule'] == 'R8' for f in flags)

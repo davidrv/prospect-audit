@@ -72,7 +72,8 @@ lexicographic sort.
 """
 import normalize
 import scoring
-from inconsistencies import compare_field, hours_agreement_pct, name_similarity
+from inconsistencies import (ADDRESS_SIM_MIN, address_similarity, compare_field,
+                             hours_agreement_pct, name_similarity)
 
 CORE_SOURCES = ('google', 'apple', 'azure')
 _COMPARISON_SOURCES = ('apple', 'azure', 'official')
@@ -164,6 +165,12 @@ def _metrics_for_cluster(cluster, sources_checked, has_official_data, city):
                                       lambda source: _field_score(by_source, source, 'website'))
     accuracy_name = _field_metric(by_source, present, has_official_data, 'name',
                                    lambda source: name_similarity(by_source, source))
+    # Dirección: umbral tolerante (solo direcciones claramente distintas cuentan
+    # como conflicto). Se muestra y alimenta pills/"datos distintos", pero NO el
+    # score numérico (ver accuracy_avgs abajo) para no meter ruido de formato.
+    accuracy_address = _field_metric(by_source, present, has_official_data, 'formatted_address',
+                                     lambda source: address_similarity(by_source, source),
+                                     match_threshold=ADDRESS_SIM_MIN)
 
     reputation = cluster.get('reputation') or {}
     rating = reputation.get('rating')
@@ -187,6 +194,7 @@ def _metrics_for_cluster(cluster, sources_checked, has_official_data, city):
     accuracy_by_field = {
         'name': accuracy_name, 'phone': accuracy_phone,
         'website': accuracy_website, 'opening_hours': accuracy_hours,
+        'address': accuracy_address,
     }
 
     metrics = {
@@ -196,6 +204,7 @@ def _metrics_for_cluster(cluster, sources_checked, has_official_data, city):
         'accuracy_phone': accuracy_phone,
         'accuracy_website': accuracy_website,
         'accuracy_name': accuracy_name,
+        'accuracy_address': accuracy_address,
         'accuracy_avg': accuracy_avg,
         'score': score,
         'severity': severity,
@@ -287,7 +296,7 @@ def _display_value(record, field):
     return record.get(_DISPLAY_FIELDS.get(field, field)) or record.get(field) or None
 
 
-def _field_metric(by_source, present, has_official_data, field, score_fn):
+def _field_metric(by_source, present, has_official_data, field, score_fn, match_threshold=90):
     """Builds the {'avg', 'anchor_value', 'breakdown'} shape described in the
     module docstring for one field (hours/phone/website/name): every checked
     *comparison* platform (apple/azure/official — never Google itself, the
@@ -316,7 +325,7 @@ def _field_metric(by_source, present, has_official_data, field, score_fn):
             if score is None:
                 breakdown[source] = {'verdict': 'sin_dato', 'score': 0, 'value': value}
             else:
-                verdict = 'match' if score >= 90 else 'conflict'
+                verdict = 'match' if score >= match_threshold else 'conflict'
                 breakdown[source] = {'verdict': verdict, 'score': 100 if verdict == 'match' else 0, 'value': value}
 
     if not has_anchor:

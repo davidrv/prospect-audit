@@ -37,13 +37,51 @@ def test_cluster_records_fallback_without_coordinates():
     assert len(clusters) == 1
 
 
-def test_cluster_records_ambiguous_when_same_source_merges():
-    a = _rec('google', "McDonald's A", 'X', lat=41.0, lng=2.0)
-    b = _rec('google', "McDonald's B", 'Y', lat=41.0, lng=2.0)
+def test_two_google_records_never_merge():
+    # Anclado a Google: dos fichas de Google son dos sedes distintas aunque
+    # compartan coords; el Apple se asigna a una (no las fusiona en un cluster
+    # ambiguo como hacía el Union-Find transitivo).
+    a = _rec('google', "McDonald's Uno", 'X', lat=41.0, lng=2.0)
+    b = _rec('google', "McDonald's Dos", 'Y', lat=41.0, lng=2.0)
     c = _rec('apple', "McDonald's", 'Z', lat=41.0, lng=2.0)
     clusters = matching.cluster_records([a, b, c])
+    assert len(clusters) == 2
+    assert all(c['ambiguous'] is False for c in clusters)
+
+
+def test_ambiguous_when_two_same_source_fichas_for_one_google():
+    # Dos fichas de Apple para una misma sede de Google → 1 cluster, ambiguo,
+    # y by_source['apple'] es la MÁS CERCANA a Google (no la primera).
+    g = _rec('google', 'McDonalds Centro', 'X', lat=41.0, lng=2.0)
+    near = _rec('apple', 'McDonalds Centro', 'X', lat=41.0, lng=2.0)          # 0 m
+    far = _rec('apple', 'McDonalds Centre', 'Y', lat=41.0, lng=2.0018)        # ~150 m
+    clusters = matching.cluster_records([g, far, near])                       # 'far' primero a propósito
     assert len(clusters) == 1
     assert clusters[0]['ambiguous'] is True
+    assert clusters[0]['by_source']['apple']['name'] == 'McDonalds Centro'    # la más cercana gana
+
+
+def test_bridging_record_goes_to_nearest_google():
+    # Un Apple que casa con DOS sedes Google se asigna a la más cercana; las
+    # dos sedes Google quedan separadas (no fusionadas por el puente).
+    g1 = _rec('google', 'McDonalds Uno', 'X', lat=41.0, lng=2.0)
+    g2 = _rec('google', 'McDonalds Dos', 'Y', lat=41.0, lng=2.003)           # ~252 m de g1
+    a = _rec('apple', 'McDonalds', 'Z', lat=41.0, lng=2.001)                 # ~84 m de g1, ~168 de g2
+    clusters = matching.cluster_records([g1, g2, a])
+    assert len(clusters) == 2
+    by_label = {c['canonical_label']: c for c in clusters}
+    assert 'apple' in by_label['McDonalds Uno']['sources_present']
+    assert 'apple' not in by_label['McDonalds Dos']['sources_present']
+
+
+def test_records_without_google_still_cluster():
+    # Sedes sin ficha en Google: se agrupan entre sí (camino Union-Find).
+    a = _rec('apple', 'Tienda X', 'Calle Y', lat=41.0, lng=2.0)
+    b = _rec('azure', 'Tienda X', 'Calle Y', lat=41.0, lng=2.0)
+    clusters = matching.cluster_records([a, b])
+    assert len(clusters) == 1
+    assert clusters[0]['sources_present'] == ['apple', 'azure']
+    assert clusters[0]['ambiguous'] is False
 
 
 def test_canonical_label_prefers_google_over_apple():

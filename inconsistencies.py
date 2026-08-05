@@ -28,6 +28,12 @@ from normalize import parse_hours
 ANCHOR = 'google'
 COMPARISON_SOURCES = ['apple', 'azure', 'official']
 
+# Umbral TOLERANTE para la dirección: los proveedores formatean la dirección de
+# formas muy distintas ("Calle de Alcalá, 21, 28014 Madrid" vs "Calle de Alcalá
+# 21, Madrid, ES"), así que solo se marca conflicto cuando la similitud es baja
+# de verdad (calle/CP distintos), no por diferencias de formato.
+ADDRESS_SIM_MIN = 55
+
 FIELD_SUPPORT = {
     'google': {'phone', 'website', 'opening_hours'},
     # Apple's own Maps Server API returns none of these, but when a
@@ -102,9 +108,14 @@ def _flags_for_cluster(cluster):
                 sources=missing + [ANCHOR] + others_present, by_source=by_source))
 
     if cluster.get('ambiguous'):
-        flags.append(_flag('R3', 'critical',
-            'Match ambiguo: varias sedes de la misma fuente cayeron en el mismo grupo — revisar manualmente.',
-            sources=cluster['sources_present'], by_source=by_source))
+        recs = cluster.get('records', [])
+        dup = sorted({r['source'] for r in recs
+                      if sum(1 for x in recs if x['source'] == r['source']) > 1})
+        label = ', '.join(_label(s) for s in dup) or 'una plataforma'
+        flags.append(_flag('R3', 'moderate',
+            f'Posible ficha duplicada en {label}: varias fichas para esta sede — se compara la más '
+            f'cercana a Google. Conviene revisar/unificar las duplicadas.',
+            sources=dup or cluster['sources_present'], by_source=by_source))
 
     if has_anchor and others_present:
         for other in others_present:
@@ -113,6 +124,9 @@ def _flags_for_cluster(cluster):
             name_flag = _name_flag_vs_anchor(by_source, other)
             if name_flag:
                 flags.append(name_flag)
+            address_flag = _address_flag_vs_anchor(by_source, other)
+            if address_flag:
+                flags.append(address_flag)
         flags.extend(_hours_flags_vs_anchor(by_source, others_present))
 
     return sorted(flags, key=lambda f: _SEVERITY_ORDER[f['severity']])
@@ -153,6 +167,32 @@ def name_similarity(by_source, other):
     if not anchor_name or not other_name:
         return None
     return fuzz.token_sort_ratio(by_source[ANCHOR]['name_norm'], by_source[other]['name_norm'])
+
+
+def address_similarity(by_source, other):
+    """Similitud 0-100 entre la dirección normalizada del ancla y la de `other`,
+    o None si falta alguna. Usa token_set_ratio (tolerante al orden/subconjunto
+    de tokens) porque las direcciones vienen en formatos muy distintos."""
+    anchor = by_source.get(ANCHOR)
+    src = by_source.get(other)
+    if not anchor or not src:
+        return None
+    a, b = anchor.get('address_norm'), src.get('address_norm')
+    if not a or not b:
+        return None
+    return fuzz.token_set_ratio(a, b)
+
+
+def _address_flag_vs_anchor(by_source, other):
+    """R8: la dirección de `other` es CLARAMENTE distinta a la de Google
+    (similitud < ADDRESS_SIM_MIN) — señal de ficha equivocada/duplicada."""
+    sim = address_similarity(by_source, other)
+    if sim is None or sim >= ADDRESS_SIM_MIN:
+        return None
+    return _flag('R8', 'moderate',
+        f'Dirección muy distinta en {_label(other)} frente a {_label(ANCHOR)} '
+        f'— posible ficha equivocada o duplicada.',
+        sources=[ANCHOR, other], by_source=by_source)
 
 
 def hours_agreement_pct(by_source, other):

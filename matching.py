@@ -61,42 +61,100 @@ class _UnionFind:
 
 
 def cluster_records(records):
-    """Groups records representing the same physical location across sources."""
-    uf = _UnionFind(len(records))
+    """Agrupa records de la misma sede física, **anclado a Google** (la fuente
+    de referencia): cada record de Google siembra su propia sede (dos Google
+    NUNCA se fusionan), y cada record de otra fuente se asigna a la sede Google
+    que casa (`_is_match`) y está MÁS CERCA. Esto evita el sobre-agrupamiento
+    por transitividad del Union-Find (p.ej. dos sedes Google unidas por un POI
+    puente de Apple/Bing) y garantiza comparar la ficha correcta contra Google.
 
+    Los records que no casan con ningún Google se agrupan entre sí con Union-Find
+    (comportamiento anterior) → sedes sin ficha en Google."""
+    google = [r for r in records if r['source'] == 'google']
+    others = [r for r in records if r['source'] != 'google']
+
+    groups = [[g] for g in google]  # una sede por ficha de Google
+    unassigned = []
+    for record in others:
+        best_i, best_key = None, None
+        for i, g in enumerate(google):
+            if not _is_match(record, g):
+                continue
+            key = _match_distance_key(record, g)  # menor = mejor
+            if best_i is None or key < best_key:
+                best_i, best_key = i, key
+        if best_i is not None:
+            groups[best_i].append(record)
+        else:
+            unassigned.append(record)
+
+    groups.extend(_union_find_groups(unassigned))  # sedes sin Google (ghost)
+
+    return [_build_cluster(i + 1, group) for i, group in enumerate(groups)]
+
+
+def _match_distance_key(record, anchor):
+    """Clave de "cercanía" a un ancla (menor = mejor). Los matches con
+    coordenadas (nivel 0) siempre ganan a los de solo-nombre (nivel 1);
+    dentro de cada nivel, por distancia en metros / por menor disparidad de
+    nombre."""
+    if None not in (record['lat'], record['lng'], anchor['lat'], anchor['lng']):
+        return (0, haversine_m(record['lat'], record['lng'], anchor['lat'], anchor['lng']))
+    name_sim = (fuzz.token_sort_ratio(record['name_norm'], anchor['name_norm'])
+                if record['name_norm'] and anchor['name_norm'] else 0)
+    return (1, 100 - name_sim)
+
+
+def _union_find_groups(records):
+    """Agrupamiento transitivo (Union-Find) para records sin match con Google.
+    No compara dos records de la misma fuente (igual que antes)."""
+    uf = _UnionFind(len(records))
     for i in range(len(records)):
         for j in range(i + 1, len(records)):
             if records[i]['source'] == records[j]['source']:
                 continue
             if _is_match(records[i], records[j]):
                 uf.union(i, j)
-
     groups = {}
     for i, record in enumerate(records):
         groups.setdefault(uf.find(i), []).append(record)
-
-    return [_build_cluster(i + 1, group) for i, group in enumerate(groups.values())]
+    return list(groups.values())
 
 
 _LABEL_SOURCE_PRIORITY = ('google', 'official', 'apple', 'azure')
 
 
+def _best_record(recs, anchor):
+    """De varios records de la MISMA fuente en un cluster, el más cercano al
+    ancla Google (o el primero si no hay ancla/coincidencia de coords)."""
+    if len(recs) == 1 or anchor is None:
+        return recs[0]
+    return min(recs, key=lambda r: _match_distance_key(r, anchor))
+
+
 def _build_cluster(index, group):
-    sources_in_group = [r['source'] for r in group]
-    by_source = {}
+    anchor = next((r for r in group if r['source'] == 'google'), None)
+    per_source = {}
     for r in group:
-        by_source.setdefault(r['source'], r)  # first record per source wins if ambiguous
+        per_source.setdefault(r['source'], []).append(r)
+
+    # Best-per-source: si una fuente aportó ≥2 fichas, nos quedamos con la más
+    # cercana a Google (no la primera del proveedor). Los extras siguen en
+    # `records`. `ambiguous` marca ese caso (posible ficha duplicada).
+    by_source = {source: _best_record(recs, anchor) for source, recs in per_source.items()}
+    ambiguous = any(len(recs) > 1 for recs in per_source.values())
+    chosen = list(by_source.values())
 
     return {
         'cluster_id': f'L{index}',
         'records': group,
         'by_source': by_source,
         'sources_present': sorted(by_source.keys()),
-        'ambiguous': len(sources_in_group) != len(set(sources_in_group)),
-        'canonical_label': _pick_by_priority(group, 'name') or 'Sede sin nombre',
-        'canonical_address': _pick_by_priority(group, 'formatted_address'),
-        'lat': _pick_by_priority(group, 'lat'),
-        'lng': _pick_by_priority(group, 'lng'),
+        'ambiguous': ambiguous,
+        'canonical_label': _pick_by_priority(chosen, 'name') or 'Sede sin nombre',
+        'canonical_address': _pick_by_priority(chosen, 'formatted_address'),
+        'lat': _pick_by_priority(chosen, 'lat'),
+        'lng': _pick_by_priority(chosen, 'lng'),
     }
 
 
