@@ -48,7 +48,6 @@ def render_report_pdf(name, city, results, audit, official_comment=''):
         'ai_review_summary': _ai_review_summary(clusters),
         'recent_reviews_total': _recent_reviews_total(clusters),
         'llm': _llm_block(audit['summary']),
-        'ghost_count': sum(1 for c in clusters if 'google' not in c['sources_present']),
     }
 
     html = render_template('report.html', **context)
