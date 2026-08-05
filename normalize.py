@@ -171,6 +171,16 @@ def bing_maps_url(lat, lng, name):
     return f'https://www.bing.com/maps/search?q={label}&sp=point.{lat}_{lng}_{label}&cp={lat}~{lng}&lvl=16&style=r'
 
 
+def bing_place_url(ypid):
+    """Deep-link a la ficha REAL de Bing Maps por su `ypid` (el place_id que
+    devuelve SerpApi bing_maps). Formato de entidad única de Bing — abre la
+    ficha concreta, en vez del listado que produce `bing_maps_url` (búsqueda
+    por punto). Devuelve None sin ypid."""
+    if not ypid:
+        return None
+    return f'https://www.bing.com/maps?ss=ypid.{quote(str(ypid))}'
+
+
 def google_search_url(query):
     """Generic text search (no place_id) — used to verify the ABSENCE of a
     venue on Google Maps, since there's no record to deep-link to."""

@@ -32,13 +32,15 @@ def _prices():
     return out
 
 
-def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs, action_links_venues=5):
+def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs, action_links_venues=5,
+                 bing_hours_venues=5):
     """Coste máximo por auditoría (EUR) con el supuesto de `google_max` sedes.
     Devuelve `maps_max` (todo menos IA) y `llm_delta` (la fase de visibilidad IA,
     que el input suma al marcar el checkbox)."""
     p = _prices()
     ts_pages = max(1, math.ceil(google_max / 20))  # ~20 resultados por página de Text Search
     links_calls = min(google_max, action_links_venues)  # action links solo en las N peores
+    bing_hours_calls = min(google_max, bing_hours_venues)  # horas de Bing solo en las N peores
 
     maps = (
         ts_pages * p['textsearch']
@@ -48,6 +50,8 @@ def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs, action_
         + google_max * reviews_pages * p['serpapi']           # Google signals: reseñas (todas las sedes)
         + links_calls * p['serpapi']                          # action links: solo las N peores
         + google_max * p['serpapi']                           # Apple enrich: ≤1 por sede con match en Google
+        + google_max * p['serpapi']                           # Bing enrich (búsqueda): ≤1 por sede con Google
+        + bing_hours_calls * p['serpapi']                     # Bing horas (detalle): solo las N peores
     )
     llm = cloro_venues * cloro_runs * p['cloro']
 
@@ -57,7 +61,7 @@ def estimate_max(*, google_max, reviews_pages, cloro_venues, cloro_runs, action_
         'llm_delta': round(llm, 2),
         'assumptions': {
             'google_max': google_max, 'reviews_pages': reviews_pages,
-            'action_links_venues': links_calls,
+            'action_links_venues': links_calls, 'bing_hours_venues': bing_hours_calls,
             'cloro_venues': cloro_venues, 'cloro_runs': cloro_runs,
         },
         'prices': p,
