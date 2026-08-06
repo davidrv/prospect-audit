@@ -256,6 +256,39 @@ def _filter_by_city(locations, city):
     return [loc for loc in locations if _location_matches_city(loc, city_key)]
 
 
+def _address_matches_city(rec, city):
+    """El record es fiablemente de la ciudad si tiene coords (geo real) o la
+    ciudad aparece en su dirección. Descarta la ficha cuyo NOMBRE dice la ciudad
+    (p.ej. 'NH Barcelona Stadium') pero cuya dirección scrapeada es la sede
+    corporativa en otra ciudad (Santa Engracia, Madrid)."""
+    if not city:
+        return True
+    if rec.get('lat') is not None and rec.get('lng') is not None:
+        return True
+    return _text_norm(city) in _text_norm(rec.get('formatted_address') or '')
+
+
+def _scope_to_city(records, city):
+    """Filtra a la ciudad y limpia el resultado: descarta basura/direcciones de
+    otra ciudad y deduplica por (nombre, código postal) priorizando las fichas
+    con coordenadas — así colapsa variantes de formato/locale (Barcelona vs
+    Barcellona) y se queda con la dirección buena, no la corporativa."""
+    recs = [r for r in records if _valid_official_record(r)]
+    if city:
+        recs = _filter_by_city(recs, city)
+        recs = [r for r in recs if _address_matches_city(r, city)]
+    recs = sorted(recs, key=lambda r: r.get('lat') is not None, reverse=True)
+    seen, out = set(), []
+    for r in recs:
+        m = re.search(r'\b(\d{5})\b', r.get('formatted_address') or '')
+        key = (r['name_norm'], m.group(1)) if m else (r['name_norm'], address_norm(r.get('formatted_address') or ''))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
+
+
 def extract_official(urls, city=None):
     """Fetches each URL and extracts schema.org business locations from it.
 
@@ -312,21 +345,26 @@ def extract_official(urls, city=None):
                 if sub.get('page_type') != 'index':
                     findings.append(_finding_for(sub['url'], sub['status']))
 
-    # Descubrimiento adicional vía sitemap (por dominio): SOLO si la extracción
-    # directa no encontró nada (típico de locators 100% JS/inaccesibles) —
-    # muchos exponen igual las store pages con schema.org en el sitemap. Acota
-    # el coste (no se hace cuando ya hay datos) y no perturba el caso normal.
-    if not locations:
+    findings = [f for f in findings if f is not None]
+
+    def _scope(recs):
+        return _scope_to_city(recs, city)
+
+    # Fallback de descubrimiento: se dispara cuando no hay NINGUNA sede útil PARA
+    # LA CIUDAD (no basta con que _extract_one devuelva ruido tipo pie corporativo,
+    # que el filtro por ciudad tira). Muchos locators JS/WAF igual exponen las
+    # store pages por separado; se descubren y scrapean una a una.
+    scoped = _scope(locations)
+    if not scoped:
         roots = list(dict.fromkeys(f'{urlparse(u).scheme}://{urlparse(u).netloc}' for u in urls))
         for root in roots:  # gratis: sitemap con requests (schema.org de las store pages)
             locations.extend(_extract_from_sitemap(root, city))
-        if not locations:  # último recurso (WAF/JS): Firecrawl descubre y scrapea las páginas por sede
+        scoped = _scope(locations)
+        if not scoped:  # último recurso (WAF/JS): Firecrawl descubre y scrapea las páginas por sede
             for root in roots:
                 locations.extend(_extract_locator_pages(root, city))
+            scoped = _scope(locations)
 
-    findings = [f for f in findings if f is not None]
-    deduped = _dedupe(locations)
-    scoped = _filter_by_city(deduped, city) if city else deduped
     return {'locations': scoped, 'errors': errors, 'findings': findings,
             'site_analysis': site_analysis,
             'locator_report': build_locator_report(list(urls), site_analysis, scoped)}
@@ -964,12 +1002,20 @@ def _looks_like_location_page(url):
     return any(t in u for t in _LOCATOR_PAGE_TOKENS)
 
 
+_JUNK_NAME_TOKENS = ('corporate', 'legal notice', 'aviso legal', 'privacy', 'privacidad',
+                     'cookies', 'copyright', 'terms', 'condiciones')
+
+
 def _valid_official_record(rec):
-    """Descarta basura: nombre/dirección vacíos o el literal 'undefined'/'null'
-    (que a veces serializan los SPAs en su schema)."""
+    """Descarta basura: nombre/dirección vacíos, el literal 'undefined'/'null'
+    (que serializan algunos SPAs), o nombres de pie de página legal/corporativo
+    (Corporate, Aviso legal…) que el heurístico a veces captura como si fueran
+    sedes."""
     name = (rec.get('name') or '').strip().lower()
     addr = (rec.get('formatted_address') or '').strip().lower()
     if not name or not addr or name in ('undefined', 'null'):
+        return False
+    if any(j in name for j in _JUNK_NAME_TOKENS):
         return False
     return 'undefined' not in addr
 

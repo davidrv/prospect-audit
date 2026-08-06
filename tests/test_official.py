@@ -1016,3 +1016,15 @@ def test_extract_locator_pages_filters_city_and_scrapes(monkeypatch):
     recs = official._extract_locator_pages('https://nh.com', 'Barcelona')
     assert calls == ['https://nh.com/en/hotel/nh-barcelona-sants']   # solo la de Barcelona
     assert len(recs) == 1
+
+
+def test_scope_to_city_drops_corporate_and_dedupes():
+    R = official.make_record
+    recs = [
+        R('official', 'a', name='NH Barcelona Stadium', formatted_address='Santa Engracia 120, 28003 Madrid'),
+        R('official', 'b', name='NH Sants', formatted_address='Numancia 74, 08029 Barcelona', lat=41.38, lng=2.13),
+        R('official', 'c', name='NH Sants', formatted_address='Numancia 74, 08029 Barcellona', lat=41.38, lng=2.13),
+    ]
+    out = official._scope_to_city(recs, 'Barcelona')
+    assert [r['name'] for r in out] == ['NH Sants']          # corporativa (Madrid, sin coords) fuera; dup locale colapsado
+    assert '08029' in out[0]['formatted_address']
