@@ -1858,7 +1858,15 @@ def _serpapi_apple_lookup(name, lat, lng):
         if not r.ok:
             app.logger.warning(f'SerpApi Apple {r.status_code}: {r.text[:150]}')
             return None  # transient/HTTP error → don't cache, retry next audit
-        results = r.json().get('local_results') or []
+        payload = r.json()
+        results = payload.get('local_results') or []
+        # Query específica → Apple devuelve UNA ficha en `place_results` (no
+        # `local_results`). Ahí vienen place_id/provider_id/link de la ficha
+        # real; sin esto caíamos a la verify_url por coordenadas. Pasa por el
+        # mismo umbral de nombre de abajo, así que es igual de seguro.
+        if not results:
+            pr = payload.get('place_results')
+            results = [pr] if isinstance(pr, dict) and pr else []
     except Exception as e:
         app.logger.warning(f'SerpApi Apple lookup failed for {name!r}: {e}')
         return None

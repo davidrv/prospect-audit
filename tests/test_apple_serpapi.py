@@ -48,6 +48,31 @@ def test_serpapi_apple_lookup_picks_best_name_match(monkeypatch):
     assert match['title'] == 'Alain Afflelou Óptico'
 
 
+def test_serpapi_apple_lookup_uses_place_results_when_no_local(monkeypatch):
+    # Query específica → Apple devuelve UNA ficha en `place_results` (sin
+    # `local_results`). Debe usarse igual, con su place_id/provider/link. Antes
+    # solo mirábamos `local_results` → None → verify_url por coordenadas.
+    monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
+    monkeypatch.setattr(app_module, '_SERPAPI_KEY', 'fake')
+    payload = {'place_results': {
+        'title': 'NH Barcelona Eixample', 'place_id': 'IC2580D2772071AF8',
+        'provider_id': '9902', 'rating': 4, 'reviews': 1645,
+        'link': 'https://maps.apple.com/place?place-id=IC2580D2772071AF8&_provider=9902'}}
+    monkeypatch.setattr(app_module.requests, 'get', lambda *a, **k: _FakeResp(payload))
+    match = app_module._serpapi_apple_lookup('NH Barcelona Eixample', 41.386, 2.154)
+    assert match['place_id'] == 'IC2580D2772071AF8'
+    assert match['provider_id'] == '9902'
+
+
+def test_serpapi_apple_lookup_place_results_still_name_guarded(monkeypatch):
+    # `place_results` con nombre no relacionado → se descarta igual (umbral).
+    monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
+    monkeypatch.setattr(app_module, '_SERPAPI_KEY', 'fake')
+    payload = {'place_results': {'title': 'Completely Unrelated Shop', 'place_id': 'X'}}
+    monkeypatch.setattr(app_module.requests, 'get', lambda *a, **k: _FakeResp(payload))
+    assert app_module._serpapi_apple_lookup('Alain Afflelou', 39.47, -0.37) is None
+
+
 def test_serpapi_apple_lookup_rejects_weak_match(monkeypatch):
     monkeypatch.setattr(app_module, '_APPLE_SERPAPI_ENABLED', True)
     monkeypatch.setattr(app_module, '_SERPAPI_KEY', 'fake')
