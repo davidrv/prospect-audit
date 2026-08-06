@@ -663,10 +663,19 @@ def _serpapi_bing_lookup(name, city, lat, lng):
         if not r.ok:
             app.logger.warning(f'SerpApi Bing {r.status_code}: {r.text[:150]}')
             return None  # transitorio → no cachear, reintentar en la próxima
-        results = r.json().get('local_results') or []
+        payload = r.json()
+        results = payload.get('local_results') or []
         # bing_maps anida los sitios en local_results[0]['items']
         items = (results[0].get('items') if results and isinstance(results[0], dict)
                  and 'items' in results[0] else results) or []
+        # Query específica → SerpApi devuelve una ÚNICA ficha en `place_results`
+        # (no `local_results`). La tratamos como candidato: pasa por el mismo
+        # filtro de nombre+distancia de abajo, así que es igual de seguro.
+        if not items:
+            pr = payload.get('place_results') or []
+            if isinstance(pr, dict):
+                pr = [pr]
+            items = pr
     except Exception as e:
         app.logger.warning(f'SerpApi Bing lookup failed for {name!r}: {e}')
         return None
