@@ -14,3 +14,10 @@ os.environ['DISABLE_AUDIT_HISTORY'] = '1'
 # tests so extract_official never makes a real network call for robots.txt /
 # sitemap.xml; test_official.py re-enables it with a mocked requests.get.
 os.environ['DISABLE_SITEMAP_FETCH'] = '1'
+
+# app.py does load_dotenv() at import, which leaks the real .env keys into the
+# test process. Force the Firecrawl key empty so official._extract_with_firecrawl
+# / _extract_locator_pages never make a real (paid) call; tests that exercise
+# them set the key via monkeypatch. (load_dotenv uses override=False, so this
+# assignment — made when conftest is imported, before app — wins.)
+os.environ['FIRECRAWL_API_KEY'] = ''

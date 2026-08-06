@@ -61,12 +61,45 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from normalize import _day_index, address_norm, make_record, name_norm
 
 _DAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
-_HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; ProspectAuditBot/1.0; internal Localistico tool)'}
+# User-Agent de navegador real + headers "de persona": muchos WAFs/CDNs devuelven
+# 403 a UAs autoidentificados como bots. No garantiza pasar WAFs duros
+# (Akamai/DataDome), pero elimina los bloqueos "blandos" más comunes.
+_HEADERS = {
+    'User-Agent': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
+                   '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'),
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+}
+
+
+def _build_session():
+    """Sesión compartida con reintentos/backoff (429/5xx) + pooling. El 403 NO
+    se reintenta (es un bloqueo, no un fallo transitorio) — se maneja cayendo a
+    Playwright en _extract_one."""
+    session = requests.Session()
+    retry = Retry(total=2, connect=2, read=2, backoff_factor=0.5,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset(['GET', 'HEAD']))
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=10, pool_maxsize=20)
+    session.mount('https://', adapter)
+    session.mount('http://', adapter)
+    session.headers.update(_HEADERS)
+    return session
+
+
+_session = _build_session()
+
+
+def _get(url, timeout=15):
+    """GET con la sesión compartida (UA de navegador + reintentos/backoff)."""
+    return _session.get(url, timeout=timeout)
 
 CSV_TEMPLATE_HEADER = ['name', 'address', 'phone', 'opening_hours', 'url']
 CSV_TEMPLATE_EXAMPLE = ['Zara Pelayo', 'Calle Pelai 58, 08001 Barcelona', '932123456',
@@ -279,6 +312,18 @@ def extract_official(urls, city=None):
                 if sub.get('page_type') != 'index':
                     findings.append(_finding_for(sub['url'], sub['status']))
 
+    # Descubrimiento adicional vía sitemap (por dominio): SOLO si la extracción
+    # directa no encontró nada (típico de locators 100% JS/inaccesibles) —
+    # muchos exponen igual las store pages con schema.org en el sitemap. Acota
+    # el coste (no se hace cuando ya hay datos) y no perturba el caso normal.
+    if not locations:
+        roots = list(dict.fromkeys(f'{urlparse(u).scheme}://{urlparse(u).netloc}' for u in urls))
+        for root in roots:  # gratis: sitemap con requests (schema.org de las store pages)
+            locations.extend(_extract_from_sitemap(root, city))
+        if not locations:  # último recurso (WAF/JS): Firecrawl descubre y scrapea las páginas por sede
+            for root in roots:
+                locations.extend(_extract_locator_pages(root, city))
+
     findings = [f for f in findings if f is not None]
     deduped = _dedupe(locations)
     scoped = _filter_by_city(deduped, city) if city else deduped
@@ -363,7 +408,12 @@ def _schema_completeness(schema_locations):
 
 
 _SITEMAP_FETCH_TIMEOUT = 10
-_SITEMAP_MAX_CHILDREN = 3
+_SITEMAP_MAX_CHILDREN = 5
+_SITEMAP_STORE_TOKENS = ('store', 'tienda', 'hotel', 'location', 'ubicacion', 'sede',
+                         'restaurant', 'shop', 'local', 'cafe', 'punto-de-venta')
+_NON_STORE_TOKENS = ('menu', 'account', 'blog', 'news', 'noticias', 'help', 'ayuda', 'faq',
+                     'legal', 'privacy', 'privacidad', 'cookies', 'cart', 'carrito', 'login',
+                     'product', 'producto', 'recipe', 'receta', 'careers', 'empleo')
 
 
 def _analyze_sitemap(root_url):
@@ -393,7 +443,7 @@ def _analyze_sitemap(root_url):
 def _sitemap_candidates(base):
     candidates = []
     try:
-        r = requests.get(urljoin(base + '/', 'robots.txt'), headers=_HEADERS, timeout=_SITEMAP_FETCH_TIMEOUT)
+        r = _get(urljoin(base + '/', 'robots.txt'), timeout=_SITEMAP_FETCH_TIMEOUT)
         if r.ok:
             for line in r.text.splitlines():
                 if line.lower().startswith('sitemap:'):
@@ -415,7 +465,7 @@ def _fetch_sitemap_locs(sm_url, depth):
     """URLs <loc> de un sitemap; si es un índice de sitemaps, sigue hasta
     _SITEMAP_MAX_CHILDREN hijos (un solo nivel)."""
     try:
-        r = requests.get(sm_url, headers=_HEADERS, timeout=_SITEMAP_FETCH_TIMEOUT)
+        r = _get(sm_url, timeout=_SITEMAP_FETCH_TIMEOUT)
     except requests.RequestException:
         return []
     if not r.ok or '<' not in r.text:
@@ -423,8 +473,11 @@ def _fetch_sitemap_locs(sm_url, depth):
     locs = re.findall(r'<loc>\s*([^<\s]+)\s*</loc>', r.text, flags=re.IGNORECASE)
     is_index = '<sitemapindex' in r.text.lower()
     if is_index and depth == 0:
+        # Prioriza los sub-sitemaps que parezcan de tiendas/hoteles (a menudo no
+        # son los primeros del índice) antes de acotar a _SITEMAP_MAX_CHILDREN.
+        ranked = sorted(locs, key=lambda u: 0 if any(t in u.lower() for t in _SITEMAP_STORE_TOKENS) else 1)
         child_locs = []
-        for child in locs[:_SITEMAP_MAX_CHILDREN]:
+        for child in ranked[:_SITEMAP_MAX_CHILDREN]:
             child_locs.extend(_fetch_sitemap_locs(child, depth + 1))
         return child_locs
     return locs
@@ -432,11 +485,62 @@ def _fetch_sitemap_locs(sm_url, depth):
 
 def _looks_like_store_url(url):
     """Heurística: una ficha de sede suele colgar de una ruta con >=2 segmentos
-    (p.ej. /tiendas/barcelona-pelayo), no la home ni una sección de primer nivel."""
-    path = urlparse(url).path.strip('/')
+    (p.ej. /tiendas/barcelona-pelayo) o contener un token de sede; se descartan
+    secciones que claramente no son tiendas (menú, cuenta, blog, producto…)."""
+    path = urlparse(url).path.strip('/').lower()
     if not path:
         return False
+    if any(tok in path for tok in _NON_STORE_TOKENS):
+        return False
+    if any(tok in path for tok in _SITEMAP_STORE_TOKENS):
+        return True
     return len([seg for seg in path.split('/') if seg]) >= 2
+
+
+def _extract_from_sitemap(root_url, city, max_pages=None):
+    """Descubre páginas de sede vía el sitemap y extrae schema.org / heurística
+    de cada una — muchos locators JS igual exponen las store pages (con JSON-LD)
+    en el sitemap. Best-effort, acotado (SITEMAP_STORE_PAGES_MAX) y threaded.
+    Devuelve una lista de records (sin filtrar por ciudad; lo hace el llamador)."""
+    if os.environ.get('DISABLE_SITEMAP_FETCH', '').strip() == '1':
+        return []
+    if max_pages is None:
+        try:
+            max_pages = int(os.environ.get('SITEMAP_STORE_PAGES_MAX', '60'))
+        except ValueError:
+            max_pages = 60
+    try:
+        parsed = urlparse(root_url)
+        base = f'{parsed.scheme}://{parsed.netloc}'
+        locs = []
+        for sm_url in _sitemap_candidates(base):
+            locs = _fetch_sitemap_locs(sm_url, depth=0)
+            if locs:
+                break
+    except Exception:
+        return []
+
+    store_urls = [u for u in dict.fromkeys(locs) if _looks_like_store_url(u)][:max_pages]
+    if not store_urls:
+        return []
+
+    def _one(u):
+        try:
+            r = _get(u, timeout=15)
+            if not r.ok:
+                return []
+            biz = _schema_businesses_from_html(r.text)
+            if biz:
+                return [_map_node(n, u) for n in biz]
+            return _extract_heuristic(r.text, u) or []
+        except Exception:
+            return []
+
+    out = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for recs in pool.map(_one, store_urls):
+            out.extend(recs)
+    return out
 
 
 def _finding_for(url, status):
@@ -468,28 +572,33 @@ def _extract_one(url, city=None):
     is used. `sub_analyses` carries one entry per crawled page that resolved
     to a location, for extract_official() to report schema status per page.
     """
+    fetch_error, http_status, html, reachable = None, None, '', False
     try:
-        r = requests.get(url, headers=_HEADERS, timeout=15)
+        r = _get(url, timeout=15)
+        reachable = r.ok
+        html = r.text if r.ok else ''
+        http_status = None if r.ok else r.status_code
     except requests.RequestException as e:
-        return [], f'no se pudo acceder a la URL ({e})', 'inaccessible', []
+        fetch_error = str(e)
 
-    if not r.ok:
-        return [], f'no se pudo acceder a la URL (HTTP {r.status_code})', 'inaccessible', []
+    if reachable and html:
+        businesses = _schema_businesses_from_html(html)
+        if businesses:
+            return [_map_node(n, url) for n in businesses], None, 'found', []
+        heuristic = _extract_heuristic(html, url)
+        if heuristic:
+            return heuristic, None, 'found_heuristic', []
+        crawled_locations, sub_analyses = (
+            _crawl_for_city_stores(html, url, city) if city else _crawl_candidate_links(html, url))
+        if crawled_locations:
+            return crawled_locations, None, 'found_heuristic', sub_analyses
 
-    businesses = _schema_businesses_from_html(r.text)
-    if businesses:
-        return [_map_node(n, url) for n in businesses], None, 'found', []
-
-    heuristic = _extract_heuristic(r.text, url)
-    if heuristic:
-        return heuristic, None, 'found_heuristic', []
-
-    crawled_locations, sub_analyses = (
-        _crawl_for_city_stores(r.text, url, city) if city else _crawl_candidate_links(r.text, url))
-    if crawled_locations:
-        return crawled_locations, None, 'found_heuristic', sub_analyses
-
-    rendered_html, _render_error = _render_with_playwright(url)
+    # Navegador real: (a) SPAs que cargan por JS/API, y (b) 403/WAF "blandos"
+    # que un navegador sí pasa — antes un 403 cortaba aquí sin intentarlo.
+    # Prioriza los JSON de API capturados (datos limpios del propio locator).
+    rendered_html, api_records, _render_error = _render_with_playwright(url, city=city)
+    if api_records:
+        return api_records, None, 'found_heuristic', []
     if rendered_html:
         businesses = _schema_businesses_from_html(rendered_html)
         if businesses:
@@ -498,6 +607,16 @@ def _extract_one(url, city=None):
         if heuristic:
             return heuristic, None, 'found_heuristic', []
 
+    # Último recurso: Firecrawl (si hay FIRECRAWL_API_KEY) — renderiza con
+    # anti-bot y LLM-extrae la lista de sedes. Cubre locators JS que pintan la
+    # lista en el DOM (Starbucks/Zurich) y los que están tras WAF (Mercadona/NH).
+    firecrawl_records = _extract_with_firecrawl(url, city)
+    if firecrawl_records:
+        return firecrawl_records, None, 'found_heuristic', []
+
+    if not reachable:
+        detail = f'HTTP {http_status}' if http_status else (fetch_error or 'error')
+        return [], f'no se pudo acceder a la URL ({detail})', 'inaccessible', []
     return [], 'sin datos estructurados schema.org (LocalBusiness/ItemList) en el HTML', 'no_schema', []
 
 
@@ -539,31 +658,422 @@ def _extruct_extra_nodes(html):
     return nodes
 
 
-def _render_with_playwright(url):
-    """Last-resort rendering for JS-only pages. Any failure (Chromium not
-    installed, timeout, crash) degrades to (None, message) — this is an
-    optional final step in _extract_one and must never raise."""
+_COOKIE_SELECTORS = (
+    '#onetrust-accept-btn-handler', '#didomi-notice-agree-button',
+    'button[aria-label*="Aceptar" i]', 'button:has-text("Aceptar")',
+    'button:has-text("Aceptar todo")', 'button:has-text("Accept all")', 'button:has-text("Accept")',
+)
+_SEARCH_SELECTORS = (
+    'input[type="search"]', 'input[placeholder*="ciudad" i]', 'input[placeholder*="Buscar" i]',
+    'input[placeholder*="Search" i]', 'input[aria-label*="Buscar" i]', 'input[name*="search" i]',
+    'input[name*="location" i]',
+)
+_MORE_SELECTORS = (
+    'button:has-text("Ver más")', 'button:has-text("Cargar más")', 'button:has-text("Mostrar más")',
+    'button:has-text("Load more")', 'button:has-text("Show more")',
+)
+
+
+def _locator_interact(page, city):
+    """Best-effort, genérico y acotado: aceptar cookies, escribir la ciudad en
+    la caja de búsqueda del locator, scroll para lazy-load y pulsar "ver más".
+    Todo con timeouts cortos y try/except — nunca rompe el render."""
+    for sel in _COOKIE_SELECTORS:
+        try:
+            page.click(sel, timeout=1500)
+            break
+        except Exception:
+            pass
+    if city:
+        for sel in _SEARCH_SELECTORS:
+            try:
+                page.fill(sel, city, timeout=1500)
+                page.keyboard.press('Enter')
+                page.wait_for_timeout(2500)
+                break
+            except Exception:
+                pass
+    for _ in range(6):  # scroll para disparar lazy-load
+        try:
+            page.mouse.wheel(0, 4000)
+            page.wait_for_timeout(600)
+        except Exception:
+            break
+    for _ in range(5):  # paginación "ver más" (acotada)
+        clicked = False
+        for sel in _MORE_SELECTORS:
+            try:
+                page.click(sel, timeout=1000)
+                page.wait_for_timeout(1200)
+                clicked = True
+                break
+            except Exception:
+                pass
+        if not clicked:
+            break
+
+
+def _render_with_playwright(url, city=None):
+    """Renderiza con un navegador REAL y CAPTURA las respuestas XHR/JSON del
+    locator (los datos que carga el SPA), además del DOM final. Devuelve
+    (html, api_records, error). Cualquier fallo degrada a (None, [], mensaje)
+    — es un paso opcional de _extract_one y nunca debe lanzar."""
     try:
         from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
         from playwright.sync_api import sync_playwright
     except ImportError:
-        return None, 'Playwright no está instalado'
+        return None, [], 'Playwright no está instalado'
+
+    api_records = []
+
+    def _on_response(resp):
+        try:
+            if resp.request.resource_type not in ('xhr', 'fetch'):
+                return
+            if 'json' not in (resp.headers or {}).get('content-type', '').lower():
+                return
+            data = resp.json()
+        except Exception:
+            return
+        try:
+            api_records.extend(_records_from_api_json(data, resp.url))
+        except Exception:
+            pass
 
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True, args=['--disable-dev-shm-usage'])
             try:
-                page = browser.new_page(user_agent=_HEADERS['User-Agent'])
+                context = browser.new_context(
+                    user_agent=_HEADERS['User-Agent'], locale='es-ES',
+                    viewport={'width': 1366, 'height': 900},
+                    extra_http_headers={'Accept-Language': _HEADERS['Accept-Language']})
+                page = context.new_page()
+                page.on('response', _on_response)
                 try:
-                    page.goto(url, wait_until='networkidle', timeout=20000)
+                    page.goto(url, wait_until='networkidle', timeout=25000)
                 except PlaywrightTimeoutError:
-                    page.goto(url, wait_until='load', timeout=10000)
+                    try:
+                        page.goto(url, wait_until='load', timeout=12000)
+                    except Exception:
+                        pass
+                _locator_interact(page, city)
                 html = page.content()
             finally:
                 browser.close()
-        return html, None
+        return html, _dedupe(api_records), None
     except Exception as e:
-        return None, f'no se pudo renderizar con navegador ({e})'
+        return None, _dedupe(api_records), f'no se pudo renderizar con navegador ({e})'
+
+
+# ── Parseo de JSON de APIs de locator (lo que captura Playwright) ──────────
+
+_API_NAME_KEYS = ('name', 'title', 'storename', 'displayname', 'hotelname', 'label')
+_API_PLACE_KEYS = ('address', 'address1', 'street', 'streetaddress', 'formattedaddress', 'city',
+                   'lat', 'latitude', 'lng', 'lon', 'longitude', 'geo', 'coordinates',
+                   'postalcode', 'zip', 'zipcode')
+
+
+def _records_from_api_json(data, source_url):
+    """Extrae records de sede de un JSON de API de locator: busca listas de
+    objetos con pinta de sede (nombre + dirección/geo) y las mapea. Acotado."""
+    found = []
+    _walk_api_json(data, found, 0)
+    records = []
+    for obj in found[:500]:
+        rec = _record_from_api_obj(obj, source_url)
+        if rec:
+            records.append(rec)
+    return records
+
+
+def _walk_api_json(node, found, depth):
+    if depth > 6 or len(found) > 1000:
+        return
+    if isinstance(node, list):
+        objs = [x for x in node if isinstance(x, dict)]
+        if objs and sum(1 for x in objs if _looks_like_api_location(x)) >= max(1, len(objs) // 2):
+            found.extend(objs)
+        for x in node:
+            _walk_api_json(x, found, depth + 1)
+    elif isinstance(node, dict):
+        for v in node.values():
+            _walk_api_json(v, found, depth + 1)
+
+
+def _looks_like_api_location(obj):
+    keys = {str(k).lower() for k in obj.keys()}
+    return bool(keys & set(_API_NAME_KEYS)) and bool(keys & set(_API_PLACE_KEYS))
+
+
+def _record_from_api_obj(obj, source_url):
+    lower = {str(k).lower(): v for k, v in obj.items()}
+
+    def pick(*names):
+        for n in names:
+            v = lower.get(n)
+            if v not in (None, ''):
+                return v
+        return None
+
+    name = pick(*_API_NAME_KEYS)
+    if not isinstance(name, str) or not name.strip():
+        return None
+
+    addr = pick('formattedaddress', 'address', 'streetaddress', 'address1', 'fulladdress')
+    if isinstance(addr, dict):
+        addr = _format_address(addr)
+    if not addr:
+        parts = [str(pick(p)) for p in ('street', 'address1', 'postalcode', 'zip', 'city', 'locality')
+                 if pick(p)]
+        addr = ', '.join(parts) or None
+
+    lat, lng = pick('lat', 'latitude'), pick('lng', 'lon', 'longitude')
+    if lat is None:
+        geo = pick('geo', 'coordinates', 'location', 'gps')
+        if isinstance(geo, dict):
+            gl = {str(k).lower(): v for k, v in geo.items()}
+            lat = gl.get('lat') or gl.get('latitude')
+            lng = gl.get('lng') or gl.get('lon') or gl.get('longitude')
+    try:
+        lat = float(lat) if lat is not None else None
+        lng = float(lng) if lng is not None else None
+    except (TypeError, ValueError):
+        lat = lng = None
+
+    if not addr and lat is None:
+        return None
+    phone, website = pick('phone', 'telephone', 'phonenumber'), pick('url', 'website', 'permalink', 'link')
+    return make_record('official', f'api#{name_norm(name)}#{lat}',
+                       name=name.strip(), formatted_address=addr, lat=lat, lng=lng,
+                       phone=str(phone) if phone else None,
+                       website=str(website) if website else None,
+                       verify_url=source_url, raw={'_via': 'api'})
+
+
+# ── Fallback: Firecrawl (render con anti-bot + LLM-extract) ────────────────
+
+_FIRECRAWL_ENDPOINT = 'https://api.firecrawl.dev/v1/scrape'
+_FIRECRAWL_SCHEMA = {
+    'type': 'object',
+    'properties': {'locations': {'type': 'array', 'items': {
+        'type': 'object',
+        'properties': {
+            'name': {'type': 'string'},
+            'address': {'type': 'string'},
+            'phone': {'type': 'string'},
+            'opening_hours': {'type': 'string'},
+        },
+        'required': ['name', 'address'],
+    }}},
+}
+
+
+def _extract_with_firecrawl(url, city=None):
+    """Fallback vía Firecrawl (solo si FIRECRAWL_API_KEY): renderiza la página
+    con anti-bot y EXTRAE con LLM la lista de sedes según un esquema. Cubre
+    locators JS que pintan la lista en el DOM y sitios tras WAF que nuestro
+    Playwright no pasa. Best-effort — nunca lanza; devuelve [] sin clave/fallo."""
+    key = os.environ.get('FIRECRAWL_API_KEY', '').strip()
+    if not key:
+        return []
+    prompt = ('Extract EVERY physical store/branch/office location listed on this page'
+              + (f', focusing on the city of {city}' if city else '')
+              + '. For each location return its name, full postal address, phone and opening '
+                'hours when shown. Ignore legal/privacy notices, cookie banners, navigation '
+                'menus and the generic company headquarters contact.')
+    # Pedimos también el markdown para CORROBORAR la extracción: el LLM de
+    # Firecrawl alucina direcciones plausibles cuando la lista real no está en
+    # el contenido (locators con Google Maps / tras WAF). Solo conservamos las
+    # sedes cuya dirección aparece de verdad en lo scrapeado.
+    body = {
+        'url': url, 'formats': ['markdown', 'json'], 'onlyMainContent': False,
+        'waitFor': 5000, 'timeout': 45000, 'location': {'country': 'ES', 'languages': ['es-ES']},
+        'actions': [{'type': 'wait', 'milliseconds': 4000},
+                    {'type': 'scroll', 'direction': 'down'},
+                    {'type': 'wait', 'milliseconds': 2000}],
+        'jsonOptions': {'prompt': prompt, 'schema': _FIRECRAWL_SCHEMA},
+    }
+    try:
+        r = requests.post(_FIRECRAWL_ENDPOINT, json=body,
+                          headers={'Authorization': f'Bearer {key}'}, timeout=90)
+        if not r.ok:
+            return []
+        data = r.json().get('data') or {}
+        extracted = data.get('json') or {}
+        content_norm = _text_norm(data.get('markdown') or '')
+    except Exception:
+        return []
+
+    out = []
+    for loc in (extracted.get('locations') or []):
+        if not isinstance(loc, dict):
+            continue
+        name = (loc.get('name') or '').strip()
+        addr = (loc.get('address') or '').strip()
+        if not name or not addr or not _corroborated_in_content(addr, content_norm):
+            continue  # sin corroboración en el contenido → probable alucinación
+        hours = (loc.get('opening_hours') or '').strip()
+        out.append(make_record(
+            'official', f'firecrawl#{name_norm(name)}#{address_norm(addr)}',
+            name=name, formatted_address=addr,
+            phone=(loc.get('phone') or '').strip() or None,
+            opening_hours=[hours] if hours else None,
+            verify_url=url, raw={'_via': 'firecrawl'}))
+    return out
+
+
+_ADDR_STOPWORDS = {'calle', 'carrer', 'avenida', 'avinguda', 'passeig', 'paseo', 'plaza', 'placa',
+                   'spain', 'espana', 'barcelona', 'street', 'and', 'del', 'los', 'les'}
+
+
+def _text_norm(s):
+    return unicodedata.normalize('NFKD', (s or '').lower()).encode('ascii', 'ignore').decode('ascii')
+
+
+def _corroborated_in_content(address, content_norm):
+    """True si tokens distintivos de la dirección (calle/número/CP, sin palabras
+    genéricas) aparecen en el contenido scrapeado — antídoto contra las
+    direcciones inventadas por el LLM cuando la lista real no estaba en la
+    página."""
+    toks = [t for t in re.findall(r'[a-z0-9]+', _text_norm(address))
+            if len(t) >= 3 and t not in _ADDR_STOPWORDS]
+    if not toks:
+        return False
+    hits = sum(1 for t in toks if t in content_norm)
+    return hits >= max(2, int(0.5 * len(toks)))
+
+
+# ── Firecrawl: descubrir páginas INDIVIDUALES de sede y scrapear cada una ───
+# En vez de pelear con la página-índice (a menudo un mapa de Google sin datos),
+# se descubren las URLs por sede (sitemap + Firecrawl /map, que además pasa
+# WAFs) y se scrapea CADA una para leer su schema.org/dirección REAL.
+
+_FIRECRAWL_MAP_ENDPOINT = 'https://api.firecrawl.dev/v1/map'
+_LOCATOR_PAGE_TOKENS = ('/hotel/', '/hoteles/', '/tienda', '/tiendas/', '/store', '/stores/',
+                        '/restaurant', '/agente', '/oficina', '/sucursal', '/supermerc',
+                        '/local/', '/clinica', '/centro/', '/store-locator/')
+_LOCATOR_EXCLUDE_TOKENS = ('/reviews', '/opiniones', '/travel-guide', '/guia', '/blog', '/gallery',
+                           '/galeria', '/rooms', '/habitaciones', '/meeting', '/ofertas', '/offers')
+
+
+def _looks_like_location_page(url):
+    u = url.lower()
+    if any(x in u for x in _LOCATOR_EXCLUDE_TOKENS):
+        return False
+    return any(t in u for t in _LOCATOR_PAGE_TOKENS)
+
+
+def _valid_official_record(rec):
+    """Descarta basura: nombre/dirección vacíos o el literal 'undefined'/'null'
+    (que a veces serializan los SPAs en su schema)."""
+    name = (rec.get('name') or '').strip().lower()
+    addr = (rec.get('formatted_address') or '').strip().lower()
+    if not name or not addr or name in ('undefined', 'null'):
+        return False
+    return 'undefined' not in addr
+
+
+def _firecrawl_map(root_url, city):
+    """URLs del sitio vía Firecrawl /map (sitemap + crawl; pasa WAFs). `search`
+    prioriza las de la ciudad. [] sin clave o fallo."""
+    key = os.environ.get('FIRECRAWL_API_KEY', '').strip()
+    if not key:
+        return []
+    try:
+        r = requests.post(_FIRECRAWL_MAP_ENDPOINT,
+                          json={'url': root_url, 'search': city or 'tienda', 'limit': 200},
+                          headers={'Authorization': f'Bearer {key}'}, timeout=90)
+        if not r.ok:
+            return []
+        links = r.json().get('links') or []
+        return [(l.get('url') if isinstance(l, dict) else l) for l in links if l]
+    except Exception:
+        return []
+
+
+def _firecrawl_page_records(url, city=None):
+    """Scrapea UNA página de sede con Firecrawl y extrae su dirección REAL:
+    schema.org → heurístico → LLM corroborado (nunca alucina: descarta lo que no
+    aparezca en el contenido). Una sola llamada por página."""
+    key = os.environ.get('FIRECRAWL_API_KEY', '').strip()
+    if not key:
+        return []
+    body = {
+        'url': url, 'formats': ['rawHtml', 'markdown', 'json'], 'onlyMainContent': False,
+        'timeout': 45000, 'location': {'country': 'ES', 'languages': ['es-ES']},
+        'jsonOptions': {
+            'prompt': ('Extract the physical store/hotel/office location on this page: name, full '
+                       'postal address, phone and opening hours. Ignore navigation and legal notices.'),
+            'schema': _FIRECRAWL_SCHEMA},
+    }
+    try:
+        r = requests.post(_FIRECRAWL_ENDPOINT, json=body,
+                          headers={'Authorization': f'Bearer {key}'}, timeout=90)
+        if not r.ok:
+            return []
+        data = r.json().get('data') or {}
+    except Exception:
+        return []
+
+    html = data.get('rawHtml') or ''
+    biz = _schema_businesses_from_html(html) if html else []
+    if biz:  # schema.org = dato estructurado limpio, sin riesgo de alucinación
+        return [r for r in (_map_node(n, url) for n in biz) if _valid_official_record(r)]
+    # Sin schema → LLM corroborado. (No usamos el heurístico aquí: en páginas de
+    # sede tiende a capturar el pie legal/corporativo, no la sede.)
+    content_norm = _text_norm(data.get('markdown') or '')
+    out = []
+    for loc in ((data.get('json') or {}).get('locations') or []):
+        if not isinstance(loc, dict):
+            continue
+        name = (loc.get('name') or '').strip()
+        addr = (loc.get('address') or '').strip()
+        if not name or not addr or not _corroborated_in_content(addr, content_norm):
+            continue
+        out.append(make_record('official', f'firecrawl#{name_norm(name)}#{address_norm(addr)}',
+                               name=name, formatted_address=addr,
+                               phone=(loc.get('phone') or '').strip() or None,
+                               verify_url=url, raw={'_via': 'firecrawl'}))
+    return out
+
+
+def _extract_locator_pages(root_url, city, max_pages=None):
+    """Descubre páginas individuales de sede (Firecrawl /map + sitemap) y las
+    scrapea una a una con Firecrawl → schema.org/dirección real. Requiere
+    FIRECRAWL_API_KEY. Best-effort, acotado (LOCATOR_PAGES_MAX) y threaded."""
+    if not os.environ.get('FIRECRAWL_API_KEY', '').strip():
+        return []
+    if max_pages is None:
+        try:
+            max_pages = int(os.environ.get('LOCATOR_PAGES_MAX', '40'))
+        except ValueError:
+            max_pages = 40
+
+    urls = set(_firecrawl_map(root_url, city))
+    try:  # + sitemap estándar por si /map no lo cubre
+        p = urlparse(root_url)
+        for sm in _sitemap_candidates(f'{p.scheme}://{p.netloc}'):
+            locs = _fetch_sitemap_locs(sm, 0)
+            if locs:
+                urls.update(locs)
+                break
+    except Exception:
+        pass
+
+    loc_pages = [u for u in urls if _looks_like_location_page(u)]
+    if city:  # si alguna URL nombra la ciudad, quédate solo con esas (evita rascar otras ciudades)
+        cn = _text_norm(city)
+        city_pages = [u for u in loc_pages if cn in _text_norm(u)]
+        loc_pages = city_pages or loc_pages
+    page_urls = loc_pages[:max_pages]
+    if not page_urls:
+        return []
+    out = []
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for recs in pool.map(lambda u: _firecrawl_page_records(u, city), page_urls):
+            out.extend(recs)
+    return out
 
 
 _MAX_CANDIDATE_LINKS = 80
@@ -625,7 +1135,7 @@ def _crawl_candidate_links(html, source_url):
 
     def _try_link(link):
         try:
-            r = requests.get(link, headers=_HEADERS, timeout=15)
+            r = _get(link, timeout=15)
         except requests.RequestException:
             return link, [], None
         if not r.ok:
@@ -766,7 +1276,7 @@ def _crawl_for_city_stores(html, source_url, city):
         if priority == 2 and (found_city_store or depth > 1):
             continue
         try:
-            r = requests.get(url, headers=_HEADERS, timeout=15)
+            r = _get(url, timeout=15)
         except requests.RequestException:
             continue
         if not r.ok:

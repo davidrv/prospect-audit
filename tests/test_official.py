@@ -123,7 +123,8 @@ def test_extract_one_no_structured_data(monkeypatch):
         ok = True
         text = '<html><body>no jsonld here</body></html>'
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (None, [], 'no Chromium'))
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     assert locations == []
     assert status == 'no_schema'
@@ -141,7 +142,7 @@ def test_extract_one_with_structured_data():
         text = html
 
     import unittest.mock
-    with unittest.mock.patch.object(official.requests, 'get', return_value=FakeResponse()):
+    with unittest.mock.patch.object(official._session, 'get', return_value=FakeResponse()):
         locations, error, status, sub_analyses = official._extract_one('https://example.com')
 
     assert error is None
@@ -156,7 +157,8 @@ def test_extract_one_inaccessible_page(monkeypatch):
     def raise_conn_error(*a, **k):
         raise requests_module.exceptions.ConnectionError('blocked')
 
-    monkeypatch.setattr(official.requests, 'get', raise_conn_error)
+    monkeypatch.setattr(official._session, 'get', raise_conn_error)
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (None, [], 'no Chromium'))
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     assert locations == []
     assert status == 'inaccessible'
@@ -168,7 +170,8 @@ def test_extract_one_http_error_is_inaccessible(monkeypatch):
         status_code = 403
         text = ''
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (None, [], 'no Chromium'))
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     assert locations == []
     assert status == 'inaccessible'
@@ -337,7 +340,7 @@ def test_extract_one_uses_heuristic_before_playwright(monkeypatch):
     def fail_if_called(*a, **k):
         raise AssertionError('Playwright should not be invoked when the raw-HTML heuristic already found data')
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
     monkeypatch.setattr(official, '_render_with_playwright', fail_if_called)
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com/barcelona')
@@ -350,8 +353,8 @@ def test_extract_one_falls_back_to_playwright_when_raw_html_has_nothing(monkeypa
         ok = True
         text = _NO_LOCATION_DATA_HTML
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
-    monkeypatch.setattr(official, '_render_with_playwright', lambda url: (_MOVISTAR_STYLE_HTML, None))
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (_MOVISTAR_STYLE_HTML, [], None))
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com/barcelona')
     assert status == 'found_heuristic'
@@ -367,8 +370,8 @@ def test_extract_one_playwright_recovers_real_schema_org(monkeypatch):
     {"@type": "Restaurant", "name": "Foo", "address": "Calle X", "telephone": "932123456"}
     </script></head></html>'''
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
-    monkeypatch.setattr(official, '_render_with_playwright', lambda url: (schema_html, None))
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (schema_html, [], None))
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     # JS-injected JSON-LD still keeps the "no schema.org" finding — see
@@ -383,27 +386,48 @@ def test_extract_one_playwright_failure_degrades_to_no_schema(monkeypatch):
         ok = True
         text = _NO_LOCATION_DATA_HTML
 
-    monkeypatch.setattr(official.requests, 'get', lambda *a, **k: FakeResponse())
-    monkeypatch.setattr(official, '_render_with_playwright', lambda url: (None, 'no Chromium'))
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: FakeResponse())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (None, [], 'no Chromium'))
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     assert locations == []
     assert status == 'no_schema'
 
 
-def test_extract_one_inaccessible_never_tries_heuristic_or_playwright(monkeypatch):
+def test_extract_one_inaccessible_falls_back_to_browser(monkeypatch):
+    # Ahora un fetch fallido (403/WAF/red) SÍ intenta el navegador real (un WAF
+    # "blando" lo pasa). El heurístico NO se llama (no hay HTML del fetch
+    # directo). Si el navegador tampoco saca nada → 'inaccessible'.
     def raise_conn_error(*a, **k):
         raise official.requests.exceptions.ConnectionError('blocked')
 
     def fail_if_called(*a, **k):
-        raise AssertionError('must not be called when the page is inaccessible (anti-bot out of scope)')
+        raise AssertionError('el heurístico no debe llamarse sin HTML del fetch directo')
 
-    monkeypatch.setattr(official.requests, 'get', raise_conn_error)
+    tried_browser = []
+    monkeypatch.setattr(official._session, 'get', raise_conn_error)
     monkeypatch.setattr(official, '_extract_heuristic', fail_if_called)
-    monkeypatch.setattr(official, '_render_with_playwright', fail_if_called)
+    monkeypatch.setattr(official, '_render_with_playwright',
+                        lambda url, city=None: tried_browser.append(url) or (None, [], 'no Chromium'))
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com')
     assert status == 'inaccessible'
+    assert tried_browser == ['https://example.com']  # el navegador SÍ se intentó
+
+
+def test_extract_one_403_recovered_by_browser(monkeypatch):
+    # Un 403 en el fetch directo pero el navegador saca schema.org → found.
+    class Resp403:
+        ok = False
+        status_code = 403
+        text = ''
+
+    schema_html = ('<html><script type="application/ld+json">{"@type":"Store","name":"Foo",'
+                   '"address":"Calle X","telephone":"932123456"}</script></html>')
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: Resp403())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (schema_html, [], None))
+    locations, error, status, sub_analyses = official._extract_one('https://example.com')
+    assert status == 'found_heuristic' and len(locations) == 1 and locations[0]['name'] == 'Foo'
 
 
 def test_render_with_playwright_missing_package_returns_none(monkeypatch):
@@ -416,7 +440,7 @@ def test_render_with_playwright_missing_package_returns_none(monkeypatch):
         return real_import(name, *args, **kwargs)
 
     monkeypatch.setattr(builtins, '__import__', fake_import)
-    html, error = official._render_with_playwright('https://example.com')
+    html, api, error = official._render_with_playwright('https://example.com')
     assert html is None
     assert 'Playwright' in error
 
@@ -467,7 +491,7 @@ def test_crawl_candidate_links_merges_and_discards_irrelevant_pages(monkeypatch)
             text = store_html if 'barcelona-centro' in url else '<html><body>nada relevante aquí</body></html>'
         return FakeResponse()
 
-    monkeypatch.setattr(official.requests, 'get', fake_get)
+    monkeypatch.setattr(official._session, 'get', fake_get)
 
     locations, sub_analyses = official._crawl_candidate_links(_INDEX_ONLY_HTML, 'https://example.com/tiendas')
     assert len(locations) == 1
@@ -502,7 +526,7 @@ def test_extract_one_crawls_index_page_with_no_direct_data(monkeypatch):
     def fail_if_called(*a, **k):
         raise AssertionError('Playwright should not be invoked when crawling already found data')
 
-    monkeypatch.setattr(official.requests, 'get', fake_get)
+    monkeypatch.setattr(official._session, 'get', fake_get)
     monkeypatch.setattr(official, '_render_with_playwright', fail_if_called)
 
     locations, error, status, sub_analyses = official._extract_one('https://example.com/tiendas')
@@ -668,7 +692,7 @@ def test_city_crawl_reaches_individual_store_pages_with_schema(monkeypatch):
         '/barcelona/barcelona/tienda-uno': _store_schema_html('Tienda Uno', 'Barcelona'),
         '/barcelona/barcelona/tienda-dos': _store_schema_html('Tienda Dos', 'Barcelona'),
     }
-    monkeypatch.setattr(official.requests, 'get', _fake_site(pages))
+    monkeypatch.setattr(official._session, 'get', _fake_site(pages))
     locs, subs = official._crawl_for_city_stores(_PROVINCE_INDEX_HTML,
                                                   'https://tiendas.example.es/', 'Barcelona')
     names = sorted(l['name'] for l in locs)
@@ -693,7 +717,7 @@ def test_city_crawl_does_not_descend_into_other_provinces(monkeypatch):
     def tracking_get(url, headers=None, timeout=None):
         fetched.append(url)
         return base(url, headers, timeout)
-    monkeypatch.setattr(official.requests, 'get', tracking_get)
+    monkeypatch.setattr(official._session, 'get', tracking_get)
     official._crawl_for_city_stores(_PROVINCE_INDEX_HTML, 'https://tiendas.example.es/', 'Barcelona')
     assert not any('/madrid' in u for u in fetched)
 
@@ -705,7 +729,7 @@ def test_city_crawl_falls_back_to_heuristic_when_no_schema(monkeypatch):
     listing = ('<html><body><div>Tienda Test<br>Calle Mayor, 5, 08001 Barcelona</div>'
                '<div>Otra Tienda<br>Calle Menor, 9, 08002 Barcelona</div></body></html>')
     pages = {'/': city_html, '/barcelona/barcelona': listing}
-    monkeypatch.setattr(official.requests, 'get', _fake_site(pages))
+    monkeypatch.setattr(official._session, 'get', _fake_site(pages))
     locs, subs = official._crawl_for_city_stores(city_html, 'https://tiendas.example.es/', 'Barcelona')
     assert len(locs) >= 1  # heuristic fallback still works
 
@@ -752,7 +776,7 @@ def test_analyze_sitemap_finds_urls_via_robots(monkeypatch):
             return _SM(sitemap_xml)
         return _SM('', ok=False)
 
-    monkeypatch.setattr(official.requests, 'get', fake_get)
+    monkeypatch.setattr(official._session, 'get', fake_get)
     result = official._analyze_sitemap('https://x.es/tiendas')
     assert result['present'] is True
     assert result['total_urls'] == 2
@@ -816,3 +840,179 @@ def test_locator_report_analyzable_when_reachable(monkeypatch):
     site_analysis = [{'url': 'https://x.es', 'status': 'no_schema', 'location_count': 3, 'page_type': 'index'}]
     report = official.build_locator_report(['https://x.es'], site_analysis, [])
     assert report['analyzable'] is True
+
+
+# ── Tier 1: sitemap como fuente de extracción ────────────────────────────
+def test_looks_like_store_url_tokens_and_filters():
+    assert official._looks_like_store_url('https://x.com/tienda/madrid-centro')
+    assert official._looks_like_store_url('https://x.com/es/hoteles/nh-madrid')
+    assert not official._looks_like_store_url('https://x.com/menu/cafe')   # sección no-tienda
+    assert not official._looks_like_store_url('https://x.com/')
+    assert not official._looks_like_store_url('https://x.com/contacto')    # 1 segmento, sin token
+
+
+def test_extract_from_sitemap_pulls_store_pages(monkeypatch):
+    sitemap = ('<?xml version="1.0"?><urlset>'
+               '<url><loc>https://ex.com/tienda/madrid</loc></url>'
+               '<url><loc>https://ex.com/tienda/barcelona</loc></url>'
+               '<url><loc>https://ex.com/menu/cafe</loc></url>'  # filtrado (no-tienda)
+               '</urlset>')
+    store_html = ('<html><script type="application/ld+json">{"@type":"CafeOrCoffeeShop",'
+                  '"name":"Starbucks %s","address":"Calle X 1","telephone":"900"}</script></html>')
+
+    def fake(url, timeout=None):
+        class R:
+            ok = True
+        r = R()
+        if 'robots.txt' in url:
+            r.text = 'User-agent: *'
+        elif 'sitemap' in url:
+            r.text = sitemap
+        elif 'madrid' in url:
+            r.text = store_html % 'Madrid'
+        elif 'barcelona' in url:
+            r.text = store_html % 'Barcelona'
+        else:
+            r.text = '<html>menu</html>'
+        return r
+
+    monkeypatch.delenv('DISABLE_SITEMAP_FETCH', raising=False)  # conftest lo desactiva por defecto
+    monkeypatch.setattr(official._session, 'get', fake)
+    recs = official._extract_from_sitemap('https://ex.com', city=None)
+    assert sorted(r['name'] for r in recs) == ['Starbucks Barcelona', 'Starbucks Madrid']
+
+
+# ── Tier 3: parseo de JSON de API de locator ─────────────────────────────
+def test_records_from_api_json_list_of_stores():
+    data = {'data': {'stores': [
+        {'name': 'Zara Home Madrid', 'address': 'Gran Via 1', 'lat': 40.4, 'lng': -3.7, 'phone': '900'},
+        {'name': 'Zara Home BCN', 'streetAddress': 'Pelai 2', 'geo': {'latitude': 41.3, 'longitude': 2.1}},
+        {'foo': 'bar'},  # ignorado (sin nombre/dirección)
+    ]}}
+    recs = official._records_from_api_json(data, 'https://ex.com/api')
+    assert sorted(r['name'] for r in recs) == ['Zara Home BCN', 'Zara Home Madrid']
+    madrid = next(r for r in recs if 'Madrid' in r['name'])
+    assert madrid['lat'] == 40.4 and madrid['verify_url'] == 'https://ex.com/api'
+    assert madrid['raw']['_via'] == 'api'
+
+
+def test_records_from_api_json_ignores_non_location_json():
+    assert official._records_from_api_json({'foo': [1, 2, 3], 'bar': {'baz': 'x'}}, 'u') == []
+
+
+# ── Fallback Firecrawl (mockeado) ────────────────────────────────────────
+class _FakeFirecrawlResp:
+    ok = True
+
+    def __init__(self, locations, markdown=''):
+        self._loc = locations
+        self._md = markdown
+
+    def json(self):
+        return {'success': True, 'data': {'json': {'locations': self._loc}, 'markdown': self._md}}
+
+
+def test_extract_with_firecrawl_no_key_returns_empty(monkeypatch):
+    monkeypatch.delenv('FIRECRAWL_API_KEY', raising=False)
+
+    def boom(*a, **k):
+        raise AssertionError('no debe llamar a Firecrawl sin key')
+
+    monkeypatch.setattr(official.requests, 'post', boom)
+    assert official._extract_with_firecrawl('https://ex.com', 'Barcelona') == []
+
+
+def test_extract_with_firecrawl_keeps_only_corroborated(monkeypatch):
+    monkeypatch.setenv('FIRECRAWL_API_KEY', 'fc-test')
+    # markdown scrapeado REAL: contiene solo Diagonal 557; Pau Claris NO aparece
+    # (el LLM se la inventó) → debe descartarse.
+    markdown = 'Tiendas: Starbucks Diagonal, Avinguda Diagonal 557, 08029 Barcelona. Horario 8-22.'
+    locs = [
+        {'name': 'Starbucks Diagonal', 'address': 'Avinguda Diagonal 557, 08029 Barcelona'},   # real
+        {'name': 'Starbucks Fantasma', 'address': 'Carrer Inventado 999, 08099 Barcelona'},     # alucinada
+        {'name': '', 'address': 'ignorar'},                                                     # sin nombre
+    ]
+    monkeypatch.setattr(official.requests, 'post', lambda *a, **k: _FakeFirecrawlResp(locs, markdown))
+    recs = official._extract_with_firecrawl('https://www.starbucks.es/store-locator', 'Barcelona')
+    assert [r['name'] for r in recs] == ['Starbucks Diagonal']   # la inventada, fuera
+    assert recs[0]['raw']['_via'] == 'firecrawl'
+
+
+def test_extract_with_firecrawl_drops_all_when_no_content(monkeypatch):
+    # Página sin la lista real (solo menú) → todo lo "extraído" es alucinación → [].
+    monkeypatch.setenv('FIRECRAWL_API_KEY', 'fc-test')
+    locs = [{'name': 'Mercadona Barcelona 1', 'address': 'Carrer de Balmes 58, 08007 Barcelona'}]
+    monkeypatch.setattr(official.requests, 'post',
+                        lambda *a, **k: _FakeFirecrawlResp(locs, markdown='Inicio · Empleo · Compra online'))
+    assert official._extract_with_firecrawl('https://info.mercadona.es/es/supermercados', 'Barcelona') == []
+
+
+def test_extract_one_uses_firecrawl_as_last_resort(monkeypatch):
+    class Resp:
+        ok = True
+        text = '<html>no data</html>'
+
+    monkeypatch.setenv('FIRECRAWL_API_KEY', 'fc-test')
+    monkeypatch.setattr(official._session, 'get', lambda *a, **k: Resp())
+    monkeypatch.setattr(official, '_render_with_playwright', lambda url, city=None: (None, [], 'no Chromium'))
+    monkeypatch.setattr(official.requests, 'post', lambda *a, **k: _FakeFirecrawlResp(
+        [{'name': 'Foo', 'address': 'Calle Ejemplo 1, 08001 Barcelona'}],
+        markdown='Foo — Calle Ejemplo 1, 08001 Barcelona'))
+    locs, err, status, subs = official._extract_one('https://ex.com', city='Barcelona')
+    assert status == 'found_heuristic' and len(locs) == 1 and locs[0]['name'] == 'Foo'
+
+
+# ── Descubrir + scrapear páginas individuales (Firecrawl) ─────────────────
+def test_looks_like_location_page():
+    assert official._looks_like_location_page('https://x.com/en/hotel/nh-barcelona-sants')
+    assert official._looks_like_location_page('https://x.com/tiendas/madrid-centro')
+    assert not official._looks_like_location_page('https://x.com/en/hotel/nh-x/reviews')
+    assert not official._looks_like_location_page('https://x.com/en/travel-guides/barcelona')
+    assert not official._looks_like_location_page('https://x.com/about')
+
+
+def test_valid_official_record_filters_undefined():
+    ok = official.make_record('official', 'a', name='NH Sants', formatted_address='Nicaragua 146, 08029 Barcelona')
+    assert official._valid_official_record(ok)
+    assert not official._valid_official_record(
+        official.make_record('official', 'b', name='undefined', formatted_address='undefined, undefined'))
+    assert not official._valid_official_record(
+        official.make_record('official', 'c', name='X', formatted_address=''))
+
+
+def test_firecrawl_page_records_uses_schema(monkeypatch):
+    monkeypatch.setenv('FIRECRAWL_API_KEY', 'fc')
+    html = ('<html><script type="application/ld+json">{"@type":"Hotel","name":"NH Barcelona Sants",'
+            '"address":{"streetAddress":"Numancia 74","postalCode":"08029","addressLocality":"Barcelona"},'
+            '"telephone":"900"}</script></html>')
+
+    class R:
+        ok = True
+
+        def json(self):
+            return {'data': {'rawHtml': html, 'markdown': '', 'json': {}}}
+
+    monkeypatch.setattr(official.requests, 'post', lambda *a, **k: R())
+    recs = official._firecrawl_page_records('https://nh.com/en/hotel/nh-barcelona-sants', 'Barcelona')
+    assert len(recs) == 1 and recs[0]['name'] == 'NH Barcelona Sants'
+    assert '08029' in recs[0]['formatted_address']
+
+
+def test_extract_locator_pages_filters_city_and_scrapes(monkeypatch):
+    monkeypatch.setenv('FIRECRAWL_API_KEY', 'fc')
+    monkeypatch.setattr(official, '_firecrawl_map', lambda root, city: [
+        'https://nh.com/en/hotel/nh-barcelona-sants',
+        'https://nh.com/en/hotel/nh-madrid-centro',       # otra ciudad → fuera
+        'https://nh.com/en/travel-guides/barcelona',      # no es página de sede → fuera
+    ])
+    monkeypatch.setattr(official, '_sitemap_candidates', lambda base: [])
+    calls = []
+
+    def fake_page(u, city=None):
+        calls.append(u)
+        return [official.make_record('official', u, name='NH Sants', formatted_address='Numancia 74, 08029 Barcelona')]
+
+    monkeypatch.setattr(official, '_firecrawl_page_records', fake_page)
+    recs = official._extract_locator_pages('https://nh.com', 'Barcelona')
+    assert calls == ['https://nh.com/en/hotel/nh-barcelona-sants']   # solo la de Barcelona
+    assert len(recs) == 1
