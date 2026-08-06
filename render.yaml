@@ -46,3 +46,8 @@ services:
         sync: false
       - key: BASIC_AUTH_PASSWORD
         sync: false
+      # Fallback del crawler (opcional): scraping con anti-bot + descubrir/leer
+      # las páginas por sede cuando el locator es JS/WAF. Sin esta clave, el
+      # crawler funciona igual salvo ese último recurso.
+      - key: FIRECRAWL_API_KEY
+        sync: false
