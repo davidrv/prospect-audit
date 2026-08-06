@@ -56,6 +56,31 @@ def test_bing_lookup_picks_closest_name_match(monkeypatch):
     assert m['place_id'] == 'YN_NEAR'
 
 
+def test_bing_lookup_uses_place_results_when_no_local(monkeypatch):
+    # Query específica → SerpApi devuelve una ÚNICA ficha en `place_results`
+    # (sin `local_results`). Debe usarse igualmente, con el mismo guardado de
+    # nombre+distancia. Regresión: antes solo mirábamos `local_results` → None.
+    _enable(monkeypatch)
+    payload = {'place_results': {
+        'title': 'Hotel NH Collection Barcelona Constanza', 'place_id': 'YNACCE8',
+        'phone': '+34 916 00 81 46', 'website': 'https://www.nh-hotels.com',
+        'gps_coordinates': {'latitude': 41.38887, 'longitude': 2.13627}}}
+    monkeypatch.setattr(app_module.requests, 'get', lambda *a, **k: _FakeResp(payload))
+    m = app_module._serpapi_bing_lookup('NH Collection Constanza', 'Barcelona', 41.38897, 2.1362)
+    assert m['place_id'] == 'YNACCE8'
+    assert m['phone'] == '+34 916 00 81 46'
+
+
+def test_bing_lookup_place_results_still_distance_guarded(monkeypatch):
+    # `place_results` lejos del punto → se descarta igual que un local_result.
+    _enable(monkeypatch)
+    payload = {'place_results': {
+        'title': 'NH Otra Ciudad', 'place_id': 'YN_FAR',
+        'gps_coordinates': {'latitude': 40.4, 'longitude': -3.7}}}
+    monkeypatch.setattr(app_module.requests, 'get', lambda *a, **k: _FakeResp(payload))
+    assert app_module._serpapi_bing_lookup('NH Otra Ciudad', 'Barcelona', 41.38897, 2.1362) is None
+
+
 def test_bing_lookup_rejects_far_only_match(monkeypatch):
     _enable(monkeypatch)
     payload = {'local_results': [{'items': [
