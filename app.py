@@ -79,6 +79,13 @@ _APPLE_SERPAPI_ENABLED = bool(_SERPAPI_KEY) and os.environ.get('DISABLE_APPLE_SE
 _APPLE_SERPAPI_WORKERS = 5
 _APPLE_SERPAPI_NAME_SIM_MIN = 60  # rapidfuzz token_set_ratio floor to accept a SerpApi match as the same venue
 
+# Versión de las claves de caché de los lookups SerpApi (bing/apple). SÚBELA
+# cada vez que cambie la LÓGICA DE PARSEO de la respuesta, para invalidar los
+# resultados ya cacheados (incl. los negativos) sin borrar el caché a mano —
+# tanto en local como en el disco persistente de Render. v2: se añadió el
+# fallback a `place_results` cuando SerpApi no devuelve `local_results`.
+_SERPAPI_CACHE_VERSION = 'v2'
+
 # Apple's /v1/search has poor recall for multi-brand/franchise stores (e.g.
 # it misses "Lowi/Vodafone Clot" on a "Lowi" query). /v1/searchAutocomplete
 # surfaces them, so we ALSO discover Apple POIs via autocomplete anchored at
@@ -651,7 +658,7 @@ def _serpapi_bing_lookup(name, city, lat, lng):
     negativos). Best-effort: cualquier fallo/miss → None."""
     if not _BING_SERPAPI_ENABLED or lat is None or lng is None or not name:
         return None
-    cache_key = f'serpapi_bing:{normalize.name_norm(name)}:{lat:.5f}:{lng:.5f}'
+    cache_key = f'serpapi_bing:{_SERPAPI_CACHE_VERSION}:{normalize.name_norm(name)}:{lat:.5f}:{lng:.5f}'
     hit = cache.get(cache_key)
     if hit is not None:
         return hit.get('match')
@@ -701,7 +708,7 @@ def _serpapi_bing_details(ypid):
     ({'Monday': ['10 AM - 10 PM'], …}) o None. Cacheado por ypid. Best-effort."""
     if not _BING_SERPAPI_ENABLED or not ypid:
         return None
-    cache_key = f'serpapi_bing_details:{ypid}'
+    cache_key = f'serpapi_bing_details:{_SERPAPI_CACHE_VERSION}:{ypid}'
     hit = cache.get(cache_key)
     if hit is not None:
         return hit.get('hours')
@@ -1844,7 +1851,7 @@ def _serpapi_apple_lookup(name, lat, lng):
     if not _APPLE_SERPAPI_ENABLED or lat is None or lng is None or not name:
         return None
 
-    cache_key = f'serpapi_apple:{normalize.name_norm(name)}:{lat:.5f}:{lng:.5f}'
+    cache_key = f'serpapi_apple:{_SERPAPI_CACHE_VERSION}:{normalize.name_norm(name)}:{lat:.5f}:{lng:.5f}'
     hit = cache.get(cache_key)
     if hit is not None:
         return hit.get('match')
