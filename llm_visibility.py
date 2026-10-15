@@ -30,6 +30,7 @@ import requests
 from rapidfuzz import fuzz
 
 import cache
+from i18n import Msg
 import normalize
 
 _CLORO_URL = 'https://api.cloro.dev/v1/monitor/chatgpt'
@@ -260,7 +261,8 @@ def fetch_llm_visibility(clusters, prospect_name, city, *, runs=3, max_venues=5,
 
     def emit(done):
         if progress:
-            progress(f'Visibilidad en IA: {done}/{total} sede(s) comprobadas…')
+            progress(Msg('prog_llm_progress', f'Visibilidad en IA: {done}/{total} sede(s) comprobadas…',
+                         done=done, total=total))
 
     prompts = {c['cluster_id']: _build_prompt(c, city, manual_category) for c in targets}
 

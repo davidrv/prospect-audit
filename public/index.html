@@ -446,6 +446,86 @@ function t(key, vars) {
   return str;
 }
 
+/* Mensajes generados por el backend (i18n.Msg): llegan con el texto en español
+   + {key, params}. En español se muestra el texto tal cual; en inglés se compone
+   aquí. Clave desconocida (o auditoría antigua sin clave) → texto en español. */
+var SRC_EN = { google: 'Google Maps', apple: 'Apple Maps', azure: 'Bing Maps', official: 'the official website', llm: 'AI visibility' };
+var DAY_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+var FIELD_EN = { phone: 'phone number', website: 'website', hours: 'hours', geo: 'geo' };
+function srcEn(s, cap) { var l = SRC_EN[s] || s; return cap ? l.replace(/^the /, '').replace(/^./, function(c) { return c.toUpperCase(); }) : l; }
+function srcListEn(a) { return (a || []).map(function(s) { return srcEn(s); }).join(', '); }
+function capFirst(x) { return String(x).replace(/^./, function(c) { return c.toUpperCase(); }); }
+var MSG_EN = {
+  // Diferencias entre plataformas (inconsistencies.py)
+  flag_r1: function(p) { return 'Present on ' + srcListEn(p.present) + ' but not on ' + srcEn(p.anchor) + ' — check whether it is an outdated or duplicate listing, or a location that has closed.'; },
+  flag_r11: function(p) { return 'Not found on ' + srcListEn(p.missing) + ' (present on ' + srcEn(p.anchor) + ' and ' + srcListEn(p.present) + ').'; },
+  flag_r3: function(p) { return 'Possible duplicate listing on ' + (srcListEn(p.dup) || 'a platform') + ': several listings for this venue — the one closest to Google is compared. Worth reviewing/merging the duplicates.'; },
+  flag_r8: function(p) { return 'Very different address on ' + srcEn(p.other) + ' compared to ' + srcEn(p.anchor) + ' — possibly a wrong or duplicate listing.'; },
+  flag_missing_field: function(p) { return 'No ' + FIELD_EN[p.field] + ' published on ' + srcEn(p.lacks) + ' (' + srcEn(p.has) + ' has one).'; },
+  flag_conflict_field: function(p) { return 'Different ' + FIELD_EN[p.field] + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r9: function(p) { return 'Name differs from ' + srcEn(p.anchor) + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r9_strong: function(p) { return 'Name differs significantly from ' + srcEn(p.anchor) + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r14b: function(p) { return 'Contradictory hours on ' + DAY_EN[p.day] + ' — ' + srcEn(p.anchor, true) + ': ' + (p.anchor_closed ? 'closed' : 'open') + ', ' + srcEn(p.other, true) + ': ' + (p.other_closed ? 'closed' : 'open') + '.'; },
+  flag_r14: function(p) { return 'Different hours on ' + DAY_EN[p.day] + ' (~' + p.diff + ' min difference) — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ', ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  // Checks del store locator (official.py)
+  chk_present: function() { return 'present'; },
+  chk_not_found_pl: function() { return 'not found'; },
+  chk_not_found: function() { return 'not found'; },
+  chk_not_analyzed: function() { return 'not analyzed'; },
+  chk_x_of_n: function(p) { return p.x + ' of ' + p.n; },
+  chk_no_venues: function() { return 'no venues'; },
+  chk_yes: function() { return 'yes'; },
+  chk_yes_urls: function(p) { return 'yes (' + p.n + ' venue URLs)'; },
+  chk_no_schema: function() { return 'no schema to evaluate'; },
+  chk_complete: function() { return 'complete'; },
+  chk_missing: function(p) { return 'missing ' + (p.fields || []).map(function(f) { return FIELD_EN[f] || f; }).join(', '); },
+  // Log de progreso (app.py / llm_visibility.py)
+  prog_pdf: function() { return 'Generating PDF report…'; },
+  prog_done: function() { return 'Audit complete.'; },
+  prog_cancelled: function() { return 'Audit cancelled.'; },
+  prog_error: function(p) { return 'Error: ' + p.error; },
+  prog_google_search: function() { return 'Searching Google Maps…'; },
+  prog_source_found: function(p) { return sourceLabel(p.source) + ': ' + p.n + ' venue(s) found.'; },
+  prog_source_error: function(p) { return sourceLabel(p.source) + ': error (' + p.error + ').'; },
+  prog_official_extract: function(p) { return 'Extracting official data from ' + p.n + ' URL(s)…'; },
+  prog_official_found: function(p) { return 'Official data: ' + p.n + ' venue(s) extracted.'; },
+  prog_anchored_search: function(p) { return 'Searching ' + sourceLabel(p.source) + ' (per venue, using Google coordinates)…'; },
+  prog_compare: function() { return 'Cross-checking and comparing data across platforms…'; },
+  prog_llm_start: function() { return 'Checking AI visibility (ChatGPT via Cloro)…'; },
+  prog_llm_progress: function(p) { return 'AI visibility: ' + p.done + '/' + p.total + ' venue(s) checked…'; },
+  prog_llm_done: function(p) { return 'AI visibility: appears in ' + p.hits + ' of ' + p.total + ' checks (' + p.calls + ' Cloro calls).'; },
+  prog_action_links: function(p) { return 'Analyzing action links (top ' + p.n + ' worst venues)…'; },
+  prog_enrich_start: function(p) { return 'Enriching ' + sourceLabel(p.source) + ' via SerpApi (only venues matched on Google): 0/' + p.total + '…'; },
+  prog_enrich: function(p) { return 'Enriching ' + sourceLabel(p.source) + ' via SerpApi: ' + p.done + '/' + p.total + '…'; },
+  prog_bing_hours: function(p) { return 'Fetching Bing hours (top ' + p.n + ' worst venues)…'; },
+  prog_reviews_cached: function(p) { return 'Reviews: ' + p.cached + '/' + p.total + ' venue(s) from cache.'; },
+  prog_reviews_done: function(p) { return 'Review analysis complete (' + p.total + ' venue(s)).'; },
+  prog_reviews_venue: function(p) { return 'Recent reviews: ' + p.done + '/' + p.total + ' — ' + p.name + ' (' + p.reviews + ' reviews, ' + p.links + ' action links).'; },
+  prog_reviews_failed: function(p) { return 'Recent reviews: ' + p.done + '/' + p.total + ' — ' + p.name + ' FAILED (' + p.error + ').'; },
+  prog_reviews_api: function(p) { return 'Analyzing recent reviews via API: 0/' + p.total + ' venue(s) (' + p.workers + ' in parallel)…'; },
+  prog_reviews_scrape: function(p) { return 'Analyzing recent reviews: 0/' + p.total + ' venue(s) to scrape (' + p.workers + ' browsers in parallel, up to ' + p.seconds + 's per venue)…'; }
+};
+function backendMsg(text, key, params) {
+  if (currentLang !== 'en' || !key || !MSG_EN[key]) return text;
+  try { return MSG_EN[key](params || {}); } catch (e) { return text; }
+}
+var CHECK_LABEL_EN = {
+  jsonld_localbusiness: 'LocalBusiness structured data on the store pages',
+  schema_completeness: 'Complete schema.org markup (hours, phone, geo)',
+  store_pages_coverage: 'Individual page per venue (indexable)',
+  sitemap_present: 'Sitemap with the store pages'
+};
+var ACTION_LINK_EN = { reservation: 'Book', order: 'Order online', menu: 'Menu', tickets: 'Tickets', other: 'Other' };
+// Valor de "Links" en el detalle de sede: en inglés se recompone desde los tipos.
+function actionLinksDisplay(al) {
+  if (!al || !al.value) return 'N/D';
+  if (currentLang !== 'en' || al.source !== 'scraped' || !al.links) return al.value;
+  if (!al.links.length) return 'None detected';
+  var labels = {};
+  al.links.forEach(function(l) { labels[ACTION_LINK_EN[l.type] || l.type] = true; });
+  return Object.keys(labels).sort().join(', ');
+}
+
 function applyI18n() {
   document.getElementById('html-root').setAttribute('lang', currentLang);
   document.getElementById('lang-btn').textContent = currentLang === 'es' ? 'EN' : 'ES';
@@ -468,7 +548,7 @@ function applyI18n() {
   var pdfTxt = document.getElementById('pdf-btn-text');
   if (pdfTxt) pdfTxt.textContent = t('results_pdf_btn');
   // Re-render dynamic sections if results are shown
-  if (lastResult) { renderVenues(); renderRawTabs(); updateSummary(); }
+  if (lastResult) { renderVenues(); renderRawTabs(); updateSummary(); renderLocator(lastResult.locator_report); }
 }
 
 function toggleLang() {
@@ -531,7 +611,7 @@ function reviewRateDisplay(rr) {
   if (!rr) return '—';
   if (rr.source === 'scraped') return String(rr.value);
   if (rr.value === 'N/D' || rr.value == null) return '—';
-  return rr.value + '/' + rr.sample_size + ' (aprox.)';
+  return rr.value + '/' + rr.sample_size + (currentLang === 'en' ? ' (approx.)' : ' (aprox.)');
 }
 function replyRateDisplay(rr) { if (!rr || rr.value === 'N/D' || rr.value == null) return 'N/D'; return rr.value + '%'; }
 
@@ -714,15 +794,19 @@ function pollJob(jobId) {
         if (data.sources) renderSteps(data.sources);
         if (typeof data.percent === 'number') document.getElementById('progress-bar').style.width = data.percent + '%';
         if (data.progress && data.progress.length) {
-          appendLog(data.progress.map(function(m) { return [nowClock(), m, 'var(--tx-2)']; }));
+          var pi = data.progress_i18n || [];
+          appendLog(data.progress.map(function(m, i) {
+            var k = pi[i] || {};
+            return [nowClock(), backendMsg(m, k.key, k.params), 'var(--tx-2)'];
+          }));
         }
         if (data.status === 'done') { onDone(data.result); return; }
         if (data.status === 'cancelled') { document.getElementById('progress-eyebrow').textContent = t('audit_cancelled'); document.getElementById('cancel-btn').style.display = 'none'; return; }
-        if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || 'desconocido'), 'var(--bad)']]); return; }
+        if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || (currentLang === 'en' ? 'unknown' : 'desconocido')), 'var(--bad)']]); return; }
         setTimeout(tick, intervalMs);
       })
       .catch(function(err) {
-        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — recarga y reintenta.', 'var(--bad)']]); return; }
+        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — ' + (currentLang === 'en' ? 'reload and retry.' : 'recarga y reintenta.'), 'var(--bad)']]); return; }
         fails++;
         if (fails <= MAX_FAILS) {
           appendLog([[nowClock(), t('audit_connection_lost', { n: fails, max: MAX_FAILS }), 'var(--warn)']]);
@@ -912,8 +996,8 @@ function renderLocator(report) {
     var m = CK[c.status] || CK.na;
     return '<div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--border);">' +
       '<span class="msr" style="font-size:18px; color:' + m[1] + ';">' + m[0] + '</span>' +
-      '<span style="flex:1; color:var(--tx); line-height:1.4;">' + esc(c.label) + '</span>' +
-      '<span style="font-size:13px; font-weight:600; color:' + m[1] + '; text-align:right;">' + esc(c.detail) + '</span></div>';
+      '<span style="flex:1; color:var(--tx); line-height:1.4;">' + esc((currentLang === 'en' && CHECK_LABEL_EN[c.key]) || c.label) + '</span>' +
+      '<span style="font-size:13px; font-weight:600; color:' + m[1] + '; text-align:right;">' + esc(backendMsg(c.detail, c.detail_key, c.detail_params)) + '</span></div>';
   }).join('');
   card.innerHTML =
     '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
@@ -1023,6 +1107,12 @@ function renderVenues() {
     '<div class="muted" style="padding:16px 24px;">' + t('venues_no_match') + '</div>';
 }
 
+// "Qué falla": el hallazgo más grave (flags ya vienen ordenados por severidad).
+function issueSummary(c) {
+  var f = (c.flags || [])[0];
+  if (f && f.msg_key) return backendMsg(f.message, f.msg_key, f.msg_params);
+  return (c.venue_metrics || {}).issue_summary;
+}
 function renderVenueRow(c) {
   var vm = c.venue_metrics || {};
   var col = sevColor(vm.severity);
@@ -1046,7 +1136,7 @@ function renderVenueRow(c) {
         '<span style="display:inline-grid; place-items:center; width:40px; height:40px; border-radius:10px; font-weight:700; font-size:15px; background:' + col[1] + '; color:' + col[0] + ';">' + (vm.score == null ? '—' : vm.score) + '</span>' +
         '<div><div style="font-weight:600; color:var(--tx);">' + esc(c.canonical_label) + '</div>' +
           '<div class="muted" style="font-size:13px; margin-top:2px;">' + esc(c.canonical_address || '') + '</div></div>' +
-        '<div style="font-size:13px; color:var(--tx); line-height:1.45;">' + esc(vm.issue_summary || t('venues_no_issues')) +
+        '<div style="font-size:13px; color:var(--tx); line-height:1.45;">' + esc(issueSummary(c) || t('venues_no_issues')) +
           (note ? '<div style="display:flex; align-items:center; gap:5px; margin-top:3px; font-size:12px; color:var(--acc);"><span class="msr" style="font-size:14px;">edit_note</span>' + esc(note) + '</div>' : '') + '</div>' +
         '<div style="font-size:13px; white-space:nowrap;"><div style="display:flex; align-items:center; gap:4px;"><span class="msr" style="font-size:16px; color:' + ratColor + ';">star</span>' +
           '<strong style="color:' + ratColor + ';">' + (vm.rating == null ? '—' : vm.rating) + '</strong><span class="muted">· ' + fmtNum(vm.review_count) + '</span></div>' +
@@ -1095,10 +1185,11 @@ function renderVenueDetail(c) {
       '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + t(f[1]) + '</span>' + cells.join('') + '</div>';
   }).join('');
 
-  var al = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
+  var alRaw = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
+  var al = actionLinksDisplay(vm.action_links_google);
   var linksRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
     '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + t('detail_links') + '</span>' +
-    detailCell(al, al === 'Ninguno detectado' ? 'conflict' : 'ref') +
+    detailCell(al, alRaw === 'Ninguno detectado' ? 'conflict' : 'ref') +
     detailCell('N/D', 'na') + detailCell('—', 'na') + detailCell('—', 'na') + '</div>';
 
   var fichaCells = ['google', 'apple', 'azure', 'official'].map(function(s) {

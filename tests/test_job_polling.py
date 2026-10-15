@@ -132,3 +132,15 @@ def test_status_payload_includes_sources_and_percent():
     status = client.get(f'/jobs/{job_id}/status').get_json()
     assert set(status['sources']) == {'google', 'apple', 'azure', 'official', 'llm'}
     assert status['percent'] == 0
+
+
+def test_job_status_returns_translation_keys_parallel_to_progress():
+    from i18n import Msg
+    job_id = app_module._new_job()
+    emit = app_module._job_progress_fn(job_id)
+    emit('mensaje sin clave')
+    emit(Msg('prog_source_found', 'Google Maps: 3 sede(s) encontradas.', source='google', n=3))
+
+    status = app_module.app.test_client().get(f'/jobs/{job_id}/status').get_json()
+    assert status['progress'] == ['mensaje sin clave', 'Google Maps: 3 sede(s) encontradas.']
+    assert status['progress_i18n'] == [None, {'key': 'prog_source_found', 'params': {'source': 'google', 'n': 3}}]
