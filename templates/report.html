@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="{{ T.html_lang }}">
 <head>
 <meta charset="UTF-8">
-<title>Auditoría {{ prospect_name }}</title>
+<title>{{ T.title.format(name=prospect_name) }}</title>
 <style>
   /* Inter embebida (OFL) — sin esto WeasyPrint no la encuentra offline y cae a
      una fuente por defecto. Resuelta vía base_url del repo en report.py. */
@@ -98,32 +98,32 @@
     <span style="font-weight:700; font-size:19px; letter-spacing:-0.02em;"><span style="color:var(--accent);">●</span> localistico</span>
   </div>
   <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:18px;">
-    <div style="text-transform:uppercase; letter-spacing:0.1em; font-size:12px; color:var(--muted); font-weight:600;">Auditoría de presencia local</div>
+    <div style="text-transform:uppercase; letter-spacing:0.1em; font-size:12px; color:var(--muted); font-weight:600;">{{ T.cover_eyebrow }}</div>
     <h1 style="font-size:50px; line-height:1.05;">{{ prospect_name }}<br><span style="color:var(--hint); font-weight:500;">{{ city }}</span></h1>
     <div style="display:flex; align-items:center; gap:16px; margin-top:8px;">
       {% set score = summary.presence_score.score if summary.presence_score else none %}
       <div style="position:relative; display:flex; align-items:center; justify-content:center; width:118px; height:118px; border-radius:50%; border:5px solid var(--accent); flex-shrink:0;">
         <div style="font-size:40px; font-weight:700; line-height:1;">{{ score if score is not none else '—' }}</div>
-        <div style="position:absolute; bottom:18px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted);">de 100</div>
+        <div style="position:absolute; bottom:18px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted);">{{ T.of_100 }}</div>
       </div>
       <div>
         <div style="font-size:15px; font-weight:600;">Local Presence Score</div>
-        <div style="display:inline-block; margin-top:8px; background:var(--accent); color:#fff; border-radius:999px; padding:6px 16px; font-weight:700; font-size:13px; letter-spacing:0.06em;">RIESGO {{ overall_risk | upper }}</div>
+        <div style="display:inline-block; margin-top:8px; background:var(--accent); color:#fff; border-radius:999px; padding:6px 16px; font-weight:700; font-size:13px; letter-spacing:0.06em;">{{ T.risk.format(level=overall_risk) | upper }}</div>
         <div style="color:var(--muted); font-size:12px; margin-top:8px; max-width:300px; line-height:1.5;">{{ cover_blurb }}</div>
       </div>
     </div>
   </div>
   <div style="display:flex; justify-content:space-between; color:var(--hint); font-size:11px; border-top:1px solid var(--line); padding-top:10px;">
-    <span>{{ summary.total_locations }} sedes auditadas · Google, Apple, Bing, web oficial{{ ' y asistentes de IA' if llm else '' }}</span>
-    <span>{{ generated_at }} · Confidencial</span>
+    <span>{{ T.cover_footer.format(n=summary.total_locations) }}{{ T.cover_footer_ai if llm else '' }}</span>
+    <span>{{ generated_at }} · {{ T.confidential }}</span>
   </div>
 </section>
 
 <!-- ══ 2 · RESUMEN EJECUTIVO ══ -->
 <section class="page">
-  <header class="sec"><h2>Resumen ejecutivo</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
+  <header class="sec"><h2>{{ T.exec_title }}</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
   {% set ps = summary.presence_score or {} %}
-  <p class="narrative">Hemos auditado las <strong>{{ ps.venues_scored or summary.total_locations }} sedes de {{ prospect_name }} en {{ city }}</strong> con ficha en Google Maps (fuente de referencia) y las hemos comparado con Apple Maps, Bing Maps y la web oficial. El resultado es un <strong>Local Presence Score de {{ ps.score if ps.score is not none else '—' }}/100</strong>: los clientes que buscan una tienda encuentran datos incompletos o contradictorios según dónde busquen.</p>
+  <p class="narrative">{{ T.exec_narrative.format(n=(ps.venues_scored or summary.total_locations), name=(prospect_name | e), city=(city | e), score=(ps.score if ps.score is not none else '—')) | safe }}</p>
 
   <div class="grid-4" style="margin-bottom:14px;">
     {% for s in subscores %}
@@ -137,23 +137,23 @@
     {% endfor %}
   </div>
 
-  <div class="callout"><strong>Por qué importa ahora:</strong> las búsquedas locales acaban en visita en muy poco tiempo, y los asistentes de IA ya recomiendan tiendas usando estos mismos datos. Cada ficha incoherente es un cliente que llega a una tienda cerrada — o que va a la competencia.</div>
+  <div class="callout">{{ T.why_now | safe }}</div>
 </section>
 
 <!-- ══ 3 · ESTADO POR SEDE ══ -->
 <section class="page">
-  <header class="sec"><h2>Estado por sede</h2><span class="tag">de peor a mejor · Google Maps como referencia</span></header>
+  <header class="sec"><h2>{{ T.venues_title }}</h2><span class="tag">{{ T.venues_tag }}</span></header>
   {% set google_cards = venue_cards | selectattr('has_google') | list %}
   <table>
-    <thead><tr><th style="width:44px;">SCORE</th><th>SEDE</th><th>QUÉ FALLA</th><th style="width:120px;">REPUTACIÓN</th></tr></thead>
+    <thead><tr><th style="width:44px;">{{ T.th_score }}</th><th>{{ T.th_venue }}</th><th>{{ T.th_issues }}</th><th style="width:120px;">{{ T.th_reputation }}</th></tr></thead>
     <tbody>
       {% for v in google_cards %}
       <tr>
         <td><span class="sc sev-{{ v.severity }}">{{ v.score if v.score is not none else '—' }}</span></td>
         <td><strong>{{ v.label }}</strong>{% if v.address %}<br><span style="color:var(--muted);">{{ v.address }}</span>{% endif %}
           {% if v.presenter_comment %}<br><span style="color:var(--accent); font-size:10.5px;">✎ {{ v.presenter_comment }}</span>{% endif %}</td>
-        <td>{{ v.issue_summary or 'Sin problemas detectados' }}</td>
-        <td>{% if v.rating is not none %}<strong style="color:{% if v.rating < 3.5 %}var(--bad){% elif v.rating < 4 %}var(--accent){% else %}var(--ok){% endif %};">★ {{ v.rating }}</strong>{% else %}★ —{% endif %} · {{ v.review_count if v.review_count is not none else '—' }} reseñas<br><span style="color:var(--muted);">{{ v.reply_rate_display }} respondidas</span></td>
+        <td>{{ v.issue_summary or T.no_issues }}</td>
+        <td>{% if v.rating is not none %}<strong style="color:{% if v.rating < 3.5 %}var(--bad){% elif v.rating < 4 %}var(--accent){% else %}var(--ok){% endif %};">★ {{ v.rating }}</strong>{% else %}★ —{% endif %} · {{ v.review_count if v.review_count is not none else '—' }} {{ T.reviews }}<br><span style="color:var(--muted);">{{ v.reply_rate_display }} {{ T.replied }}</span></td>
       </tr>
       {% endfor %}
     </tbody>
@@ -162,40 +162,40 @@
 
 <!-- ══ 4 · REPUTACIÓN Y VISIBILIDAD IA ══ -->
 <section class="page">
-  <header class="sec"><h2>Reputación y visibilidad en IA</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
+  <header class="sec"><h2>{{ T.rep_title }}</h2><span class="tag">{{ prospect_name }} · {{ city }}</span></header>
 
   {% if highlight_reviews %}
-  <h3 class="sub">Reseñas recientes destacadas</h3>
+  <h3 class="sub">{{ T.highlight_reviews }}</h3>
   <div class="grid-2">
     {% for r in highlight_reviews %}
-    <div class="quote"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }} · {{ r.label }}</div><div class="t">"{{ r.text or '(sin texto)' }}"</div></div>
+    <div class="quote"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }} · {{ r.label }}</div><div class="t">"{{ r.text or T.no_text }}"</div></div>
     {% endfor %}
   </div>
   {% endif %}
 
   {% if ai_review_summary %}
-  <div class="callout accent" style="margin-top:10px;"><strong>Resumen IA de reseñas:</strong> {{ ai_review_summary }}</div>
+  <div class="callout accent" style="margin-top:10px;"><strong>{{ T.ai_review_summary }}</strong> {{ ai_review_summary }}</div>
   {% endif %}
 
   {% if llm %}
-  <h3 class="sub" style="margin-top:18px;">Visibilidad en asistentes de IA · Visibility Index</h3>
+  <h3 class="sub" style="margin-top:18px;">{{ T.llm_title }}</h3>
   <div style="display:flex; align-items:center; gap:16px; border:1px solid var(--line); border-radius:12px; padding:14px 16px;">
     <div style="text-align:center; width:96px; flex-shrink:0;">
       <div style="font-size:30px; font-weight:700; color:{% if llm.hits_total == llm.checks_total %}var(--ok){% elif llm.hits_total %}var(--accent){% else %}var(--bad){% endif %};">{{ llm.hits_total }}/{{ llm.checks_total }}</div>
-      <div style="font-size:10.5px; color:var(--muted);">comprobaciones con aparición</div>
+      <div style="font-size:10.5px; color:var(--muted);">{{ T.llm_checks_label }}</div>
     </div>
     <div style="flex:1; border-left:1px solid var(--line); padding-left:16px; font-size:12px; line-height:1.6;">
-      Preguntamos a <strong>ChatGPT</strong> «{{ llm.prompt_template }}» para cada sede ({{ llm.runs }} repeticiones){% if llm.position_range %}. {{ prospect_name }} aparece {{ llm.position_range }} puesto{% endif %} — y los asistentes citan los datos de las plataformas, no la web oficial. Un programa GEO consolida esas menciones en primeras posiciones con datos correctos.
+      {{ T.llm_asked.format(prompt=(llm.prompt_template | e), runs=llm.runs) | safe }}{% if llm.position_range %}{{ T.llm_position.format(name=prospect_name, range=llm.position_range) }}{% endif %}{{ T.llm_tail }}
     </div>
   </div>
   {% endif %}
 
   {% if locator_report and locator_report.has_data %}
-  <h3 class="sub" style="margin-top:18px;">Web oficial · store locator
-    {% if locator_report.analyzable == false %}<span class="badge" style="background:var(--surface); color:var(--muted); margin-left:6px;">No se puede analizar</span>{% endif %}
+  <h3 class="sub" style="margin-top:18px;">{{ T.locator_title }}
+    {% if locator_report.analyzable == false %}<span class="badge" style="background:var(--surface); color:var(--muted); margin-left:6px;">{{ T.locator_not_analyzable }}</span>{% endif %}
   </h3>
   {% if locator_report.analyzable == false %}
-  <p class="narrative">No hemos podido acceder automáticamente al store locator (bloqueo o error de acceso), así que no se ha podido evaluar. Recomendamos aportar un CSV de sedes.</p>
+  <p class="narrative">{{ T.locator_not_analyzable_desc }}</p>
   {% else %}
   <div class="grid-2">
     {% for c in locator_report.checks %}
@@ -203,19 +203,19 @@
     {% endfor %}
   </div>
   {% if not locator_report.optimized %}
-  <p class="narrative" style="margin-top:10px;">Consecuencia: <strong>la web oficial no actúa como fuente de verdad</strong>. Google, Apple, Bing y los asistentes de IA construyen la ficha de cada tienda con datos de terceros, sin que la marca controle el resultado.</p>
+  <p class="narrative" style="margin-top:10px;">{{ T.locator_consequence | safe }}</p>
   {% endif %}
   {% endif %}
   {% endif %}
 
   {% if official_comment %}
-  <div class="note-dash" style="margin-top:12px;">Nota del comercial (store locator): {{ official_comment }}</div>
+  <div class="note-dash" style="margin-top:12px;">{{ T.locator_note }} {{ official_comment }}</div>
   {% endif %}
 </section>
 
 <!-- ══ 5 · APÉNDICE ══ -->
 <section class="page">
-  <header class="sec"><h2>Apéndice · detalle por sede</h2><span class="tag">comparación campo a campo</span></header>
+  <header class="sec"><h2>{{ T.appendix_title }}</h2><span class="tag">{{ T.appendix_tag }}</span></header>
 
   {% for v in venue_cards %}
   {% if v.has_google %}
@@ -225,7 +225,7 @@
       <div><strong style="font-size:14px;">{{ v.label }}</strong>{% if v.address %}<br><span style="color:var(--muted); font-size:12px;">{{ v.address }}</span>{% endif %}</div>
     </div>
     <table>
-      <thead><tr><th style="width:70px;"></th><th class="ref">GOOGLE · REF.</th><th>APPLE</th><th>BING</th><th>WEB OFICIAL</th></tr></thead>
+      <thead><tr><th style="width:70px;"></th><th class="ref">{{ T.th_google_ref }}</th><th>{{ T.th_apple }}</th><th>{{ T.th_bing }}</th><th>{{ T.th_official }}</th></tr></thead>
       <tbody>
         {% for row in v.compare %}
         <tr>
@@ -235,23 +235,23 @@
         </tr>
         {% endfor %}
         <tr>
-          <td style="color:var(--muted); font-weight:600;">Links</td>
-          <td colspan="4">{{ v.action_links or 'N/D' }}</td>
+          <td style="color:var(--muted); font-weight:600;">{{ T.row_links }}</td>
+          <td colspan="4">{{ v.action_links or T.cell_na }}</td>
         </tr>
         <tr>
-          <td style="color:var(--muted); font-weight:600;">Reputación</td>
-          <td>{% if v.rating is not none %}<strong>★ {{ v.rating }}</strong> · {{ v.review_count }} reseñas · {{ v.reply_rate_display }} resp.{% else %}—{% endif %}</td>
-          <td colspan="3" style="color:var(--muted);">Google es la fuente de reputación de referencia</td>
+          <td style="color:var(--muted); font-weight:600;">{{ T.row_reputation }}</td>
+          <td>{% if v.rating is not none %}<strong>★ {{ v.rating }}</strong> · {{ v.review_count }} {{ T.reviews }} · {{ v.reply_rate_display }} {{ T.replied_short }}{% else %}—{% endif %}</td>
+          <td colspan="3" style="color:var(--muted);">{{ T.google_reputation_ref }}</td>
         </tr>
       </tbody>
     </table>
     {% if v.llm and v.llm.runs %}
-    <div class="callout" style="margin-top:8px; font-size:12px;"><strong>Visibilidad IA:</strong> «{{ v.llm.prompt }}» — aparece en {{ v.llm.hits }} de {{ v.llm.runs | length }} repeticiones.</div>
+    <div class="callout" style="margin-top:8px; font-size:12px;">{{ T.llm_venue.format(prompt=(v.llm.prompt | e), hits=v.llm.hits, runs=(v.llm.runs | length)) | safe }}</div>
     {% endif %}
-    <div class="note-dash" style="margin-top:8px;">Nota del comercial: {{ v.presenter_comment or '—' }}</div>
+    <div class="note-dash" style="margin-top:8px;">{{ T.presenter_note }} {{ v.presenter_comment or '—' }}</div>
     {% if v.negative_samples %}
     {% for r in v.negative_samples %}
-    <div class="quote" style="margin-top:8px;"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }}</div><div class="t">"{{ r.text or '(sin texto)' }}"</div></div>
+    <div class="quote" style="margin-top:8px;"><div class="h">{{ '★' * (r.rating or 1) }}{{ '☆' * (5 - (r.rating or 1)) }}</div><div class="t">"{{ r.text or T.no_text }}"</div></div>
     {% endfor %}
     {% endif %}
   </div>
@@ -259,14 +259,14 @@
   {% endfor %}
 
   {% if official_findings %}
-  <h3 class="sub" style="margin-top:14px;">Hallazgos sobre los datos oficiales</h3>
+  <h3 class="sub" style="margin-top:14px;">{{ T.official_findings }}</h3>
   {% for f in official_findings %}<div class="check" style="margin-bottom:6px;"><span class="dot {{ 'bad' if f.severity=='critical' else ('warn' if f.severity=='moderate' else 'na') }}"></span>{{ f.url }} — {{ f.message }}</div>{% endfor %}
   {% endif %}
 
   <div class="cta">
     <div style="flex:1;">
-      <div style="font-weight:700; font-size:15px;">¿Hablamos de cómo arreglarlo?</div>
-      <div style="color:#b5b3ad; font-size:12px; margin-top:2px;">Localistico gestiona presencia, reputación y visibilidad en IA para marcas con múltiples sedes.</div>
+      <div style="font-weight:700; font-size:15px;">{{ T.cta_title }}</div>
+      <div style="color:#b5b3ad; font-size:12px; margin-top:2px;">{{ T.cta_desc }}</div>
     </div>
     <span class="btn">localistico.com</span>
   </div>

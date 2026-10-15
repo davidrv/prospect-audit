@@ -64,8 +64,9 @@ def test_apply_report_edits_caps_comment_length():
 def test_report_from_data_renders_pdf_without_recompute(monkeypatch):
     captured = {}
 
-    def fake_render(name, city, results, audit, official_comment):
+    def fake_render(name, city, results, audit, official_comment, lang='es'):
         captured['name'] = name
+        captured['lang'] = lang
         captured['clusters'] = [c['cluster_id'] for c in audit['clusters']]
         captured['comment_L1'] = audit['clusters'][0].get('presenter_comment')
         return b'%PDF-fake'
@@ -176,3 +177,51 @@ def test_venue_rows_presenter_comment_defaults_to_none():
     venue_metrics.compute_venue_metrics([cluster], has_official_data=False, city='Barcelona')
     rows = report._venue_cards([cluster])
     assert rows[0]['presenter_comment'] is None
+
+
+def test_report_from_data_passes_language_to_renderer(monkeypatch):
+    captured = {}
+
+    def fake_render(name, city, results, audit, official_comment, lang='es'):
+        captured['lang'] = lang
+        return b'%PDF-fake'
+
+    monkeypatch.setattr('report.render_report_pdf', fake_render)
+    client = app_module.app.test_client()
+    resp = client.post('/report/from_data', json={
+        'name': 'Prospect', 'city': 'Barcelona', 'audit': _audit([_cluster('L1')]), 'lang': 'en'})
+    assert resp.status_code == 200
+    assert captured['lang'] == 'en'
+    assert 'audit_Prospect.pdf' in resp.headers['Content-Disposition']
+
+
+def test_venue_cards_translate_issue_summary_and_labels_to_english():
+    import inconsistencies
+    import matching
+    g = normalize.make_record('google', 'g', name='Foo', formatted_address='X', lat=1.0, lng=1.0, phone='932123456')
+    o = normalize.make_record('official', 'o', name='Foo', formatted_address='X', lat=1.0, lng=1.0, phone='934999999')
+    clusters = matching.cluster_records([g, o])
+    inconsistencies.detect_inconsistencies(clusters)
+    venue_metrics.compute_venue_metrics(clusters, True, 'Barcelona')
+
+    es = report._venue_cards(clusters)[0]
+    en = report._venue_cards(clusters, 'en')[0]
+    assert es['issue_summary'].startswith('Teléfono distinto')
+    assert en['issue_summary'].startswith('Different phone number')
+    assert [r['label'] for r in en['compare']] == ['Name', 'Address', 'Phone', 'Website', 'Hours']
+
+
+def test_locator_checks_render_in_english_and_fall_back_without_keys():
+    from i18n import Msg
+    import official
+    rep = {'has_data': True, 'checks': [
+        official._schema_completeness([]) | {'key': 'schema_completeness', 'label': 'Marcado'},
+        {'key': 'store_pages_coverage', 'label': 'Página individual', 'status': 'ok',
+         'detail': '3 de 3', 'detail_key': 'chk_x_of_n', 'detail_params': {'x': 3, 'n': 3}},
+        {'key': 'sitemap_present', 'label': 'Sitemap', 'status': 'ok', 'detail': 'sí'},  # auditoría antigua
+    ]}
+    en = report._locator_report(rep, 'en')['checks']
+    assert en[1]['label'] == 'Individual page per venue (indexable)'
+    assert en[1]['detail'] == '3 of 3'
+    assert en[2]['detail'] == 'sí'
+    assert report._locator_report(rep, 'es') is rep

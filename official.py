@@ -597,12 +597,12 @@ def _extract_from_sitemap(root_url, city, max_pages=None):
 
 def _finding_for(url, status):
     if status in ('no_schema', 'found_heuristic'):
-        return {'url': url, 'severity': 'moderate',
+        return {'url': url, 'severity': 'moderate', 'msg_key': 'finding_no_schema',
             'message': 'El store locator es accesible pero no tiene datos estructurados schema.org '
                        '(LocalBusiness) — recomendable implementarlo para mejorar la visibilidad en '
                        'buscadores y asistentes de IA (SEO local / GEO).'}
     if status == 'inaccessible':
-        return {'url': url, 'severity': 'minor',
+        return {'url': url, 'severity': 'minor', 'msg_key': 'finding_inaccessible',
             'message': 'No hemos podido acceder automáticamente a este store locator (bloqueo o '
                        'error de acceso). Prueba a subir un CSV con las sedes en su lugar.'}
     return None

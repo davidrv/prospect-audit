@@ -991,11 +991,13 @@ def report_from_data():
     name = (data.get('name') or '').strip()
     city = (data.get('city') or '').strip()
     official_comment = (data.get('official_comment') or '').strip()
+    lang = data.get('lang') if data.get('lang') in ('es', 'en') else 'es'
 
     from report import render_report_pdf
-    pdf_bytes = render_report_pdf(name, city, results, audit, official_comment)
+    pdf_bytes = render_report_pdf(name, city, results, audit, official_comment, lang=lang)
 
-    filename = 'auditoria_' + (name or 'prospect').replace(' ', '_') + '.pdf'
+    prefix = 'audit_' if lang == 'en' else 'auditoria_'
+    filename = prefix + (name or 'prospect').replace(' ', '_') + '.pdf'
     return Response(pdf_bytes, mimetype='application/pdf',
                      headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 

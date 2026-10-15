@@ -1352,7 +1352,8 @@ function exportPDF() {
     site_analysis: lastResult.site_analysis || [],
     locator_report: lastResult.locator_report || null,
     deleted_cluster_ids: Object.keys(deletedClusterIds),
-    row_comments: commentEdits
+    row_comments: commentEdits,
+    lang: currentLang
   };
   fetch('/report/from_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Error ' + r.status); }); return r.blob(); })
