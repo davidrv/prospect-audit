@@ -64,6 +64,7 @@ from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from i18n import Msg, as_dict
 from normalize import _day_index, address_norm, make_record, name_norm
 
 _DAY_NAMES_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -396,21 +397,31 @@ def build_locator_report(urls, site_analysis, locations):
     sitemap = _analyze_sitemap(root)
 
     def check(key, label, status, detail):
-        return {'key': key, 'label': label, 'status': status, 'detail': detail}
+        # `detail_key`/`detail_params` = el detalle traducible por la UI
+        # (diccionario LANGS de public/index.html); `label` se traduce por `key`.
+        out = {'key': key, 'label': label, 'status': status, 'detail': str(detail)}
+        i18n = as_dict(detail)
+        if i18n:
+            out['detail_key'], out['detail_params'] = i18n['key'], i18n['params']
+        return out
 
     checks = [
         check('jsonld_localbusiness', 'Datos estructurados LocalBusiness en las store pages',
               'ok' if any_schema else ('bad' if reachable else 'na'),
-              'presentes' if any_schema else ('no encontrados' if reachable else 'no analizado')),
+              Msg('chk_present', 'presentes') if any_schema
+              else (Msg('chk_not_found_pl', 'no encontrados') if reachable
+                    else Msg('chk_not_analyzed', 'no analizado'))),
         check('schema_completeness', 'Marcado schema.org completo (horario, teléfono, geo)',
               completeness['status'], completeness['detail']),
         check('store_pages_coverage', 'Página individual por sede (indexable)',
               _coverage_status(coverage_x, coverage_n),
-              f'{coverage_x} de {coverage_n}' if coverage_n else 'sin sedes'),
+              Msg('chk_x_of_n', f'{coverage_x} de {coverage_n}', x=coverage_x, n=coverage_n)
+              if coverage_n else Msg('chk_no_venues', 'sin sedes')),
         check('sitemap_present', 'Sitemap con las store pages',
               'ok' if sitemap['present'] else 'bad',
-              (f"sí ({sitemap['store_like']} URLs de sede)" if sitemap['store_like']
-               else 'sí') if sitemap['present'] else 'no encontrado'),
+              (Msg('chk_yes_urls', f"sí ({sitemap['store_like']} URLs de sede)", n=sitemap['store_like'])
+               if sitemap['store_like'] else Msg('chk_yes', 'sí'))
+              if sitemap['present'] else Msg('chk_not_found', 'no encontrado')),
     ]
     optimized = all(c['status'] == 'ok' for c in checks)
     # `analyzable` = se pudo acceder al menos a una página del locator. Si no
@@ -433,7 +444,7 @@ def _schema_completeness(schema_locations):
     'na' si no hay ninguna sede con schema."""
     n = len(schema_locations)
     if not n:
-        return {'status': 'na', 'detail': 'sin schema para evaluar'}
+        return {'status': 'na', 'detail': Msg('chk_no_schema', 'sin schema para evaluar')}
     have_hours = sum(1 for l in schema_locations if l.get('opening_hours'))
     have_phone = sum(1 for l in schema_locations if l.get('phone'))
     have_geo = sum(1 for l in schema_locations if l.get('lat') is not None and l.get('lng') is not None)
@@ -441,7 +452,10 @@ def _schema_completeness(schema_locations):
     status = 'ok' if fields_ok == 3 else ('warn' if fields_ok >= 1 else 'bad')
     missing = [name for name, c in (('horario', have_hours), ('teléfono', have_phone), ('geo', have_geo))
                if c < n * 0.5]
-    detail = 'completo' if not missing else 'falta ' + ', '.join(missing)
+    missing_keys = [k for k, c in (('hours', have_hours), ('phone', have_phone), ('geo', have_geo))
+                    if c < n * 0.5]
+    detail = (Msg('chk_complete', 'completo') if not missing
+              else Msg('chk_missing', 'falta ' + ', '.join(missing), fields=missing_keys))
     return {'status': status, 'detail': detail}
 
 
@@ -583,12 +597,12 @@ def _extract_from_sitemap(root_url, city, max_pages=None):
 
 def _finding_for(url, status):
     if status in ('no_schema', 'found_heuristic'):
-        return {'url': url, 'severity': 'moderate',
+        return {'url': url, 'severity': 'moderate', 'msg_key': 'finding_no_schema',
             'message': 'El store locator es accesible pero no tiene datos estructurados schema.org '
                        '(LocalBusiness) — recomendable implementarlo para mejorar la visibilidad en '
                        'buscadores y asistentes de IA (SEO local / GEO).'}
     if status == 'inaccessible':
-        return {'url': url, 'severity': 'minor',
+        return {'url': url, 'severity': 'minor', 'msg_key': 'finding_inaccessible',
             'message': 'No hemos podido acceder automáticamente a este store locator (bloqueo o '
                        'error de acceso). Prueba a subir un CSV con las sedes en su lugar.'}
     return None

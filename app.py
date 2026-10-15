@@ -32,6 +32,7 @@ import reputation
 import scoring
 import venue_metrics
 from google_reviews_scraper import scrape_place_signals
+from i18n import Msg, as_dict
 from official import extract_official, parse_official_csv
 
 # OS-native TLS validation — some sites (e.g. tiendas.movistar.es) don't send their full
@@ -170,6 +171,9 @@ def _new_job():
     with _jobs_lock:
         _jobs[job_id] = {
             'status': 'running', 'progress': [], 'result': None, 'error': None,
+            # Paralela a 'progress': {key, params} de cada mensaje para que la
+            # UI lo traduzca (None si el mensaje no es un i18n.Msg).
+            'progress_i18n': [],
             'created_at': time.time(), 'cancelled': False, 'percent': 0,
             # Per-source state for the progress screen's step list. State is one
             # of pending|running|done|error|skipped; count is the #sedes found.
@@ -197,7 +201,8 @@ def _job_progress_fn(job_id):
         with _jobs_lock:
             job = _jobs.get(job_id)
             if job is not None:
-                job['progress'].append(message)
+                job['progress'].append(str(message))
+                job['progress_i18n'].append(as_dict(message))
     return emit
 
 
@@ -247,7 +252,7 @@ def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors,
                                     check_llm_visibility=check_llm_visibility, llm_category=llm_category)
 
         if mode == 'pdf':
-            emit('Generando informe PDF…')
+            emit(Msg('prog_pdf', 'Generando informe PDF…'))
             from report import render_report_pdf
             pdf_bytes = render_report_pdf(name, city, results, audit, official_comment)
             payload = {
@@ -264,20 +269,20 @@ def _run_audit_job(job_id, name, city, official_urls, csv_locations, csv_errors,
             score = ((summary.get('presence_score') or {}).get('score'))
             history.save(job_id, name, city, score, summary.get('total_locations'), payload)
 
-        emit('Auditoría completa.')
+        emit(Msg('prog_done', 'Auditoría completa.'))
         with _jobs_lock:
             _jobs[job_id]['status'] = 'done'
             _jobs[job_id]['result'] = payload
             _jobs[job_id]['percent'] = 100
     except _AuditCancelled:
         app.logger.info(f'Audit job {job_id} cancelled')
-        emit('Auditoría cancelada.')
+        emit(Msg('prog_cancelled', 'Auditoría cancelada.'))
         with _jobs_lock:
             _jobs[job_id]['status'] = 'cancelled'
             _jobs[job_id]['error'] = 'cancelada'
     except Exception as e:
         app.logger.exception(f'Audit job {job_id} failed')
-        emit(f'Error: {e}')
+        emit(Msg('prog_error', f'Error: {e}', error=str(e)))
         with _jobs_lock:
             _jobs[job_id]['status'] = 'error'
             _jobs[job_id]['error'] = str(e)
@@ -350,14 +355,15 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
 
     def run_google():
         set_status('google', 'running')
-        emit('Buscando en Google Maps…')
+        emit(Msg('prog_google_search', 'Buscando en Google Maps…'))
         try:
             results['google'] = _search_google(name, city, progress=progress)
-            emit(f'Google Maps: {len(results["google"])} sede(s) encontradas.')
+            emit(Msg('prog_source_found', f'Google Maps: {len(results["google"])} sede(s) encontradas.',
+                     source='google', n=len(results['google'])))
             set_status('google', 'done', len(results['google']))
         except Exception as e:
             app.logger.error(f'Google error: {e}')
-            emit(f'Google Maps: error ({e}).')
+            emit(Msg('prog_source_error', f'Google Maps: error ({e}).', source='google', error=str(e)))
             set_status('google', 'error')
 
     def run_official():
@@ -368,7 +374,8 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
             set_status('official', 'done', len(csv_locations))
             return
         set_status('official', 'running')
-        emit(f'Extrayendo datos oficiales de {len(official_urls)} URL(s)…')
+        emit(Msg('prog_official_extract', f'Extrayendo datos oficiales de {len(official_urls)} URL(s)…',
+                 n=len(official_urls)))
         try:
             extracted = extract_official(official_urls, city=city)
             results['official'].extend(extracted['locations'])
@@ -376,20 +383,23 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
             results['official_findings'].extend(extracted['findings'])
             results['site_analysis'] = extracted['site_analysis']
             results['locator_report'] = extracted.get('locator_report')
-            emit(f'Datos oficiales: {len(extracted["locations"])} sede(s) extraídas.')
+            emit(Msg('prog_official_found', f'Datos oficiales: {len(extracted["locations"])} sede(s) extraídas.',
+                     n=len(extracted['locations'])))
             set_status('official', 'done', len(results['official']))
         except Exception as e:
             app.logger.error(f'Official extraction error: {e}')
-            emit(f'Datos oficiales: error ({e}).')
+            emit(Msg('prog_source_error', f'Datos oficiales: error ({e}).', source='official', error=str(e)))
             set_status('official', 'error')
 
     def run_apple(google_coords, google_places):
         set_status('apple', 'running')
-        emit('Buscando en Apple Maps (por sede, usando las coordenadas de Google)…')
+        emit(Msg('prog_anchored_search', 'Buscando en Apple Maps (por sede, usando las coordenadas de Google)…',
+                 source='apple'))
         try:
             results['apple'] = _search_apple(name, city, extra_anchors=google_coords,
                                               google_places=google_places)
-            emit(f'Apple Maps: {len(results["apple"])} sede(s) encontradas.')
+            emit(Msg('prog_source_found', f'Apple Maps: {len(results["apple"])} sede(s) encontradas.',
+                     source='apple', n=len(results['apple'])))
             # El enriquecimiento SerpApi (de pago) se hace más tarde, tras
             # clusterizar, y SOLO sobre las sedes Apple que machean con Google
             # (ver _enrich_apple_clusters en _build_audit) — así no se gasta en
@@ -397,19 +407,21 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
             set_status('apple', 'done', len(results['apple']))
         except Exception as e:
             app.logger.error(f'Apple error: {e}')
-            emit(f'Apple Maps: error ({e}).')
+            emit(Msg('prog_source_error', f'Apple Maps: error ({e}).', source='apple', error=str(e)))
             set_status('apple', 'error')
 
     def run_azure(google_coords):
         set_status('azure', 'running')
-        emit('Buscando en Bing Maps (por sede, usando las coordenadas de Google)…')
+        emit(Msg('prog_anchored_search', 'Buscando en Bing Maps (por sede, usando las coordenadas de Google)…',
+                 source='azure'))
         try:
             results['azure'] = _search_azure(name, city, extra_anchors=google_coords)
-            emit(f'Bing Maps: {len(results["azure"])} sede(s) encontradas.')
+            emit(Msg('prog_source_found', f'Bing Maps: {len(results["azure"])} sede(s) encontradas.',
+                     source='azure', n=len(results['azure'])))
             set_status('azure', 'done', len(results['azure']))
         except Exception as e:
             app.logger.error(f'Azure error: {e}')
-            emit(f'Bing Maps: error ({e}).')
+            emit(Msg('prog_source_error', f'Bing Maps: error ({e}).', source='azure', error=str(e)))
             set_status('azure', 'error')
 
     # Both Apple and Azure are anchored per-location using Google's confirmed
@@ -443,7 +455,7 @@ def _run_audit(name, city, official_urls, csv_locations, csv_errors,
 
     official_thread.join()
 
-    emit('Cruzando y comparando datos entre plataformas…')
+    emit(Msg('prog_compare', 'Cruzando y comparando datos entre plataformas…'))
     audit = _build_audit(results, has_official_data=bool(official_urls or csv_locations), city=city,
                          progress=progress)
 
@@ -461,7 +473,7 @@ def _attach_llm_visibility(audit, name, city, emit, set_status, category=''):
     """Best-effort: rellena venue_metrics['llm_visibility'] por sede y
     summary['llm_visibility'] (agregado). Acotado por _CLORO_MAX_VENUES/_RUNS."""
     set_status('llm', 'running')
-    emit('Comprobando visibilidad en IA (ChatGPT vía Cloro)…')
+    emit(Msg('prog_llm_start', 'Comprobando visibilidad en IA (ChatGPT vía Cloro)…'))
     try:
         vis = llm_visibility.fetch_llm_visibility(
             audit['clusters'], name, city,
@@ -472,12 +484,14 @@ def _attach_llm_visibility(audit, name, city, emit, set_status, category=''):
         for cluster in audit['clusters']:
             if cluster['cluster_id'] in per_venue:
                 cluster['venue_metrics']['llm_visibility'] = per_venue[cluster['cluster_id']]
-        emit(f"Visibilidad en IA: aparece en {vis['hits_total']} de {vis['checks_total']} "
-             f"comprobaciones ({vis['calls']} llamadas a Cloro).")
+        emit(Msg('prog_llm_done',
+                 f"Visibilidad en IA: aparece en {vis['hits_total']} de {vis['checks_total']} "
+                 f"comprobaciones ({vis['calls']} llamadas a Cloro).",
+                 hits=vis['hits_total'], total=vis['checks_total'], calls=vis['calls']))
         set_status('llm', 'done', vis['venues_checked'])
     except Exception as e:
         app.logger.error(f'LLM visibility error: {e}')
-        emit(f'Visibilidad en IA: error ({e}).')
+        emit(Msg('prog_source_error', f'Visibilidad en IA: error ({e}).', source='llm', error=str(e)))
         set_status('llm', 'error')
 
 
@@ -549,7 +563,7 @@ def _attach_action_links_worst(clusters, progress=None):
         if progress:
             progress(msg)
 
-    emit(f'Analizando action links (top {len(targets)} peores sedes)…')
+    emit(Msg('prog_action_links', f'Analizando action links (top {len(targets)} peores sedes)…', n=len(targets)))
 
     def _one(pair):
         cluster, raw = pair
@@ -587,7 +601,8 @@ def _enrich_apple_clusters(clusters, progress=None):
             progress(msg)
 
     total = len(targets)
-    emit(f'Enriqueciendo Apple vía SerpApi (solo sedes con match en Google): 0/{total}…')
+    emit(Msg('prog_enrich_start', f'Enriqueciendo Apple vía SerpApi (solo sedes con match en Google): 0/{total}…',
+             source='apple', total=total))
     done, lock = 0, threading.Lock()
 
     def _one(rec):
@@ -596,7 +611,8 @@ def _enrich_apple_clusters(clusters, progress=None):
         with lock:
             done += 1
             if done == total or done % 5 == 0:
-                emit(f'Enriqueciendo Apple vía SerpApi: {done}/{total}…')
+                emit(Msg('prog_enrich', f'Enriqueciendo Apple vía SerpApi: {done}/{total}…',
+                         source='apple', done=done, total=total))
 
     with ThreadPoolExecutor(max_workers=_APPLE_SERPAPI_WORKERS) as pool:
         list(pool.map(_one, targets))
@@ -807,7 +823,8 @@ def _enrich_bing_clusters(clusters, city, progress=None):
             progress(msg)
 
     total = len(targets)
-    emit(f'Enriqueciendo Bing vía SerpApi (solo sedes con match en Google): 0/{total}…')
+    emit(Msg('prog_enrich_start', f'Enriqueciendo Bing vía SerpApi (solo sedes con match en Google): 0/{total}…',
+             source='azure', total=total))
     done, lock = 0, threading.Lock()
 
     def _one(rec):
@@ -816,7 +833,8 @@ def _enrich_bing_clusters(clusters, city, progress=None):
         with lock:
             done += 1
             if done == total or done % 5 == 0:
-                emit(f'Enriqueciendo Bing vía SerpApi: {done}/{total}…')
+                emit(Msg('prog_enrich', f'Enriqueciendo Bing vía SerpApi: {done}/{total}…',
+                         source='azure', done=done, total=total))
 
     with ThreadPoolExecutor(max_workers=_BING_SERPAPI_WORKERS) as pool:
         list(pool.map(_one, targets))
@@ -839,7 +857,7 @@ def _attach_bing_hours_worst(clusters, city, progress=None):
         if progress:
             progress(msg)
 
-    emit(f'Obteniendo horas de Bing (top {len(worst)} peores sedes)…')
+    emit(Msg('prog_bing_hours', f'Obteniendo horas de Bing (top {len(worst)} peores sedes)…', n=len(worst)))
     changed, lock = 0, threading.Lock()
 
     def _one(cluster):
@@ -973,11 +991,13 @@ def report_from_data():
     name = (data.get('name') or '').strip()
     city = (data.get('city') or '').strip()
     official_comment = (data.get('official_comment') or '').strip()
+    lang = data.get('lang') if data.get('lang') in ('es', 'en') else 'es'
 
     from report import render_report_pdf
-    pdf_bytes = render_report_pdf(name, city, results, audit, official_comment)
+    pdf_bytes = render_report_pdf(name, city, results, audit, official_comment, lang=lang)
 
-    filename = 'auditoria_' + (name or 'prospect').replace(' ', '_') + '.pdf'
+    prefix = 'audit_' if lang == 'en' else 'auditoria_'
+    filename = prefix + (name or 'prospect').replace(' ', '_') + '.pdf'
     return Response(pdf_bytes, mimetype='application/pdf',
                      headers={'Content-Disposition': f'attachment; filename="{filename}"'})
 
@@ -1128,6 +1148,7 @@ def job_status(job_id):
         payload = {
             'status': job['status'],
             'progress': job['progress'][since:],
+            'progress_i18n': job['progress_i18n'][since:],
             'progress_count': len(job['progress']),
             'sources': job.get('sources'),
             'percent': job.get('percent', 0),
@@ -1563,9 +1584,9 @@ def _attach_scraped_reviews(places, progress=None):
     if not total:
         return
     if cached:
-        emit(f'Reseñas: {cached}/{total} sede(s) desde caché.')
+        emit(Msg('prog_reviews_cached', f'Reseñas: {cached}/{total} sede(s) desde caché.', cached=cached, total=total))
     if not misses:
-        emit(f'Análisis de reseñas completo ({total} sede(s)).')
+        emit(Msg('prog_reviews_done', f'Análisis de reseñas completo ({total} sede(s)).', total=total))
         return
 
     done = 0
@@ -1581,13 +1602,19 @@ def _attach_scraped_reviews(places, progress=None):
             cache.set(_cache_key(place), signals)
         with done_lock:
             done += 1
-            emit(f'Reseñas recientes: {done}/{len(misses)} — {label} '
-                 f'({len(signals.get("reviews") or [])} reseñas, '
-                 f'{len(signals.get("action_links") or [])} action links).')
+            emit(Msg('prog_reviews_venue',
+                     f'Reseñas recientes: {done}/{len(misses)} — {label} '
+                     f'({len(signals.get("reviews") or [])} reseñas, '
+                     f'{len(signals.get("action_links") or [])} action links).',
+                     done=done, total=len(misses), name=label,
+                     reviews=len(signals.get('reviews') or []),
+                     links=len(signals.get('action_links') or [])))
 
     if _GOOGLE_SIGNALS_VIA_SERPAPI:
-        emit(f'Analizando reseñas recientes vía API: 0/{len(misses)} sede(s) '
-             f'({_REVIEW_SCRAPE_WORKERS} en paralelo)…')
+        emit(Msg('prog_reviews_api',
+                 f'Analizando reseñas recientes vía API: 0/{len(misses)} sede(s) '
+                 f'({_REVIEW_SCRAPE_WORKERS} en paralelo)…',
+                 total=len(misses), workers=_REVIEW_SCRAPE_WORKERS))
 
         def _fetch_one(place):
             nonlocal done
@@ -1600,16 +1627,19 @@ def _attach_scraped_reviews(places, progress=None):
             except Exception as e:
                 with done_lock:
                     done += 1
-                emit(f'Reseñas recientes: {done}/{len(misses)} — {place.get("name")} FALLÓ ({e}).')
+                emit(Msg('prog_reviews_failed', f'Reseñas recientes: {done}/{len(misses)} — {place.get("name")} FALLÓ ({e}).',
+                     done=done, total=len(misses), name=place.get('name'), error=str(e)))
 
         with ThreadPoolExecutor(max_workers=_REVIEW_SCRAPE_WORKERS) as pool:
             list(pool.map(_fetch_one, misses))
-        emit(f'Análisis de reseñas completo ({total} sede(s)).')
+        emit(Msg('prog_reviews_done', f'Análisis de reseñas completo ({total} sede(s)).', total=total))
         return
 
     # Fallback: Playwright scraper, one reused Chromium per worker chunk.
-    emit(f'Analizando reseñas recientes: 0/{len(misses)} sede(s) por scrapear '
-         f'({_REVIEW_SCRAPE_WORKERS} navegadores en paralelo, hasta {_REVIEW_SCRAPE_MAX_SECONDS}s cada sede)…')
+    emit(Msg('prog_reviews_scrape',
+             f'Analizando reseñas recientes: 0/{len(misses)} sede(s) por scrapear '
+             f'({_REVIEW_SCRAPE_WORKERS} navegadores en paralelo, hasta {_REVIEW_SCRAPE_MAX_SECONDS}s cada sede)…',
+             total=len(misses), workers=_REVIEW_SCRAPE_WORKERS, seconds=_REVIEW_SCRAPE_MAX_SECONDS))
 
     def _scrape_one(place, browser):
         nonlocal done
@@ -1622,7 +1652,8 @@ def _attach_scraped_reviews(places, progress=None):
         except Exception as e:
             with done_lock:
                 done += 1
-            emit(f'Reseñas recientes: {done}/{len(misses)} — {place.get("name")} FALLÓ ({e}).')
+            emit(Msg('prog_reviews_failed', f'Reseñas recientes: {done}/{len(misses)} — {place.get("name")} FALLÓ ({e}).',
+                     done=done, total=len(misses), name=place.get('name'), error=str(e)))
 
     def _worker(chunk):
         if not chunk:
@@ -1639,7 +1670,7 @@ def _attach_scraped_reviews(places, progress=None):
     with ThreadPoolExecutor(max_workers=workers) as pool:
         list(pool.map(_worker, chunks))
 
-    emit(f'Análisis de reseñas completo ({total} sede(s)).')
+    emit(Msg('prog_reviews_done', f'Análisis de reseñas completo ({total} sede(s)).', total=total))
 
 
 def _google_review_summary(place_id, key):

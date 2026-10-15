@@ -23,6 +23,7 @@ module only ever flags things about a specific matched location.
 """
 from rapidfuzz import fuzz
 
+from i18n import Msg, as_dict
 from normalize import parse_hours
 
 ANCHOR = 'google'
@@ -78,8 +79,12 @@ def _flag(rule, severity, message, sources, by_source, fields=None):
          'address': by_source.get(s, {}).get('formatted_address')}
         for s in sources
     ]
-    return {'rule': rule, 'severity': severity, 'message': message,
+    flag = {'rule': rule, 'severity': severity, 'message': str(message),
             'sources': sources, 'fields': fields or [], 'links': links}
+    i18n = as_dict(message)
+    if i18n:
+        flag['msg_key'], flag['msg_params'] = i18n['key'], i18n['params']
+    return flag
 
 
 def _flags_for_cluster(cluster):
@@ -90,9 +95,10 @@ def _flags_for_cluster(cluster):
     has_anchor = ANCHOR in present
 
     if not has_anchor:
-        flags.append(_flag('R1', 'critical',
+        flags.append(_flag('R1', 'critical', Msg('flag_r1',
             f'Presente en {", ".join(_label(s) for s in others_present)} pero no en {_label(ANCHOR)} '
             f'— revisar si es una ficha desactualizada, duplicada o un local ya cerrado.',
+            present=others_present, anchor=ANCHOR),
             sources=others_present, by_source=by_source))
     elif not others_present:
         # A Google-only location isn't inherently a finding unless official
@@ -102,9 +108,10 @@ def _flags_for_cluster(cluster):
     else:
         missing = [s for s in COMPARISON_SOURCES if s not in others_present]
         if missing:
-            flags.append(_flag('R11', 'moderate',
+            flags.append(_flag('R11', 'moderate', Msg('flag_r11',
                 f'No encontrada en {", ".join(_label(s) for s in missing)} (sí en {_label(ANCHOR)} y '
                 f'{", ".join(_label(s) for s in others_present)}).',
+                missing=missing, anchor=ANCHOR, present=others_present),
                 sources=missing + [ANCHOR] + others_present, by_source=by_source))
 
     if cluster.get('ambiguous'):
@@ -112,9 +119,10 @@ def _flags_for_cluster(cluster):
         dup = sorted({r['source'] for r in recs
                       if sum(1 for x in recs if x['source'] == r['source']) > 1})
         label = ', '.join(_label(s) for s in dup) or 'una plataforma'
-        flags.append(_flag('R3', 'moderate',
+        flags.append(_flag('R3', 'moderate', Msg('flag_r3',
             f'Posible ficha duplicada en {label}: varias fichas para esta sede — se compara la más '
             f'cercana a Google. Conviene revisar/unificar las duplicadas.',
+            dup=dup),
             sources=dup or cluster['sources_present'], by_source=by_source))
 
     if has_anchor and others_present:
@@ -189,9 +197,10 @@ def _address_flag_vs_anchor(by_source, other):
     sim = address_similarity(by_source, other)
     if sim is None or sim >= ADDRESS_SIM_MIN:
         return None
-    return _flag('R8', 'moderate',
+    return _flag('R8', 'moderate', Msg('flag_r8',
         f'Dirección muy distinta en {_label(other)} frente a {_label(ANCHOR)} '
         f'— posible ficha equivocada o duplicada.',
+        other=other, anchor=ANCHOR),
         sources=[ANCHOR, other], by_source=by_source)
 
 
@@ -229,15 +238,17 @@ def _field_flags_vs_anchor(by_source, other, field, display_field, missing_rule,
     flags = []
     if verdict == 'missing_one':
         has_it, lacks_it = (ANCHOR, other) if anchor_val else (other, ANCHOR)
-        flags.append(_flag(missing_rule, 'critical',
+        flags.append(_flag(missing_rule, 'critical', Msg('flag_missing_field',
             f'Sin {label} publicado en {_label(lacks_it)} (sí lo tiene {_label(has_it)}).',
+            field=field, lacks=lacks_it, has=has_it),
             sources=[lacks_it, has_it], by_source=by_source, fields=[field]))
     else:  # conflict
         anchor_display = by_source[ANCHOR].get(display_field) or anchor_val
         other_display = by_source[other].get(display_field) or other_val
-        flags.append(_flag(conflict_rule, 'critical',
+        flags.append(_flag(conflict_rule, 'critical', Msg('flag_conflict_field',
             f'{label.capitalize()} distinto — {_label(ANCHOR)}: {anchor_display} vs '
             f'{_label(other)}: {other_display}.',
+            field=field, anchor=ANCHOR, anchor_value=anchor_display, other=other, other_value=other_display),
             sources=[other, ANCHOR], by_source=by_source, fields=[field]))
 
     return flags
@@ -254,9 +265,10 @@ def _name_flag_vs_anchor(by_source, other):
 
     severity = 'moderate' if sim >= 60 else 'critical'
     verb = 'varía' if sim >= 60 else 'varía notablemente'
-    return _flag('R9', severity,
+    return _flag('R9', severity, Msg('flag_r9' if sim >= 60 else 'flag_r9_strong',
         f'El nombre {verb} frente a {_label(ANCHOR)} — {_label(ANCHOR)}: {anchor_name} vs '
         f'{_label(other)}: {other_name}.',
+        anchor=ANCHOR, anchor_value=anchor_name, other=other, other_value=other_name),
         sources=[other, ANCHOR], by_source=by_source, fields=['name'])
 
 
@@ -285,10 +297,12 @@ def _hours_diff_for_pair(by_source, other, other_schedule, anchor_schedule):
         other_val, anchor_val = other_schedule[day_idx], anchor_schedule[day_idx]
         statuses = {_status(other_val), _status(anchor_val)}
         if statuses == {'closed', 'open'}:
-            flags.append(_flag('R14b', 'moderate',
+            flags.append(_flag('R14b', 'moderate', Msg('flag_r14b',
                 f'Horario contradictorio el {_DAY_NAMES[day_idx]} — {_label(ANCHOR)}: '
                 f'{"cerrado" if anchor_val == "closed" else "abierto"}, {_label(other)}: '
                 f'{"cerrado" if other_val == "closed" else "abierto"}.',
+                day=day_idx, anchor=ANCHOR, anchor_closed=anchor_val == 'closed',
+                other=other, other_closed=other_val == 'closed'),
                 sources=[other, ANCHOR], by_source=by_source, fields=['opening_hours']))
             continue
 
@@ -301,9 +315,11 @@ def _hours_diff_for_pair(by_source, other, other_schedule, anchor_schedule):
 
         if max_diff >= HOURS_MINOR_THRESHOLD_MIN:
             severity = 'moderate' if max_diff >= HOURS_MODERATE_THRESHOLD_MIN else 'minor'
-            flags.append(_flag('R14', severity,
+            flags.append(_flag('R14', severity, Msg('flag_r14',
                 f'Horario distinto el {_DAY_NAMES[day_idx]} (~{max_diff} min de diferencia) — '
                 f'{_label(ANCHOR)}: {_format_range(anchor_val)}, {_label(other)}: {_format_range(other_val)}.',
+                day=day_idx, diff=max_diff, anchor=ANCHOR, anchor_value=_format_range(anchor_val),
+                other=other, other_value=_format_range(other_val)),
                 sources=[other, ANCHOR], by_source=by_source, fields=['opening_hours']))
 
     return flags

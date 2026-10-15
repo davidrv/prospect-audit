@@ -188,7 +188,7 @@ def test_extract_official_dedupes_and_collects_errors(monkeypatch):
     result = official.extract_official(['https://good.com', 'https://bad.com'])
     assert len(result['locations']) == 1
     assert result['errors'] == [{'url': 'https://bad.com', 'reason': 'no data'}]
-    assert result['findings'] == [{'url': 'https://bad.com', 'severity': 'minor',
+    assert result['findings'] == [{'url': 'https://bad.com', 'severity': 'minor', 'msg_key': 'finding_inaccessible',
         'message': 'No hemos podido acceder automáticamente a este store locator (bloqueo o '
                    'error de acceso). Prueba a subir un CSV con las sedes en su lugar.'}]
 

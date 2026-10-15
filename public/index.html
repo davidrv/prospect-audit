@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" id="html-root">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -89,62 +89,63 @@
     <span class="sub">Prospect Audit</span>
   </div>
   <nav class="nav" id="nav">
-    <button data-screen="input" onclick="showScreen('input')">Input</button>
-    <button data-screen="progress" id="nav-progress" onclick="showScreen('progress')" disabled>Progreso</button>
-    <button data-screen="results" id="nav-results" onclick="showScreen('results')" disabled>Resultados</button>
+    <button data-screen="input" onclick="showScreen('input')" data-i18n="nav_input">Input</button>
+    <button data-screen="progress" id="nav-progress" onclick="showScreen('progress')" disabled data-i18n="nav_progress">Progreso</button>
+    <button data-screen="results" id="nav-results" onclick="showScreen('results')" disabled data-i18n="nav_results">Resultados</button>
   </nav>
-  <button class="theme-btn" title="Cambiar tema" onclick="toggleTheme()"><span class="msr" id="theme-icon" style="font-size: 18px;">dark_mode</span></button>
+  <button class="theme-btn" id="lang-btn" onclick="toggleLang()" title="English / Español" style="width:auto; padding:0 11px; font-size:12px; font-weight:700; letter-spacing:.05em;">EN</button>
+  <button class="theme-btn" data-i18n-title="title_theme" onclick="toggleTheme()"><span class="msr" id="theme-icon" style="font-size: 18px;">dark_mode</span></button>
 </header>
 
 <!-- ══════════ INPUT ══════════ -->
 <main class="narrow" id="screen-input" style="display:none;">
   <div style="text-align:center; margin-bottom:8px;">
     <span class="msr" style="color:var(--acc); font-size:44px;">travel_explore</span>
-    <h1 style="font-size:26px; margin:12px 0 6px;">Audita un prospect</h1>
-    <p class="muted" style="margin:0; line-height:1.5;">Comprobamos su presencia en Google Maps, Apple Maps, Bing Maps, su web y los asistentes de IA.</p>
+    <h1 style="font-size:26px; margin:12px 0 6px;" data-i18n="input_title">Audita un prospect</h1>
+    <p class="muted" style="margin:0; line-height:1.5;" data-i18n="input_subtitle">Comprobamos su presencia en Google Maps, Apple Maps, Bing Maps, su web y los asistentes de IA.</p>
   </div>
   <div class="card pad" style="display:flex; flex-direction:column; gap:18px;">
-    <label class="field">Nombre del prospect
-      <input id="prospect-name" placeholder="Ej.: Zara Home" autofocus>
+    <label class="field"><span data-i18n="input_name_label">Nombre del prospect</span>
+      <input id="prospect-name" data-i18n-placeholder="input_name_placeholder" placeholder="Ej.: Zara Home" autofocus>
     </label>
-    <label class="field">Ciudad
+    <label class="field"><span data-i18n="input_city_label">Ciudad</span>
       <input id="prospect-city" placeholder="Barcelona" value="Barcelona">
     </label>
     <div style="border:1px solid var(--border); border-radius:10px;">
       <button onclick="toggleOfficial()" style="width:100%; display:flex; align-items:center; gap:8px; background:none; border:none; padding:12px 14px; font-size:13px; font-weight:600; color:var(--tx-3); cursor:pointer; text-align:left;">
-        <span class="msr" id="official-chev" style="font-size:18px;">chevron_right</span>Datos oficiales del prospect <span style="font-weight:400; color:var(--faint);">· opcional</span>
+        <span class="msr" id="official-chev" style="font-size:18px;">chevron_right</span><span data-i18n="input_official_label">Datos oficiales del prospect</span> <span style="font-weight:400; color:var(--faint);" data-i18n="input_official_opt">· opcional</span>
       </button>
       <div id="official-box" style="display:none; padding:0 14px 14px; flex-direction:column; gap:10px;">
-        <textarea id="official-urls" class="txt" rows="3" placeholder="URLs del store locator, una por línea…" style="resize:vertical; font-size:13px;"></textarea>
+        <textarea id="official-urls" class="txt" rows="3" data-i18n-placeholder="input_urls_placeholder" placeholder="URLs del store locator, una por línea…" style="resize:vertical; font-size:13px;"></textarea>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <label class="btn-ghost" style="margin:0; border-style:dashed;"><span class="msr" style="font-size:17px;">upload_file</span>Subir CSV de sedes
+          <label class="btn-ghost" style="margin:0; border-style:dashed;"><span class="msr" style="font-size:17px;">upload_file</span><span data-i18n="input_csv_label">Subir CSV de sedes</span>
             <input id="official-csv" type="file" accept=".csv" style="display:none;" onchange="updateCsvLabel(this)">
           </label>
           <span id="csv-name" class="muted" style="font-size:12px;"></span>
-          <a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>
+          <a href="/template_oficial.csv" style="font-size:12.5px;" data-i18n="input_template">Plantilla</a>
         </div>
-        <input id="official-comment" class="txt" placeholder="Comentario para el equipo (opcional)" style="font-size:13px;">
+        <input id="official-comment" class="txt" data-i18n-placeholder="input_comment_placeholder" placeholder="Comentario para el equipo (opcional)" style="font-size:13px;">
       </div>
     </div>
     <label style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; color:var(--tx-2); cursor:pointer;">
       <input type="checkbox" id="check-llm" onchange="toggleLlmCat()" style="margin-top:2px; accent-color:var(--acc);">
-      <span>Auditar <strong style="color:var(--tx);">visibilidad en IA</strong> (ChatGPT vía Cloro) · <span class="muted">consume créditos · comprueba las 5 peores sedes</span></span>
+      <span id="llm-label-text">Auditar <strong style="color:var(--tx);">visibilidad en IA</strong> (ChatGPT vía Cloro) · <span class="muted">consume créditos · comprueba las 5 peores sedes</span></span>
     </label>
     <div id="llm-cat-wrap" style="display:none; margin-left:26px; flex-direction:column; gap:4px;">
-      <input id="llm-category" class="txt" placeholder="Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)" style="width:100%; font-size:13px;">
-      <div class="muted" style="font-size:11.5px;">Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.</div>
+      <input id="llm-category" class="txt" data-i18n-placeholder="input_cat_placeholder" placeholder="Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)" style="width:100%; font-size:13px;">
+      <div class="muted" style="font-size:11.5px;" data-i18n="input_cat_hint">Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.</div>
     </div>
     <div id="cost-line" class="muted" style="display:none; font-size:12px; align-items:center; gap:6px;">
       <span class="msr" style="font-size:15px;">payments</span><span id="cost-text"></span>
     </div>
-    <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:13px; font-size:15px; font-weight:700;">Auditar</button>
+    <button class="btn-acc" id="audit-btn" onclick="startAudit()" style="padding:13px; font-size:15px; font-weight:700;" data-i18n="input_btn">Auditar</button>
   </div>
-  <p class="muted" style="font-size:12px; text-align:center; margin:0;">Tarda de segundos a minutos según el número de sedes.</p>
+  <p class="muted" style="font-size:12px; text-align:center; margin:0;" data-i18n="input_hint">Tarda de segundos a minutos según el número de sedes.</p>
 
   <div class="card" id="recent-card" style="padding:16px 20px; display:none;">
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-      <span style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);">Auditorías recientes</span>
-      <button onclick="clearCache()" title="Vacía la caché de reseñas/enriquecimiento/IA para que el próximo análisis se haga desde cero" style="margin-left:auto; background:none; border:none; color:var(--tx-3); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><span class="msr" style="font-size:14px;">mop</span>Vaciar caché</button>
+      <span style="font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--tx-3);" data-i18n="recent_title">Auditorías recientes</span>
+      <button onclick="clearCache()" id="clear-cache-btn" style="margin-left:auto; background:none; border:none; color:var(--tx-3); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px;"><span class="msr" style="font-size:14px;">mop</span><span data-i18n="recent_clear">Vaciar caché</span></button>
     </div>
     <div id="recent-list"></div>
   </div>
@@ -154,20 +155,20 @@
 <main class="narrow" id="screen-progress" style="display:none; max-width:640px;">
   <div style="text-align:center;">
     <h1 style="font-size:24px; margin:0 0 6px;" id="progress-title">Auditando</h1>
-    <p class="muted" id="progress-eyebrow" style="margin:0;">Puedes dejar esta pestaña abierta; la auditoría corre en segundo plano.</p>
+    <p class="muted" id="progress-eyebrow" style="margin:0;"></p>
   </div>
   <div class="card pad" style="display:flex; flex-direction:column; gap:18px;">
     <div style="height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden;"><div id="progress-bar" style="height:100%; width:0%; border-radius:999px; background:var(--acc); transition:width .4s;"></div></div>
     <div id="progress-steps" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
     <div style="border-top:1px solid var(--border); padding-top:14px;">
-      <button onclick="toggleLog()" style="display:flex; align-items:center; gap:6px; border:none; background:transparent; padding:0; cursor:pointer; font-size:13px; font-weight:600; color:var(--tx-3);"><span class="msr" id="log-chev" style="font-size:17px;">expand_more</span>Log de progreso</button>
+      <button onclick="toggleLog()" style="display:flex; align-items:center; gap:6px; border:none; background:transparent; padding:0; cursor:pointer; font-size:13px; font-weight:600; color:var(--tx-3);"><span class="msr" id="log-chev" style="font-size:17px;">expand_more</span><span data-i18n="progress_log_label">Log de progreso</span></button>
       <div id="log-wrap" style="margin-top:10px; background:var(--code-bg); border-radius:10px; padding:12px 16px; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; color:var(--tx-3); display:flex; flex-direction:column; gap:4px; max-height:200px; overflow:auto;">
         <div id="progress-log" style="display:flex; flex-direction:column; gap:4px;"></div>
       </div>
     </div>
     <div id="progress-actions" style="display:flex; gap:8px;">
-      <button class="btn-acc" id="partial-btn" onclick="showScreen('results')" style="flex:1;" disabled>Ver resultados</button>
-      <button class="btn-ghost" id="cancel-btn" onclick="cancelAudit()">Cancelar</button>
+      <button class="btn-acc" id="partial-btn" onclick="showScreen('results')" style="flex:1;" disabled data-i18n="progress_view_btn">Ver resultados</button>
+      <button class="btn-ghost" id="cancel-btn" onclick="cancelAudit()" data-i18n="progress_cancel_btn">Cancelar</button>
     </div>
   </div>
 </main>
@@ -177,10 +178,10 @@
   <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
     <span class="msr" style="color:var(--ok); font-size:26px;">check_circle</span>
     <div>
-      <div style="font-size:20px; font-weight:700; color:var(--tx);" id="results-eyebrow">Auditoría completada</div>
+      <div style="font-size:20px; font-weight:700; color:var(--tx);" id="results-eyebrow">—</div>
       <div class="muted" id="results-title" style="margin-top:2px;">—</div>
     </div>
-    <button class="btn-acc" id="pdf-btn" onclick="exportPDF()" style="margin-left:auto;"><span class="msr" style="font-size:18px;">picture_as_pdf</span>Exportar informe PDF</button>
+    <button class="btn-acc" id="pdf-btn" onclick="exportPDF()" style="margin-left:auto;"><span class="msr" style="font-size:18px;">picture_as_pdf</span><span id="pdf-btn-text" data-i18n="results_pdf_btn">Exportar informe PDF</span></button>
   </div>
 
   <!-- Resumen (2 columnas) -->
@@ -193,7 +194,7 @@
         </svg>
         <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;">
           <div id="score-num" style="font-size:44px; font-weight:700; letter-spacing:-0.03em; line-height:1; color:var(--tx);">—</div>
-          <div class="muted" style="font-size:12px; margin-top:2px;">de 100</div>
+          <div class="muted" style="font-size:12px; margin-top:2px;" data-i18n="results_score_of">de 100</div>
         </div>
       </div>
       <div style="font-weight:600; color:var(--tx);">Local Presence Score</div>
@@ -213,16 +214,16 @@
   <!-- Sedes -->
   <section class="card" style="overflow:hidden;">
     <div style="display:flex; align-items:center; gap:12px; padding:18px 24px; flex-wrap:wrap;">
-      <span class="card-title">Sedes auditadas</span>
+      <span class="card-title" data-i18n="results_venues_title">Sedes auditadas</span>
       <span class="muted" id="venues-subtitle" style="font-size:13px;"></span>
       <div style="margin-left:auto; display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:7px 12px; color:var(--faint);">
         <span class="msr" style="font-size:17px;">search</span>
-        <input id="venue-search" placeholder="Buscar sede…" oninput="renderVenues()" style="border:none; outline:none; background:transparent; color:var(--tx); font-size:13px; width:150px;">
+        <input id="venue-search" data-i18n-placeholder="results_search_placeholder" placeholder="Buscar sede…" oninput="renderVenues()" style="border:none; outline:none; background:transparent; color:var(--tx); font-size:13px; width:150px;">
       </div>
     </div>
     <div style="overflow-x:auto;"><div style="min-width:960px;">
       <div style="display:grid; grid-template-columns:70px minmax(200px,1.2fr) minmax(170px,1fr) 150px 130px 76px; gap:14px; padding:8px 24px; border-bottom:1px solid var(--border); font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--faint);">
-        <span>Score</span><span>Sede</span><span>Qué falla</span><span>Reputación</span><span>Comprobar en</span><span></span>
+        <span data-i18n="col_score">Score</span><span data-i18n="col_venue">Sede</span><span data-i18n="col_issues">Qué falla</span><span data-i18n="col_reputation">Reputación</span><span data-i18n="col_check">Comprobar en</span><span></span>
       </div>
       <div id="venues-body"></div>
     </div></div>
@@ -233,7 +234,7 @@
   <!-- Datos crudos por fuente (pestañas) -->
   <section class="card" id="raw-card" style="overflow:hidden;">
     <div style="display:flex; align-items:center; gap:16px; padding:16px 24px 0; flex-wrap:wrap;">
-      <span class="card-title">Ver datos crudos por fuente</span>
+      <span class="card-title" data-i18n="results_raw_title">Ver datos crudos por fuente</span>
       <div id="raw-tabs" style="display:flex; gap:2px; margin-left:auto; flex-wrap:wrap;"></div>
     </div>
     <div style="overflow-x:auto;"><div id="raw-body" style="min-width:760px; padding:14px 24px 20px;"></div></div>
@@ -241,6 +242,321 @@
 </main>
 
 <script>
+/* ═══════════════ i18n ═══════════════ */
+var LANGS = {
+  es: {
+    nav_input: 'Input', nav_progress: 'Progreso', nav_results: 'Resultados',
+    title_theme: 'Cambiar tema',
+    input_title: 'Audita un prospect',
+    input_subtitle: 'Comprobamos su presencia en Google Maps, Apple Maps, Bing Maps, su web y los asistentes de IA.',
+    input_name_label: 'Nombre del prospect', input_name_placeholder: 'Ej.: Zara Home',
+    input_city_label: 'Ciudad',
+    input_official_label: 'Datos oficiales del prospect', input_official_opt: '· opcional',
+    input_urls_placeholder: 'URLs del store locator, una por línea…',
+    input_csv_label: 'Subir CSV de sedes', input_template: 'Plantilla',
+    input_comment_placeholder: 'Comentario para el equipo (opcional)',
+    input_cat_placeholder: 'Categoría para el prompt (ej.: tienda de móviles, proveedor de internet)',
+    input_cat_hint: 'Opcional. Se usa tal cual en el prompt de IA; si lo dejas vacío se infiere de Google Places.',
+    input_btn: 'Auditar',
+    input_hint: 'Tarda de segundos a minutos según el número de sedes.',
+    llm_label_html: 'Auditar <strong style="color:var(--tx);">visibilidad en IA</strong> (ChatGPT vía Cloro) · <span class="muted">consume créditos · comprueba las 5 peores sedes</span>',
+    recent_title: 'Auditorías recientes', recent_clear: 'Vaciar caché',
+    recent_clear_title: 'Vacía la caché de reseñas/enriquecimiento/IA para que el próximo análisis se haga desde cero',
+    recent_delete_title: 'Borrar auditoría y limpiar su caché',
+    progress_log_label: 'Log de progreso', progress_view_btn: 'Ver resultados', progress_cancel_btn: 'Cancelar',
+    results_done: 'Auditoría completada', results_pdf_btn: 'Exportar informe PDF',
+    results_score_of: 'de 100', results_venues_title: 'Sedes auditadas',
+    results_search_placeholder: 'Buscar sede…', results_raw_title: 'Ver datos crudos por fuente',
+    col_score: 'Score', col_venue: 'Sede', col_issues: 'Qué falla',
+    col_reputation: 'Reputación', col_check: 'Comprobar en',
+    step_pending: 'en cola', step_running: 'analizando…', step_done: 'completado',
+    step_error: 'error', step_skipped: 'omitido', step_n_venues: '{n} sedes',
+    summary_desc: 'Auditadas las <strong style="color:var(--tx);">{n} sedes</strong> con ficha en Google Maps (fuente de referencia): <strong style="color:var(--warn);">{inconsistent} con datos distintos</strong> en Apple o Bing y <strong style="color:var(--bad);">{missing} faltan</strong> en alguna plataforma.',
+    summary_inconsistent: 'con datos distintos entre plataformas',
+    summary_missing: 'faltan en alguna plataforma', summary_reply_rate: 'reseñas respondidas',
+    venues_subtitle: '{n} con ficha en Google · de peor a mejor · clic en una fila para el detalle',
+    venues_no_match: 'Sin sedes que coincidan.', venues_no_issues: 'Sin problemas detectados',
+    venues_discarded: '· {n} sede(s) descartadas del informe',
+    detail_name: 'Nombre', detail_address: 'Dirección', detail_phone: 'Teléfono',
+    detail_website: 'Web', detail_hours: 'Horario', detail_links: 'Links',
+    detail_sheet: 'Ficha', detail_open: 'Abrir', detail_search: 'Buscar',
+    detail_ref: 'Google · ref.', detail_apple: 'Apple', detail_bing: 'Bing', detail_official: 'Web oficial',
+    detail_comment_placeholder: 'Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…',
+    detail_save: 'Guardar',
+    raw_tab_official: 'Oficial', raw_no_data: 'No se aportaron datos de esta fuente en esta auditoría.',
+    raw_col_name: 'Nombre', raw_col_address: 'Dirección', raw_col_phone: 'Teléfono',
+    raw_col_website: 'Web', raw_col_rating: 'Rating', raw_col_reviews: 'Reseñas',
+    raw_col_hours: 'Horarios', raw_col_sheet: 'Ficha', raw_open: 'Abrir',
+    locator_title: 'Store locator y store pages', locator_no_data_title: 'Store locator y datos oficiales',
+    locator_no_data_badge: 'Sin datos',
+    locator_no_data_desc: 'No se analizó ningún store locator. Si tienes las sedes en un CSV, súbelo para compararlas con Google, Apple y Bing.',
+    locator_optimized: 'Optimizado', locator_not_optimized: 'No optimizado',
+    locator_no_analyzable: 'No se puede analizar',
+    locator_comment_placeholder: 'Nota sobre el store locator para el informe (opcional)…',
+    locator_save_note: 'Guardar nota',
+    locator_csv_hint: '¿El locator no da datos? Sube un CSV de sedes para comparar:',
+    locator_csv_btn: 'Subir CSV', locator_template: 'Plantilla',
+    locator_csv_hint2: '(plantilla simple o export de Localistico)',
+    locator_csv_venues: '✓ {n} sede(s) con datos oficiales',
+    llm_title: 'Visibilidad en IA · Visibility Index',
+    llm_appears: 'Aparece en {hits} de {total} comprobaciones',
+    llm_category_hint: 'categoría del perfil de Google + zona · resultado por sede en su fila (chip IA)',
+    llm_others_note: 'también auditables bajo demanda',
+    llm_info: 'Esto es solo una muestra. El Visibility Index completo se basa en decenas de prompts y repeticiones por sede y categoría, para medir consistencia y obtener un resultado determinista.',
+    llm_appears_count: 'aparece en {hits} de {total} repeticiones',
+    llm_ondemand: 'Analizar visibilidad IA', llm_ondemand_loading: 'Analizando IA…',
+    links_ondemand: 'Analizar action links', links_ondemand_loading: 'Analizando links…',
+    btn_save_ok: 'Guardada ✓', btn_save_venue_ok: 'Guardado ✓',
+    btn_save_error: 'Error', btn_save_no_history: 'Sin histórico',
+    btn_discard_title: 'Excluir del informe', btn_restore_title: 'Reincluir',
+    pdf_generating: 'Generando…', pdf_error: 'Error generando el PDF: ',
+    pdf_no_audit: 'Primero ejecuta una auditoría.',
+    pdf_filename: 'auditoria_{name}.pdf',
+    audit_progress_eyebrow: 'Puedes dejar esta pestaña abierta; la auditoría corre en segundo plano.',
+    audit_cancelled: 'Auditoría cancelada.',
+    audit_job_not_found: 'job no encontrado',
+    audit_connection_lost: 'Conexión perdida, reintentando… ({n}/{max})',
+    audit_connection_error: 'sin conexión con el servidor; recarga y reintenta.',
+    confirm_delete_audit: '¿Borrar la auditoría de "{name}"? Se elimina del histórico y se limpia su caché (un re-análisis partirá de cero).',
+    confirm_clear_cache: '¿Vaciar toda la caché de análisis (reseñas, enriquecimiento, IA)? El próximo análisis de cualquier prospect se hará desde cero (más lento y con coste).',
+    csv_merged: 'CSV fusionado: {matched} sede(s) emparejada(s)',
+    csv_unmatched: ' · {n} fila(s) sin match', csv_errors: ' · {n} fila(s) inválida(s)',
+    csv_not_persisted: ' · ⚠ no persistido (sin histórico)', csv_error: 'Error subiendo el CSV: ',
+    cost_max: 'Coste máximo estimado: {total}',
+    cost_llm: ' (incl. {delta} visibilidad IA)',
+    cost_max_venues: ' · máx. {n} sedes; menos = más barato',
+    reltime_today: 'hoy', reltime_yesterday: 'ayer', reltime_days: 'hace {n} días',
+    recent_meta_venues: '{n} sedes',
+    open_audit_error: 'No se pudo abrir esa auditoría.',
+    llm_no_history: 'Sin histórico: no se puede analizar bajo demanda.',
+    llm_error: 'No se pudo analizar la visibilidad en IA: ',
+    links_error: 'No se pudieron analizar los action links: ',
+    llm_hit_title: 'ChatGPT: aparece en {hits} de {total} repeticiones — abre la fila para el detalle',
+    source_google: 'Google Maps', source_apple: 'Apple Maps', source_azure: 'Bing Maps',
+    source_official: 'Datos oficiales', source_llm: 'Visibilidad IA',
+    plat_ok: ' — correcto', plat_issue: ' — con errores', plat_off: ' — no encontrada',
+    no_data_field: 'Sin dato', not_found_field: 'No encontrada',
+    locale_num: 'es-ES', locale_date: 'es-ES'
+  },
+  en: {
+    nav_input: 'Input', nav_progress: 'Progress', nav_results: 'Results',
+    title_theme: 'Toggle theme',
+    input_title: 'Audit a prospect',
+    input_subtitle: 'We check their presence on Google Maps, Apple Maps, Bing Maps, their website and AI assistants.',
+    input_name_label: 'Prospect name', input_name_placeholder: 'E.g.: Zara Home',
+    input_city_label: 'City',
+    input_official_label: 'Official prospect data', input_official_opt: '· optional',
+    input_urls_placeholder: 'Store locator URLs, one per line…',
+    input_csv_label: 'Upload locations CSV', input_template: 'Template',
+    input_comment_placeholder: 'Team comment (optional)',
+    input_cat_placeholder: 'Category for the prompt (e.g.: mobile store, internet provider)',
+    input_cat_hint: 'Optional. Used verbatim in the AI prompt; if left blank it is inferred from Google Places.',
+    input_btn: 'Audit',
+    input_hint: 'Takes seconds to minutes depending on the number of venues.',
+    llm_label_html: 'Audit <strong style="color:var(--tx);">AI visibility</strong> (ChatGPT via Cloro) · <span class="muted">uses credits · checks the 5 worst venues</span>',
+    recent_title: 'Recent audits', recent_clear: 'Clear cache',
+    recent_clear_title: 'Clears the review/enrichment/AI cache so the next analysis starts from scratch',
+    recent_delete_title: 'Delete audit and clear its cache',
+    progress_log_label: 'Progress log', progress_view_btn: 'View results', progress_cancel_btn: 'Cancel',
+    results_done: 'Audit completed', results_pdf_btn: 'Export PDF report',
+    results_score_of: 'out of 100', results_venues_title: 'Audited venues',
+    results_search_placeholder: 'Search venue…', results_raw_title: 'View raw data by source',
+    col_score: 'Score', col_venue: 'Venue', col_issues: 'Issues',
+    col_reputation: 'Reputation', col_check: 'Check on',
+    step_pending: 'queued', step_running: 'analyzing…', step_done: 'completed',
+    step_error: 'error', step_skipped: 'skipped', step_n_venues: '{n} venues',
+    summary_desc: 'Audited <strong style="color:var(--tx);">{n} venues</strong> with a Google Maps listing (reference source): <strong style="color:var(--warn);">{inconsistent} with different data</strong> on Apple or Bing and <strong style="color:var(--bad);">{missing} missing</strong> from some platform.',
+    summary_inconsistent: 'with different data across platforms',
+    summary_missing: 'missing from some platform', summary_reply_rate: 'reviews replied',
+    venues_subtitle: '{n} with Google listing · worst to best · click a row for details',
+    venues_no_match: 'No matching venues.', venues_no_issues: 'No issues detected',
+    venues_discarded: '· {n} venue(s) excluded from report',
+    detail_name: 'Name', detail_address: 'Address', detail_phone: 'Phone',
+    detail_website: 'Website', detail_hours: 'Hours', detail_links: 'Links',
+    detail_sheet: 'Listing', detail_open: 'Open', detail_search: 'Search',
+    detail_ref: 'Google · ref.', detail_apple: 'Apple', detail_bing: 'Bing', detail_official: 'Official website',
+    detail_comment_placeholder: 'Comment for the report (e.g.: confirmed by phone, this venue closed in March)…',
+    detail_save: 'Save',
+    raw_tab_official: 'Official', raw_no_data: 'No data was provided from this source in this audit.',
+    raw_col_name: 'Name', raw_col_address: 'Address', raw_col_phone: 'Phone',
+    raw_col_website: 'Website', raw_col_rating: 'Rating', raw_col_reviews: 'Reviews',
+    raw_col_hours: 'Hours', raw_col_sheet: 'Listing', raw_open: 'Open',
+    locator_title: 'Store locator & store pages', locator_no_data_title: 'Store locator & official data',
+    locator_no_data_badge: 'No data',
+    locator_no_data_desc: 'No store locator was analyzed. If you have the venues in a CSV, upload it to compare them with Google, Apple and Bing.',
+    locator_optimized: 'Optimized', locator_not_optimized: 'Not optimized',
+    locator_no_analyzable: 'Cannot be analyzed',
+    locator_comment_placeholder: 'Note about the store locator for the report (optional)…',
+    locator_save_note: 'Save note',
+    locator_csv_hint: 'Locator not giving data? Upload a locations CSV to compare:',
+    locator_csv_btn: 'Upload CSV', locator_template: 'Template',
+    locator_csv_hint2: '(simple template or Localistico export)',
+    locator_csv_venues: '✓ {n} venue(s) with official data',
+    llm_title: 'AI Visibility · Visibility Index',
+    llm_appears: 'Appears in {hits} of {total} checks',
+    llm_category_hint: 'Google profile category + area · result per venue in its row (AI chip)',
+    llm_others_note: 'also auditable on demand',
+    llm_info: 'This is just a sample. The full Visibility Index is based on dozens of prompts and repetitions per venue and category, to measure consistency and obtain a deterministic result.',
+    llm_appears_count: 'appears in {hits} of {total} repetitions',
+    llm_ondemand: 'Analyze AI visibility', llm_ondemand_loading: 'Analyzing AI…',
+    links_ondemand: 'Analyze action links', links_ondemand_loading: 'Analyzing links…',
+    btn_save_ok: 'Saved ✓', btn_save_venue_ok: 'Saved ✓',
+    btn_save_error: 'Error', btn_save_no_history: 'No history',
+    btn_discard_title: 'Exclude from report', btn_restore_title: 'Re-include',
+    pdf_generating: 'Generating…', pdf_error: 'Error generating PDF: ',
+    pdf_no_audit: 'Run an audit first.',
+    pdf_filename: 'audit_{name}.pdf',
+    audit_progress_eyebrow: 'You can leave this tab open; the audit runs in the background.',
+    audit_cancelled: 'Audit cancelled.',
+    audit_job_not_found: 'job not found',
+    audit_connection_lost: 'Connection lost, retrying… ({n}/{max})',
+    audit_connection_error: 'no server connection; reload and retry.',
+    confirm_delete_audit: 'Delete the audit for "{name}"? It will be removed from history and its cache cleared (re-analysis will start from scratch).',
+    confirm_clear_cache: 'Clear all analysis cache (reviews, enrichment, AI)? The next analysis of any prospect will start from scratch (slower and with cost).',
+    csv_merged: 'CSV merged: {matched} venue(s) matched',
+    csv_unmatched: ' · {n} row(s) unmatched', csv_errors: ' · {n} invalid row(s)',
+    csv_not_persisted: ' · ⚠ not persisted (no history)', csv_error: 'Error uploading CSV: ',
+    cost_max: 'Estimated maximum cost: {total}',
+    cost_llm: ' (incl. {delta} AI visibility)',
+    cost_max_venues: ' · max. {n} venues; fewer = cheaper',
+    reltime_today: 'today', reltime_yesterday: 'yesterday', reltime_days: '{n} days ago',
+    recent_meta_venues: '{n} venues',
+    open_audit_error: 'Could not open that audit.',
+    llm_no_history: 'No history: cannot analyze on demand.',
+    llm_error: 'Could not analyze AI visibility: ',
+    links_error: 'Could not analyze action links: ',
+    llm_hit_title: 'ChatGPT: appears in {hits} of {total} repetitions — open the row for details',
+    source_google: 'Google Maps', source_apple: 'Apple Maps', source_azure: 'Bing Maps',
+    source_official: 'Official data', source_llm: 'AI Visibility',
+    plat_ok: ' — correct', plat_issue: ' — with issues', plat_off: ' — not found',
+    no_data_field: 'No data', not_found_field: 'Not found',
+    locale_num: 'en-US', locale_date: 'en-US'
+  }
+};
+
+var currentLang = 'es';
+(function initLang() {
+  try { var s = localStorage.getItem('pa-lang'); if (s === 'en' || s === 'es') currentLang = s; } catch (e) {}
+})();
+
+function t(key, vars) {
+  var str = (LANGS[currentLang] || LANGS.es)[key];
+  if (str == null) str = (LANGS.es)[key] || key;
+  if (vars) Object.keys(vars).forEach(function(k) { str = str.split('{' + k + '}').join(vars[k]); });
+  return str;
+}
+
+/* Mensajes generados por el backend (i18n.Msg): llegan con el texto en español
+   + {key, params}. En español se muestra el texto tal cual; en inglés se compone
+   aquí. Clave desconocida (o auditoría antigua sin clave) → texto en español. */
+var SRC_EN = { google: 'Google Maps', apple: 'Apple Maps', azure: 'Bing Maps', official: 'the official website', llm: 'AI visibility' };
+var DAY_EN = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+var FIELD_EN = { phone: 'phone number', website: 'website', hours: 'hours', geo: 'geo' };
+function srcEn(s, cap) { var l = SRC_EN[s] || s; return cap ? l.replace(/^the /, '').replace(/^./, function(c) { return c.toUpperCase(); }) : l; }
+function srcListEn(a) { return (a || []).map(function(s) { return srcEn(s); }).join(', '); }
+function capFirst(x) { return String(x).replace(/^./, function(c) { return c.toUpperCase(); }); }
+var MSG_EN = {
+  // Diferencias entre plataformas (inconsistencies.py)
+  flag_r1: function(p) { return 'Present on ' + srcListEn(p.present) + ' but not on ' + srcEn(p.anchor) + ' — check whether it is an outdated or duplicate listing, or a location that has closed.'; },
+  flag_r11: function(p) { return 'Not found on ' + srcListEn(p.missing) + ' (present on ' + srcEn(p.anchor) + ' and ' + srcListEn(p.present) + ').'; },
+  flag_r3: function(p) { return 'Possible duplicate listing on ' + (srcListEn(p.dup) || 'a platform') + ': several listings for this venue — the one closest to Google is compared. Worth reviewing/merging the duplicates.'; },
+  flag_r8: function(p) { return 'Very different address on ' + srcEn(p.other) + ' compared to ' + srcEn(p.anchor) + ' — possibly a wrong or duplicate listing.'; },
+  flag_missing_field: function(p) { return 'No ' + FIELD_EN[p.field] + ' published on ' + srcEn(p.lacks) + ' (' + srcEn(p.has) + ' has one).'; },
+  flag_conflict_field: function(p) { return 'Different ' + FIELD_EN[p.field] + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r9: function(p) { return 'Name differs from ' + srcEn(p.anchor) + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r9_strong: function(p) { return 'Name differs significantly from ' + srcEn(p.anchor) + ' — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ' vs ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  flag_r14b: function(p) { return 'Contradictory hours on ' + DAY_EN[p.day] + ' — ' + srcEn(p.anchor, true) + ': ' + (p.anchor_closed ? 'closed' : 'open') + ', ' + srcEn(p.other, true) + ': ' + (p.other_closed ? 'closed' : 'open') + '.'; },
+  flag_r14: function(p) { return 'Different hours on ' + DAY_EN[p.day] + ' (~' + p.diff + ' min difference) — ' + srcEn(p.anchor, true) + ': ' + p.anchor_value + ', ' + srcEn(p.other, true) + ': ' + p.other_value + '.'; },
+  // Checks del store locator (official.py)
+  chk_present: function() { return 'present'; },
+  chk_not_found_pl: function() { return 'not found'; },
+  chk_not_found: function() { return 'not found'; },
+  chk_not_analyzed: function() { return 'not analyzed'; },
+  chk_x_of_n: function(p) { return p.x + ' of ' + p.n; },
+  chk_no_venues: function() { return 'no venues'; },
+  chk_yes: function() { return 'yes'; },
+  chk_yes_urls: function(p) { return 'yes (' + p.n + ' venue URLs)'; },
+  chk_no_schema: function() { return 'no schema to evaluate'; },
+  chk_complete: function() { return 'complete'; },
+  chk_missing: function(p) { return 'missing ' + (p.fields || []).map(function(f) { return FIELD_EN[f] || f; }).join(', '); },
+  // Log de progreso (app.py / llm_visibility.py)
+  prog_pdf: function() { return 'Generating PDF report…'; },
+  prog_done: function() { return 'Audit complete.'; },
+  prog_cancelled: function() { return 'Audit cancelled.'; },
+  prog_error: function(p) { return 'Error: ' + p.error; },
+  prog_google_search: function() { return 'Searching Google Maps…'; },
+  prog_source_found: function(p) { return sourceLabel(p.source) + ': ' + p.n + ' venue(s) found.'; },
+  prog_source_error: function(p) { return sourceLabel(p.source) + ': error (' + p.error + ').'; },
+  prog_official_extract: function(p) { return 'Extracting official data from ' + p.n + ' URL(s)…'; },
+  prog_official_found: function(p) { return 'Official data: ' + p.n + ' venue(s) extracted.'; },
+  prog_anchored_search: function(p) { return 'Searching ' + sourceLabel(p.source) + ' (per venue, using Google coordinates)…'; },
+  prog_compare: function() { return 'Cross-checking and comparing data across platforms…'; },
+  prog_llm_start: function() { return 'Checking AI visibility (ChatGPT via Cloro)…'; },
+  prog_llm_progress: function(p) { return 'AI visibility: ' + p.done + '/' + p.total + ' venue(s) checked…'; },
+  prog_llm_done: function(p) { return 'AI visibility: appears in ' + p.hits + ' of ' + p.total + ' checks (' + p.calls + ' Cloro calls).'; },
+  prog_action_links: function(p) { return 'Analyzing action links (top ' + p.n + ' worst venues)…'; },
+  prog_enrich_start: function(p) { return 'Enriching ' + sourceLabel(p.source) + ' via SerpApi (only venues matched on Google): 0/' + p.total + '…'; },
+  prog_enrich: function(p) { return 'Enriching ' + sourceLabel(p.source) + ' via SerpApi: ' + p.done + '/' + p.total + '…'; },
+  prog_bing_hours: function(p) { return 'Fetching Bing hours (top ' + p.n + ' worst venues)…'; },
+  prog_reviews_cached: function(p) { return 'Reviews: ' + p.cached + '/' + p.total + ' venue(s) from cache.'; },
+  prog_reviews_done: function(p) { return 'Review analysis complete (' + p.total + ' venue(s)).'; },
+  prog_reviews_venue: function(p) { return 'Recent reviews: ' + p.done + '/' + p.total + ' — ' + p.name + ' (' + p.reviews + ' reviews, ' + p.links + ' action links).'; },
+  prog_reviews_failed: function(p) { return 'Recent reviews: ' + p.done + '/' + p.total + ' — ' + p.name + ' FAILED (' + p.error + ').'; },
+  prog_reviews_api: function(p) { return 'Analyzing recent reviews via API: 0/' + p.total + ' venue(s) (' + p.workers + ' in parallel)…'; },
+  prog_reviews_scrape: function(p) { return 'Analyzing recent reviews: 0/' + p.total + ' venue(s) to scrape (' + p.workers + ' browsers in parallel, up to ' + p.seconds + 's per venue)…'; }
+};
+function backendMsg(text, key, params) {
+  if (currentLang !== 'en' || !key || !MSG_EN[key]) return text;
+  try { return MSG_EN[key](params || {}); } catch (e) { return text; }
+}
+var CHECK_LABEL_EN = {
+  jsonld_localbusiness: 'LocalBusiness structured data on the store pages',
+  schema_completeness: 'Complete schema.org markup (hours, phone, geo)',
+  store_pages_coverage: 'Individual page per venue (indexable)',
+  sitemap_present: 'Sitemap with the store pages'
+};
+var ACTION_LINK_EN = { reservation: 'Book', order: 'Order online', menu: 'Menu', tickets: 'Tickets', other: 'Other' };
+// Valor de "Links" en el detalle de sede: en inglés se recompone desde los tipos.
+function actionLinksDisplay(al) {
+  if (!al || !al.value) return 'N/D';
+  if (currentLang !== 'en' || al.source !== 'scraped' || !al.links) return al.value;
+  if (!al.links.length) return 'None detected';
+  var labels = {};
+  al.links.forEach(function(l) { labels[ACTION_LINK_EN[l.type] || l.type] = true; });
+  return Object.keys(labels).sort().join(', ');
+}
+
+function applyI18n() {
+  document.getElementById('html-root').setAttribute('lang', currentLang);
+  document.getElementById('lang-btn').textContent = currentLang === 'es' ? 'EN' : 'ES';
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(function(el) {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(function(el) {
+    el.title = t(el.getAttribute('data-i18n-title'));
+  });
+  // Special: LLM checkbox label contains HTML
+  var llmLbl = document.getElementById('llm-label-text');
+  if (llmLbl) llmLbl.innerHTML = t('llm_label_html');
+  // Clear cache button title
+  var ccBtn = document.getElementById('clear-cache-btn');
+  if (ccBtn) ccBtn.title = t('recent_clear_title');
+  // PDF button (has icon + text span)
+  var pdfTxt = document.getElementById('pdf-btn-text');
+  if (pdfTxt) pdfTxt.textContent = t('results_pdf_btn');
+  // Re-render dynamic sections if results are shown
+  if (lastResult) { renderVenues(); renderRawTabs(); updateSummary(); renderLocator(lastResult.locator_report); }
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'es' ? 'en' : 'es';
+  try { localStorage.setItem('pa-lang', currentLang); } catch (e) {}
+  applyI18n();
+}
+
 /* ═══════════════ estado ═══════════════ */
 var lastResult = null;
 var lastQuery = { name: '', city: '' };
@@ -248,8 +564,8 @@ var deletedClusterIds = {};
 var openVenueId = null;
 var rawTab = 'google';
 var currentJobId = null;
-var lastAuditId = null;          // id en el histórico para persistir comentarios
-var officialCommentEdit = '';    // nota del store locator (editable en resultados)
+var lastAuditId = null;
+var officialCommentEdit = '';
 
 /* ═══════════════ tema ═══════════════ */
 (function initTheme() {
@@ -285,7 +601,7 @@ function enableNav(id) { document.getElementById(id).disabled = false; }
 function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, function(c) {
   return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function safeHref(u) { u = u || ''; return /^https?:\/\//i.test(u) ? u : '#'; }
-function fmtNum(n) { return (n == null) ? '—' : Number(n).toLocaleString('es-ES'); }
+function fmtNum(n) { return (n == null) ? '—' : Number(n).toLocaleString(t('locale_num')); }
 var SEV_COLOR = { critico: ['var(--bad)', 'var(--bad-soft)'], alto: ['var(--warn)', 'var(--warn-soft)'],
                   medio: ['var(--warn)', 'var(--warn-soft)'], ok: ['var(--ok)', 'var(--ok-soft)'],
                   sin_datos: ['var(--tx-3)', 'var(--surface-2)'] };
@@ -295,21 +611,23 @@ function reviewRateDisplay(rr) {
   if (!rr) return '—';
   if (rr.source === 'scraped') return String(rr.value);
   if (rr.value === 'N/D' || rr.value == null) return '—';
-  return rr.value + '/' + rr.sample_size + ' (aprox.)';
+  return rr.value + '/' + rr.sample_size + (currentLang === 'en' ? ' (approx.)' : ' (aprox.)');
 }
 function replyRateDisplay(rr) { if (!rr || rr.value === 'N/D' || rr.value == null) return 'N/D'; return rr.value + '%'; }
 
-/* ── Formateo compacto de horarios: "Lunes: 09:00–21:00; …" → "L–V 9–21, S 9–20, D cerrado" ── */
+/* ── Formateo compacto de horarios ── */
 var DAY_IDX = { lunes:0, martes:1, 'miércoles':2, miercoles:2, jueves:3, viernes:4, 'sábado':5, sabado:5, domingo:6,
   monday:0, tuesday:1, wednesday:2, thursday:3, friday:4, saturday:5, sunday:6 };
-var DAY_ABBR = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
-function _simplifyTime(t) {
-  var m = t.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t;
+var DAY_ABBR_ES = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+var DAY_ABBR_EN = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+function getDayAbbr() { return currentLang === 'en' ? DAY_ABBR_EN : DAY_ABBR_ES; }
+function _simplifyTime(t2) {
+  var m = t2.match(/^(\d{1,2}):(\d{2})$/); if (!m) return t2;
   return m[2] === '00' ? String(parseInt(m[1], 10)) : parseInt(m[1], 10) + ':' + m[2];
 }
 function _simplifyRange(r) {
   var low = r.toLowerCase();
-  if (low.indexOf('cerrad') !== -1 || low.indexOf('closed') !== -1) return 'cerrado';
+  if (low.indexOf('cerrad') !== -1 || low.indexOf('closed') !== -1) return currentLang === 'en' ? 'closed' : 'cerrado';
   return r.replace(/\s*[–—-]\s*/g, '–').split(',').map(function(seg) {
     var mm = seg.trim().match(/^(\d{1,2}:\d{2})–(\d{1,2}:\d{2})$/);
     return mm ? _simplifyTime(mm[1]) + '–' + _simplifyTime(mm[2]) : seg.trim();
@@ -319,6 +637,7 @@ function formatHours(input) {
   if (!input || (Array.isArray(input) && !input.length)) return '—';
   var lines = Array.isArray(input) ? input.slice() : String(input).split(/;\s*/);
   var byDay = {}, ok = 0;
+  var abbr = getDayAbbr();
   lines.forEach(function(line) {
     var m = String(line).match(/^\s*([A-Za-zÁÉÍÓÚáéíóúñÑ]+)\s*:\s*(.+?)\s*$/);
     if (!m) return;
@@ -326,7 +645,7 @@ function formatHours(input) {
     if (idx === undefined) return;
     byDay[idx] = _simplifyRange(m[2]); ok++;
   });
-  if (!ok) return Array.isArray(input) ? input.join('; ') : String(input);  // passthrough si no parsea
+  if (!ok) return Array.isArray(input) ? input.join('; ') : String(input);
   var order = Object.keys(byDay).map(Number).sort(function(a, b) { return a - b; });
   var groups = [], cur = null;
   order.forEach(function(idx) {
@@ -334,7 +653,7 @@ function formatHours(input) {
     else { cur = { start: idx, end: idx, range: byDay[idx] }; groups.push(cur); }
   });
   return groups.map(function(g) {
-    var days = g.start === g.end ? DAY_ABBR[g.start] : DAY_ABBR[g.start] + '–' + DAY_ABBR[g.end];
+    var days = g.start === g.end ? abbr[g.start] : abbr[g.start] + '–' + abbr[g.end];
     return days + ' ' + g.range;
   }).join(', ');
 }
@@ -361,15 +680,15 @@ function loadPricing() {
   fetch('/pricing').then(function(r) { return r.json(); })
     .then(function(p) { pricing = p; renderCost(); }).catch(function() {});
 }
-function eur(n) { return '€' + Number(n).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function eur(n) { return '€' + Number(n).toLocaleString(t('locale_num'), { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function renderCost() {
   if (!pricing) return;
   var line = document.getElementById('cost-line');
   var withLlm = document.getElementById('check-llm').checked;
   var total = pricing.maps_max + (withLlm ? pricing.llm_delta : 0);
-  var txt = 'Coste máximo estimado: ' + eur(total);
-  if (withLlm) txt += ' (incl. ' + eur(pricing.llm_delta) + ' visibilidad IA)';
-  txt += ' · máx. ' + pricing.assumptions.google_max + ' sedes; menos = más barato';
+  var txt = t('cost_max', { total: eur(total) });
+  if (withLlm) txt += t('cost_llm', { delta: eur(pricing.llm_delta) });
+  txt += t('cost_max_venues', { n: pricing.assumptions.google_max });
   document.getElementById('cost-text').textContent = txt;
   line.style.display = 'flex';
 }
@@ -396,24 +715,24 @@ function loadRecent() {
     card.style.display = 'block';
     document.getElementById('recent-list').innerHTML = list.map(function(a) {
       var sc = sevFromScore(a.score); var col = sevColor(sc);
-      var meta = esc(a.city || '') + ' · ' + relTime(a.created_at) + (a.total_locations != null ? ' · ' + a.total_locations + ' sedes' : '');
+      var meta = esc(a.city || '') + ' · ' + relTime(a.created_at) + (a.total_locations != null ? ' · ' + t('step_n_venues', { n: a.total_locations }) : '');
       return '<div style="display:flex; align-items:center; gap:10px; border-top:1px solid var(--border);">' +
         '<button onclick="openAudit(\'' + esc(a.id) + '\')" style="flex:1; display:flex; align-items:center; gap:10px; padding:9px 4px; border:none; background:transparent; cursor:pointer; font-size:13px; text-align:left;">' +
           '<span class="msr" style="font-size:17px; color:var(--acc);">storefront</span>' +
           '<span style="font-weight:600; color:var(--tx);">' + esc(a.name) + '</span>' +
           '<span class="muted">' + meta + '</span>' +
           '<span class="pill" style="margin-left:auto; background:' + col[1] + '; color:' + col[0] + ';">' + (a.score == null ? '—' : a.score) + '</span></button>' +
-        '<button onclick="deleteAudit(\'' + esc(a.id) + '\', \'' + esc(a.name) + '\')" title="Borrar auditoría y limpiar su caché" style="background:none; border:none; color:var(--tx-3); cursor:pointer; padding:6px; display:grid; place-items:center;" onmouseover="this.style.color=\'var(--bad)\'" onmouseout="this.style.color=\'var(--tx-3)\'"><span class="msr" style="font-size:17px;">delete</span></button>' +
+        '<button onclick="deleteAudit(\'' + esc(a.id) + '\', \'' + esc(a.name) + '\')" title="' + t('recent_delete_title') + '" style="background:none; border:none; color:var(--tx-3); cursor:pointer; padding:6px; display:grid; place-items:center;" onmouseover="this.style.color=\'var(--bad)\'" onmouseout="this.style.color=\'var(--tx-3)\'"><span class="msr" style="font-size:17px;">delete</span></button>' +
         '</div>';
     }).join('');
   }).catch(function() {});
 }
 function deleteAudit(id, name) {
-  if (!confirm('¿Borrar la auditoría de "' + name + '"? Se elimina del histórico y se limpia su caché (un re-análisis partirá de cero).')) return;
+  if (!confirm(t('confirm_delete_audit', { name: name }))) return;
   fetch('/audits/' + id, { method: 'DELETE' }).then(function() { loadRecent(); }).catch(function() {});
 }
 function clearCache() {
-  if (!confirm('¿Vaciar toda la caché de análisis (reseñas, enriquecimiento, IA)? El próximo análisis de cualquier prospect se hará desde cero (más lento y con coste).')) return;
+  if (!confirm(t('confirm_clear_cache'))) return;
   fetch('/cache/clear', { method: 'POST' }).catch(function() {});
 }
 function sevFromScore(s) { if (s == null) return 'sin_datos'; if (s < 33) return 'critico'; if (s < 50) return 'alto'; if (s < 70) return 'medio'; return 'ok'; }
@@ -421,8 +740,10 @@ function relTime(ts) {
   if (!ts) return '';
   var d = new Date(ts * 1000), now = new Date();
   var days = Math.floor((now - d) / 86400000);
-  if (days <= 0) return 'hoy'; if (days === 1) return 'ayer'; if (days < 7) return 'hace ' + days + ' días';
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  if (days <= 0) return t('reltime_today');
+  if (days === 1) return t('reltime_yesterday');
+  if (days < 7) return t('reltime_days', { n: days });
+  return d.toLocaleDateString(t('locale_date'), { day: 'numeric', month: 'short' });
 }
 
 /* ═══════════════ auditar + progreso ═══════════════ */
@@ -440,8 +761,11 @@ function startAudit() {
   lastResult = null; deletedClusterIds = {}; openVenueId = null;
 
   document.getElementById('progress-log').innerHTML = '';
-  document.getElementById('progress-title').innerHTML = 'Auditando ' + esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
-  document.getElementById('progress-eyebrow').textContent = 'Puedes dejar esta pestaña abierta; la auditoría corre en segundo plano.';
+  document.getElementById('progress-title').innerHTML = t('nav_progress').charAt(0).toUpperCase() + t('nav_progress').slice(1).replace('rogreso','') +
+    'Auditando '.replace('Auditando', currentLang === 'en' ? 'Auditing' : 'Auditando') +
+    ' ' + esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
+  document.getElementById('progress-title').innerHTML = (currentLang === 'en' ? 'Auditing ' : 'Auditando ') + esc(name) + ' <span style="font-weight:400; color:var(--tx-3);">· ' + esc(city) + '</span>';
+  document.getElementById('progress-eyebrow').textContent = t('audit_progress_eyebrow');
   document.getElementById('progress-bar').style.width = '0%';
   document.getElementById('partial-btn').disabled = true;
   document.getElementById('cancel-btn').style.display = '';
@@ -460,33 +784,35 @@ function pollJob(jobId) {
   function tick() {
     fetch('/jobs/' + jobId + '/status?since=' + since)
       .then(function(r) {
-        if (r.status === 404) return r.json().then(function(d) { var e = new Error(d.error || 'job no encontrado'); e.fatal = true; throw e; });
+        if (r.status === 404) return r.json().then(function(d) { var e = new Error(d.error || t('audit_job_not_found')); e.fatal = true; throw e; });
         if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || ('Error ' + r.status)); });
         return r.json();
       })
       .then(function(data) {
-        fails = 0;  // conexión recuperada
+        fails = 0;
         since = data.progress_count;
         if (data.sources) renderSteps(data.sources);
         if (typeof data.percent === 'number') document.getElementById('progress-bar').style.width = data.percent + '%';
         if (data.progress && data.progress.length) {
-          appendLog(data.progress.map(function(m) { return [nowClock(), m, 'var(--tx-2)']; }));
+          var pi = data.progress_i18n || [];
+          appendLog(data.progress.map(function(m, i) {
+            var k = pi[i] || {};
+            return [nowClock(), backendMsg(m, k.key, k.params), 'var(--tx-2)'];
+          }));
         }
         if (data.status === 'done') { onDone(data.result); return; }
-        if (data.status === 'cancelled') { document.getElementById('progress-eyebrow').textContent = 'Auditoría cancelada.'; document.getElementById('cancel-btn').style.display = 'none'; return; }
-        if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || 'desconocido'), 'var(--bad)']]); return; }
+        if (data.status === 'cancelled') { document.getElementById('progress-eyebrow').textContent = t('audit_cancelled'); document.getElementById('cancel-btn').style.display = 'none'; return; }
+        if (data.status === 'error') { appendLog([['—', 'Error: ' + (data.error || (currentLang === 'en' ? 'unknown' : 'desconocido')), 'var(--bad)']]); return; }
         setTimeout(tick, intervalMs);
       })
       .catch(function(err) {
-        // Reintenta ante cortes transitorios (reinicio del server / blip de red)
-        // en vez de rendirse al primer fallo. Un 404 (job expirado) es fatal.
-        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — recarga y reintenta.', 'var(--bad)']]); return; }
+        if (err.fatal) { appendLog([['—', 'Error: ' + err.message + ' — ' + (currentLang === 'en' ? 'reload and retry.' : 'recarga y reintenta.'), 'var(--bad)']]); return; }
         fails++;
         if (fails <= MAX_FAILS) {
-          appendLog([[nowClock(), 'Conexión perdida, reintentando… (' + fails + '/' + MAX_FAILS + ')', 'var(--warn)']]);
+          appendLog([[nowClock(), t('audit_connection_lost', { n: fails, max: MAX_FAILS }), 'var(--warn)']]);
           setTimeout(tick, Math.min(6000, intervalMs * fails));
         } else {
-          appendLog([['—', 'Error: ' + err.message + ' — sin conexión con el servidor; recarga y reintenta.', 'var(--bad)']]);
+          appendLog([['—', 'Error: ' + err.message + ' — ' + t('audit_connection_error'), 'var(--bad)']]);
         }
       });
   }
@@ -503,25 +829,28 @@ function appendLog(lines) {
   });
   var wrap = document.getElementById('log-wrap'); wrap.scrollTop = wrap.scrollHeight;
 }
-var SOURCE_LABEL = { google: 'Google Maps', apple: 'Apple Maps', azure: 'Bing Maps', official: 'Datos oficiales', llm: 'Visibilidad IA' };
-var STEP_CARD = {
-  pending: { icon: 'circle', ib: 'var(--surface-2)', ic: 'var(--faint)', status: 'en cola', bg: 'var(--surface)', spin: false },
-  running: { icon: 'progress_activity', ib: 'var(--acc-soft)', ic: 'var(--acc)', status: 'analizando…', bg: 'var(--surface)', spin: true },
-  done: { icon: 'check', ib: 'var(--ok)', ic: '#fff', status: 'completado', bg: 'var(--ok-soft)', spin: false },
-  error: { icon: 'error', ib: 'var(--bad-soft)', ic: 'var(--bad)', status: 'error', bg: 'var(--surface)', spin: false },
-  skipped: { icon: 'remove', ib: 'var(--surface-2)', ic: 'var(--faint)', status: 'omitido', bg: 'var(--surface)', spin: false }
-};
+function sourceLabel(s) {
+  var map = { google: t('source_google'), apple: t('source_apple'), azure: t('source_azure'), official: t('source_official'), llm: t('source_llm') };
+  return map[s] || s;
+}
 function renderSteps(sources) {
+  var stepCard = {
+    pending: { icon: 'circle', ib: 'var(--surface-2)', ic: 'var(--faint)', status: t('step_pending'), bg: 'var(--surface)', spin: false },
+    running: { icon: 'progress_activity', ib: 'var(--acc-soft)', ic: 'var(--acc)', status: t('step_running'), bg: 'var(--surface)', spin: true },
+    done: { icon: 'check', ib: 'var(--ok)', ic: '#fff', status: t('step_done'), bg: 'var(--ok-soft)', spin: false },
+    error: { icon: 'error', ib: 'var(--bad-soft)', ic: 'var(--bad)', status: t('step_error'), bg: 'var(--surface)', spin: false },
+    skipped: { icon: 'remove', ib: 'var(--surface-2)', ic: 'var(--faint)', status: t('step_skipped'), bg: 'var(--surface)', spin: false }
+  };
   var order = ['google', 'apple', 'azure', 'official', 'llm'].filter(function(s) {
     return s !== 'llm' || (sources.llm && sources.llm.state !== 'skipped');
   });
   document.getElementById('progress-steps').innerHTML = order.map(function(s) {
     var st = (sources[s] || { state: 'pending' });
-    var m = STEP_CARD[st.state] || STEP_CARD.pending;
-    var status = (st.state === 'done' && st.count != null) ? (st.count + ' sedes') : m.status;
+    var m = stepCard[st.state] || stepCard.pending;
+    var status = (st.state === 'done' && st.count != null) ? t('step_n_venues', { n: st.count }) : m.status;
     return '<div style="flex:1; min-width:110px; display:flex; flex-direction:column; align-items:center; gap:9px; padding:16px 8px; border:1px solid var(--border); border-radius:10px; background:' + m.bg + ';">' +
       '<span style="display:grid; place-items:center; width:36px; height:36px; border-radius:50%; background:' + m.ib + '; color:' + m.ic + ';"><span class="msr ' + (m.spin ? 'spin' : '') + '" style="font-size:20px;">' + m.icon + '</span></span>' +
-      '<span style="font-weight:600; font-size:13px; color:var(--tx); text-align:center;">' + SOURCE_LABEL[s] + '</span>' +
+      '<span style="font-weight:600; font-size:13px; color:var(--tx); text-align:center;">' + sourceLabel(s) + '</span>' +
       '<span class="muted" style="font-size:11px;">' + esc(status) + '</span></div>';
   }).join('');
 }
@@ -555,7 +884,7 @@ function renderResults() {
   if (!lastResult || !lastResult.audit) return;
   officialCommentEdit = lastResult.official_comment || '';
 
-  document.getElementById('results-eyebrow').textContent = 'Auditoría completada' + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
+  document.getElementById('results-eyebrow').textContent = t('results_done') + (lastResult._created_rel ? ' · ' + lastResult._created_rel : '');
   document.getElementById('results-title').innerHTML = esc(lastQuery.name) + ' <span style="color:var(--faint);">·</span> ' + esc(lastQuery.city);
 
   renderLocator(lastResult.locator_report);
@@ -565,12 +894,9 @@ function renderResults() {
   updateDiscardedCount();
 }
 
-// Pinta score + descripción + stats + tarjeta IA desde audit.summary. Se
-// reejecuta al recalcular tras descartar sedes (recomputeSummary).
 function updateSummary() {
   var summary = (lastResult.audit || {}).summary || {};
   var ps = summary.presence_score || {}, score = ps.score;
-  // Gauge (r=64 → circunferencia ≈ 402)
   var circ = 402, dash = (score == null ? 0 : Math.max(0, Math.min(100, score)) / 100 * circ);
   var arc = document.getElementById('score-arc');
   arc.setAttribute('stroke-dasharray', dash.toFixed(0) + ' ' + circ);
@@ -578,15 +904,14 @@ function updateSummary() {
   document.getElementById('score-num').textContent = (score == null ? '—' : score);
 
   var stats = summary.stats || {}, audited = ps.venues_scored || 0;
-  document.getElementById('summary-desc').innerHTML =
-    'Auditadas las <strong style="color:var(--tx);">' + audited + ' sedes</strong> con ficha en Google Maps (fuente de referencia): ' +
-    '<strong style="color:var(--warn);">' + (stats.inconsistent_locations || 0) + ' con datos distintos</strong> en Apple o Bing y ' +
-    '<strong style="color:var(--bad);">' + (stats.missing_some_platform || 0) + ' faltan</strong> en alguna plataforma.';
+  document.getElementById('summary-desc').innerHTML = t('summary_desc', {
+    n: audited, inconsistent: stats.inconsistent_locations || 0, missing: stats.missing_some_platform || 0
+  });
 
   document.getElementById('summary-stats').innerHTML = [
-    [stats.inconsistent_locations != null ? stats.inconsistent_locations + '/' + audited : '—', 'con datos distintos entre plataformas', 'var(--warn)'],
-    [stats.missing_some_platform != null ? stats.missing_some_platform : '—', 'faltan en alguna plataforma', 'var(--ok)'],
-    [stats.reply_rate_overall != null ? stats.reply_rate_overall + '%' : 'N/D', 'reseñas respondidas', 'var(--bad)']
+    [stats.inconsistent_locations != null ? stats.inconsistent_locations + '/' + audited : '—', t('summary_inconsistent'), 'var(--warn)'],
+    [stats.missing_some_platform != null ? stats.missing_some_platform : '—', t('summary_missing'), 'var(--ok)'],
+    [stats.reply_rate_overall != null ? stats.reply_rate_overall + '%' : 'N/D', t('summary_reply_rate'), 'var(--bad)']
   ].map(function(s) {
     return '<div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px;">' +
       '<div style="font-size:26px; font-weight:700; color:' + s[2] + ';">' + s[0] + '</div>' +
@@ -594,15 +919,11 @@ function updateSummary() {
   }).join('');
 
   renderLLM(summary.llm_visibility);
-  // 2 columnas solo si ambas tarjetas están visibles
   var loc = document.getElementById('locator-card'), llmC = document.getElementById('llm-card');
   var shown = (loc.style.display !== 'none' ? 1 : 0) + (llmC.style.display !== 'none' ? 1 : 0);
   document.getElementById('cards-2col').style.gridTemplateColumns = shown === 2 ? '1fr 1fr' : '1fr';
 }
 
-// Recalcula el resumen en el servidor (scoring + agregado IA) con las sedes
-// descartadas fuera, para que score/stats/IA no queden obsoletos. Ignora
-// respuestas atrasadas si el usuario descarta varias seguidas.
 var _recomputeSeq = 0;
 function recomputeSummary() {
   if (!lastResult || !lastResult.audit) return;
@@ -612,7 +933,7 @@ function recomputeSummary() {
     body: JSON.stringify({ audit: lastResult.audit, deleted_cluster_ids: Object.keys(deletedClusterIds), row_comments: commentEdits })
   }).then(function(r) { return r.ok ? r.json() : null; })
     .then(function(d) {
-      if (!d || seq !== _recomputeSeq || !lastResult.audit) return;  // descarta respuestas obsoletas
+      if (!d || seq !== _recomputeSeq || !lastResult.audit) return;
       lastResult.audit.summary = d.summary;
       updateSummary();
     }).catch(function() {});
@@ -620,13 +941,13 @@ function recomputeSummary() {
 
 function _csvUploadHtml() {
   var withOfficial = (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('official') !== -1; }).length;
-  var merged = withOfficial ? '<span style="font-size:12px; color:var(--ok);">✓ ' + withOfficial + ' sede(s) con datos oficiales</span>' : '';
+  var merged = withOfficial ? '<span style="font-size:12px; color:var(--ok);">' + t('locator_csv_venues', { n: withOfficial }) + '</span>' : '';
   return '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; border-top:1px solid var(--border); padding-top:12px;">' +
-    '<span class="muted" style="font-size:12.5px;">¿El locator no da datos? Sube un CSV de sedes para comparar:</span>' +
-    '<label class="btn-ghost" style="margin:0; border-style:dashed; cursor:pointer;"><span class="msr" style="font-size:16px;">upload_file</span>Subir CSV' +
+    '<span class="muted" style="font-size:12.5px;">' + t('locator_csv_hint') + '</span>' +
+    '<label class="btn-ghost" style="margin:0; border-style:dashed; cursor:pointer;"><span class="msr" style="font-size:16px;">upload_file</span>' + t('locator_csv_btn') +
       '<input type="file" accept=".csv" style="display:none;" onchange="uploadResultsCsv(this)"></label>' +
-    '<a href="/template_oficial.csv" style="font-size:12.5px;">Plantilla</a>' +
-    '<span class="muted" style="font-size:11.5px;">(plantilla simple o export de Localistico)</span>' + merged + '</div>';
+    '<a href="/template_oficial.csv" style="font-size:12.5px;">' + t('locator_template') + '</a>' +
+    '<span class="muted" style="font-size:11.5px;">' + t('locator_csv_hint2') + '</span>' + merged + '</div>';
 }
 function uploadResultsCsv(input) {
   if (!input.files.length || !lastResult || !lastResult.audit) return;
@@ -634,40 +955,40 @@ function uploadResultsCsv(input) {
   fd.append('official_csv', input.files[0]);
   fd.append('audit', JSON.stringify(lastResult.audit));
   fd.append('city', lastQuery.city || '');
-  fd.append('audit_id', lastAuditId || '');  // para persistir la fusión en el histórico
+  fd.append('audit_id', lastAuditId || '');
   fetch('/audit/add_csv', { method: 'POST', body: fd })
     .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
     .then(function(d) {
       lastResult.audit = d.audit;
       renderResults();
-      alert('CSV fusionado: ' + d.matched + ' sede(s) emparejada(s)' +
-            (d.unmatched ? ' · ' + d.unmatched + ' fila(s) sin match' : '') +
-            ((d.csv_errors && d.csv_errors.length) ? ' · ' + d.csv_errors.length + ' fila(s) inválida(s)' : '') +
-            (d.persisted ? '' : ' · ⚠ no persistido (sin histórico)'));
+      var msg = t('csv_merged', { matched: d.matched });
+      if (d.unmatched) msg += t('csv_unmatched', { n: d.unmatched });
+      if (d.csv_errors && d.csv_errors.length) msg += t('csv_errors', { n: d.csv_errors.length });
+      if (!d.persisted) msg += t('csv_not_persisted');
+      alert(msg);
     })
-    .catch(function(err) { alert('Error subiendo el CSV: ' + err.message); })
+    .catch(function(err) { alert(t('csv_error') + err.message); })
     .finally(function() { input.value = ''; });
 }
 function renderLocator(report) {
   var card = document.getElementById('locator-card');
   card.style.display = 'flex';
   if (!report || !report.has_data) {
-    // Sin store locator analizable: igual permitimos subir CSV para comparar.
     card.innerHTML =
-      '<div style="display:flex; align-items:center; gap:10px;"><span class="card-title">Store locator y datos oficiales</span>' +
-        '<span class="badge-cap" style="margin-left:auto; color:var(--tx-3); background:var(--surface-2);">Sin datos</span></div>' +
-      '<div class="muted" style="font-size:13px; line-height:1.5;">No se analizó ningún store locator. Si tienes las sedes en un CSV, súbelo para compararlas con Google, Apple y Bing.</div>' +
+      '<div style="display:flex; align-items:center; gap:10px;"><span class="card-title">' + t('locator_no_data_title') + '</span>' +
+        '<span class="badge-cap" style="margin-left:auto; color:var(--tx-3); background:var(--surface-2);">' + t('locator_no_data_badge') + '</span></div>' +
+      '<div class="muted" style="font-size:13px; line-height:1.5;">' + t('locator_no_data_desc') + '</div>' +
       _csvUploadHtml();
     return;
   }
   var CK = { ok: ['check_circle', 'var(--ok)'], warn: ['error', 'var(--warn)'], bad: ['cancel', 'var(--bad)'], na: ['remove', 'var(--tx-3)'] };
   var badge;
   if (report.analyzable === false) {
-    badge = '<span class="badge-cap" style="color:var(--tx-3); background:var(--surface-2);">No se puede analizar</span>';
+    badge = '<span class="badge-cap" style="color:var(--tx-3); background:var(--surface-2);">' + t('locator_no_analyzable') + '</span>';
   } else if (report.optimized) {
-    badge = '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">Optimizado</span>';
+    badge = '<span class="badge-cap" style="color:var(--ok); background:var(--ok-soft);">' + t('locator_optimized') + '</span>';
   } else {
-    badge = '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">No optimizado</span>';
+    badge = '<span class="badge-cap" style="color:var(--bad); background:var(--bad-soft);">' + t('locator_not_optimized') + '</span>';
   }
   var host = '';
   try { host = new URL(report.root_url).host; } catch (e) { host = report.root_url; }
@@ -675,24 +996,24 @@ function renderLocator(report) {
     var m = CK[c.status] || CK.na;
     return '<div style="display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--border);">' +
       '<span class="msr" style="font-size:18px; color:' + m[1] + ';">' + m[0] + '</span>' +
-      '<span style="flex:1; color:var(--tx); line-height:1.4;">' + esc(c.label) + '</span>' +
-      '<span style="font-size:13px; font-weight:600; color:' + m[1] + '; text-align:right;">' + esc(c.detail) + '</span></div>';
+      '<span style="flex:1; color:var(--tx); line-height:1.4;">' + esc((currentLang === 'en' && CHECK_LABEL_EN[c.key]) || c.label) + '</span>' +
+      '<span style="font-size:13px; font-weight:600; color:' + m[1] + '; text-align:right;">' + esc(backendMsg(c.detail, c.detail_key, c.detail_params)) + '</span></div>';
   }).join('');
   card.innerHTML =
     '<div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">' +
-      '<span class="card-title">Store locator y store pages</span>' +
+      '<span class="card-title">' + t('locator_title') + '</span>' +
       '<a href="' + safeHref(report.root_url) + '" target="_blank" rel="noopener" class="muted" style="font-size:13px;">' + esc(host) + '</a>' +
       '<span style="margin-left:auto;">' + badge + '</span></div>' +
     '<div style="display:flex; flex-direction:column;">' + checks + '</div>' +
     '<div style="display:flex; gap:8px; align-items:center;">' +
       '<span class="msr" style="font-size:16px; color:var(--tx-3);">edit_note</span>' +
-      '<input id="loc-comment" value="' + esc(officialCommentEdit) + '" placeholder="Nota sobre el store locator para el informe (opcional)…" oninput="officialCommentEdit=this.value" ' +
+      '<input id="loc-comment" value="' + esc(officialCommentEdit) + '" placeholder="' + t('locator_comment_placeholder') + '" oninput="officialCommentEdit=this.value" ' +
         'style="flex:1; border:1px dashed var(--border-2); border-radius:8px; padding:8px 12px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
-      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">Guardar nota</button></div>' +
+      '<button class="btn-ghost" id="loc-comment-btn" onclick="saveOfficialComment()">' + t('locator_save_note') + '</button></div>' +
     _csvUploadHtml();
 }
 
-/* ── Guardado de comentarios (persisten en el histórico) ── */
+/* ── Guardado de comentarios ── */
 function saveEdits(payload) {
   if (!lastAuditId) return Promise.resolve(false);
   return fetch('/audits/' + lastAuditId + '/edits', {
@@ -706,13 +1027,13 @@ function flashBtn(btn, okText) {
 function saveOfficialComment() {
   var btn = document.getElementById('loc-comment-btn');
   saveEdits({ official_comment: officialCommentEdit }).then(function(ok) {
-    flashBtn(btn, ok ? 'Guardada ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+    flashBtn(btn, ok ? t('btn_save_ok') : (lastAuditId ? t('btn_save_error') : t('btn_save_no_history')));
   });
 }
 function saveVenueComment(id, btn) {
   var val = (id in commentEdits) ? commentEdits[id] : '';
   saveEdits({ comments: (function() { var o = {}; o[id] = val; return o; })() }).then(function(ok) {
-    flashBtn(btn, ok ? 'Guardado ✓' : (lastAuditId ? 'Error' : 'Sin histórico'));
+    flashBtn(btn, ok ? t('btn_save_venue_ok') : (lastAuditId ? t('btn_save_error') : t('btn_save_no_history')));
   });
 }
 function clearVenueComment(id) {
@@ -733,19 +1054,19 @@ function renderLLM(vis) {
   }).join('');
   card.innerHTML =
     '<div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">' +
-      '<span class="card-title">Visibilidad en IA · Visibility Index</span>' +
-      '<span class="muted" style="font-size:13px;">' + vis.venues_checked + ' sedes · ' + vis.runs + ' repeticiones por sede</span></div>' +
-    '<div style="align-self:flex-start;"><span class="badge-cap" style="color:' + col[0] + '; background:' + col[1] + ';">Aparece en ' + hits + ' de ' + checks + ' comprobaciones</span></div>' +
+      '<span class="card-title">' + t('llm_title') + '</span>' +
+      '<span class="muted" style="font-size:13px;">' + vis.venues_checked + ' ' + t('step_n_venues', { n: '' }).trim() + ' · ' + vis.runs + ' rep. / venue</span></div>' +
+    '<div style="align-self:flex-start;"><span class="badge-cap" style="color:' + col[0] + '; background:' + col[1] + ';">' + t('llm_appears', { hits: hits, total: checks }) + '</span></div>' +
     '<div style="display:flex; align-items:flex-start; gap:10px; background:var(--code-bg); border-radius:10px; padding:12px 14px;">' +
       '<span class="msr" style="font-size:18px; color:var(--tx-3); margin-top:1px;">chat</span>' +
       '<div><div style="font-weight:600; color:var(--tx);">"' + esc(vis.prompt_template || '') + '"</div>' +
-      '<div class="muted" style="font-size:12px; margin-top:2px;">categoría del perfil de Google + zona · resultado por sede en su fila (chip IA)</div></div></div>' +
+      '<div class="muted" style="font-size:12px; margin-top:2px;">' + t('llm_category_hint') + '</div></div></div>' +
     '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px;">' +
       '<span style="display:inline-flex; align-items:center; gap:6px; background:var(--acc-soft); color:var(--acc); border:1px solid var(--acc); border-radius:999px; padding:4px 12px; font-weight:600;"><span class="msr" style="font-size:15px;">smart_toy</span>ChatGPT · auditado</span>' +
-      others + '<span class="muted" style="font-size:12px;">también auditables bajo demanda</span></div>' +
+      others + '<span class="muted" style="font-size:12px;">' + t('llm_others_note') + '</span></div>' +
     '<div style="display:flex; gap:8px; align-items:flex-start; color:var(--tx-3); font-size:12px; line-height:1.5; margin-top:auto;">' +
       '<span class="msr" style="font-size:16px; color:var(--faint); margin-top:1px;">info</span>' +
-      '<span>Esto es solo una muestra. El Visibility Index completo se basa en decenas de prompts y repeticiones por sede y categoría, para medir consistencia y obtener un resultado determinista.</span></div>';
+      '<span>' + t('llm_info') + '</span></div>';
 }
 
 function platHref(det, source) { return (det && det[source] && det[source].url) || '#'; }
@@ -763,7 +1084,7 @@ function llmHitColor(hits, total) {
 function llmPill(v) {
   if (!v || !v.runs) return '';
   var total = v.runs.length, hits = v.hits || 0, c = llmHitColor(hits, total);
-  var title = 'ChatGPT: aparece en ' + hits + ' de ' + total + ' repeticiones — abre la fila para el detalle';
+  var title = t('llm_hit_title', { hits: hits, total: total });
   return '<span title="' + esc(title) + '" style="width:34px; height:30px; border-radius:8px; display:grid; place-items:center; font-size:11px; font-weight:700; background:' + c[0] + '; color:' + c[1] + '; border:1px solid ' + c[1] + ';">IA</span>';
 }
 
@@ -781,11 +1102,17 @@ function renderVenues() {
   if (!lastResult) return;
   var rows = venuesFiltered();
   var total = (lastResult.audit.clusters || []).filter(function(c) { return (c.sources_present || []).indexOf('google') !== -1; }).length;
-  document.getElementById('venues-subtitle').textContent = total + ' con ficha en Google · de peor a mejor · clic en una fila para el detalle';
+  document.getElementById('venues-subtitle').textContent = t('venues_subtitle', { n: total });
   document.getElementById('venues-body').innerHTML = rows.map(renderVenueRow).join('') ||
-    '<div class="muted" style="padding:16px 24px;">Sin sedes que coincidan.</div>';
+    '<div class="muted" style="padding:16px 24px;">' + t('venues_no_match') + '</div>';
 }
 
+// "Qué falla": el hallazgo más grave (flags ya vienen ordenados por severidad).
+function issueSummary(c) {
+  var f = (c.flags || [])[0];
+  if (f && f.msg_key) return backendMsg(f.message, f.msg_key, f.msg_params);
+  return (c.venue_metrics || {}).issue_summary;
+}
 function renderVenueRow(c) {
   var vm = c.venue_metrics || {};
   var col = sevColor(vm.severity);
@@ -797,8 +1124,8 @@ function renderVenueRow(c) {
   var st = vm.platform_state || {};
   var pills = PLAT.map(function(p) {
     var stt = st[p[0]] || 'off'; var pc = PILL_STATE[stt] || PILL_STATE.off;
-    var title = SOURCE_LABEL[p[0]] + (stt === 'ok' ? ' — correcto' : stt === 'issue' ? ' — con errores' : ' — no encontrada');
-    return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="' + esc(title) + '" ' +
+    var platTitle = sourceLabel(p[0]) + (stt === 'ok' ? t('plat_ok') : stt === 'issue' ? t('plat_issue') : t('plat_off'));
+    return '<a href="' + safeHref(platHref(det, p[0])) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" title="' + esc(platTitle) + '" ' +
       'style="width:30px; height:28px; border-radius:7px; display:grid; place-items:center; font-size:11px; font-weight:700; text-decoration:none; background:' + pc[0] + '; color:' + pc[1] + '; border:1px solid ' + pc[1] + ';">' + p[1] + '</a>';
   }).join('');
   pills += llmPill(vm.llm_visibility);
@@ -809,14 +1136,14 @@ function renderVenueRow(c) {
         '<span style="display:inline-grid; place-items:center; width:40px; height:40px; border-radius:10px; font-weight:700; font-size:15px; background:' + col[1] + '; color:' + col[0] + ';">' + (vm.score == null ? '—' : vm.score) + '</span>' +
         '<div><div style="font-weight:600; color:var(--tx);">' + esc(c.canonical_label) + '</div>' +
           '<div class="muted" style="font-size:13px; margin-top:2px;">' + esc(c.canonical_address || '') + '</div></div>' +
-        '<div style="font-size:13px; color:var(--tx); line-height:1.45;">' + esc(vm.issue_summary || 'Sin problemas detectados') +
+        '<div style="font-size:13px; color:var(--tx); line-height:1.45;">' + esc(issueSummary(c) || t('venues_no_issues')) +
           (note ? '<div style="display:flex; align-items:center; gap:5px; margin-top:3px; font-size:12px; color:var(--acc);"><span class="msr" style="font-size:14px;">edit_note</span>' + esc(note) + '</div>' : '') + '</div>' +
         '<div style="font-size:13px; white-space:nowrap;"><div style="display:flex; align-items:center; gap:4px;"><span class="msr" style="font-size:16px; color:' + ratColor + ';">star</span>' +
           '<strong style="color:' + ratColor + ';">' + (vm.rating == null ? '—' : vm.rating) + '</strong><span class="muted">· ' + fmtNum(vm.review_count) + '</span></div>' +
           '<div class="muted" style="margin-top:4px;">' + reviewRateDisplay(vm.review_rate_3m) + ' en 3m · ' + replyRateDisplay(vm.reply_rate_3m) + ' resp.</div></div>' +
         '<div style="display:flex; gap:5px;">' + pills + '</div>' +
         '<div style="display:flex; gap:4px; justify-content:flex-end;">' +
-          '<button onclick="event.stopPropagation(); toggleDiscard(\'' + esc(c.cluster_id) + '\')" title="' + (discarded ? 'Reincluir' : 'Excluir del informe') + '" style="width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--tx-3); cursor:pointer; display:grid; place-items:center;"><span class="msr" style="font-size:16px;">' + (discarded ? 'undo' : 'close') + '</span></button>' +
+          '<button onclick="event.stopPropagation(); toggleDiscard(\'' + esc(c.cluster_id) + '\')" title="' + t(discarded ? 'btn_restore_title' : 'btn_discard_title') + '" style="width:30px; height:30px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--tx-3); cursor:pointer; display:grid; place-items:center;"><span class="msr" style="font-size:16px;">' + (discarded ? 'undo' : 'close') + '</span></button>' +
           '<span style="width:26px; height:30px; display:grid; place-items:center; color:var(--tx-3);"><span class="msr" style="font-size:18px;">' + (open ? 'expand_less' : 'expand_more') + '</span></span>' +
         '</div>' +
       '</div>';
@@ -825,7 +1152,10 @@ function renderVenueRow(c) {
   return html + '</div>';
 }
 
-var DETAIL_FIELDS = [['name', 'Nombre'], ['address', 'Dirección'], ['phone', 'Teléfono'], ['website', 'Web'], ['opening_hours', 'Horario']];
+var DETAIL_FIELDS = [
+  ['name', 'detail_name'], ['address', 'detail_address'], ['phone', 'detail_phone'],
+  ['website', 'detail_website'], ['opening_hours', 'detail_hours']
+];
 function cellStyle(verdict) {
   if (verdict === 'ref') return ['var(--acc-soft)', 'var(--tx-2)', '', ''];
   if (verdict === 'match') return ['transparent', 'var(--tx-2)', 'check', 'var(--ok)'];
@@ -838,8 +1168,8 @@ function renderVenueDetail(c) {
   var det = vm.presence_detail || {};
 
   var head = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); border-bottom:1px solid var(--border);">' +
-    '<span style="padding:8px 12px;"></span><span style="padding:8px 12px; color:var(--acc);">Google · ref.</span>' +
-    '<span style="padding:8px 12px;">Apple</span><span style="padding:8px 12px;">Bing</span><span style="padding:8px 12px;">Web oficial</span></div>';
+    '<span style="padding:8px 12px;"></span><span style="padding:8px 12px; color:var(--acc);">' + t('detail_ref') + '</span>' +
+    '<span style="padding:8px 12px;">' + t('detail_apple') + '</span><span style="padding:8px 12px;">' + t('detail_bing') + '</span><span style="padding:8px 12px;">' + t('detail_official') + '</span></div>';
 
   var body = DETAIL_FIELDS.map(function(f) {
     var m = acc[f[0]] || { breakdown: {}, anchor_value: null };
@@ -848,44 +1178,43 @@ function renderVenueDetail(c) {
     cells.push(detailCell(isHours ? formatHours(m.anchor_value) : (m.anchor_value || '—'), 'ref'));
     ['apple', 'azure', 'official'].forEach(function(s) {
       var b = (m.breakdown || {})[s] || { verdict: 'na', value: null };
-      var val = b.value || (b.verdict === 'sin_dato' ? 'Sin dato' : (b.verdict === 'missing' ? 'No encontrada' : (b.verdict === 'na' ? 'N/D' : '—')));
+      var val = b.value || (b.verdict === 'sin_dato' ? t('no_data_field') : (b.verdict === 'missing' ? t('not_found_field') : (b.verdict === 'na' ? 'N/D' : '—')));
       cells.push(detailCell(isHours && b.value ? formatHours(b.value) : val, b.verdict));
     });
     return '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
-      '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + f[1] + '</span>' + cells.join('') + '</div>';
+      '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + t(f[1]) + '</span>' + cells.join('') + '</div>';
   }).join('');
 
-  var al = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
+  var alRaw = (vm.action_links_google && vm.action_links_google.value) || 'N/D';
+  var al = actionLinksDisplay(vm.action_links_google);
   var linksRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12.5px; border-bottom:1px solid var(--border);">' +
-    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Links</span>' +
-    detailCell(al, al === 'Ninguno detectado' ? 'conflict' : 'ref') +
+    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + t('detail_links') + '</span>' +
+    detailCell(al, alRaw === 'Ninguno detectado' ? 'conflict' : 'ref') +
     detailCell('N/D', 'na') + detailCell('—', 'na') + detailCell('—', 'na') + '</div>';
 
   var fichaCells = ['google', 'apple', 'azure', 'official'].map(function(s) {
     var url = (det[s] && det[s].url) || '';
     var present = det[s] && det[s].present;
     return '<span style="padding:9px 12px;">' + (url ?
-      '<a href="' + safeHref(url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">' + (present ? 'Abrir' : 'Buscar') + '<span class="msr" style="font-size:13px;">open_in_new</span></a>' : '<span class="muted">—</span>') + '</span>';
+      '<a href="' + safeHref(url) + '" target="_blank" rel="noopener" style="display:inline-flex; align-items:center; gap:4px; font-weight:600;">' + (present ? t('detail_open') : t('detail_search')) + '<span class="msr" style="font-size:13px;">open_in_new</span></a>' : '<span class="muted">—</span>') + '</span>';
   }).join('');
   var fichaRow = '<div style="display:grid; grid-template-columns:90px repeat(4,1fr); font-size:12px; align-items:center;">' +
-    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">Ficha</span>' + fichaCells + '</div>';
+    '<span style="padding:9px 12px; font-weight:600; color:var(--tx);">' + t('detail_sheet') + '</span>' + fichaCells + '</div>';
 
   var cur = comment(c);
   var cid = esc(c.cluster_id);
   var commentBox = '<div style="display:flex; gap:8px; align-items:center; margin-top:12px;">' +
-    '<input id="cmt-' + cid + '" value="' + esc(cur) + '" placeholder="Comentario para el informe (ej.: confirmado por teléfono, esta sede cerró en marzo)…" ' +
+    '<input id="cmt-' + cid + '" value="' + esc(cur) + '" placeholder="' + t('detail_comment_placeholder') + '" ' +
       'oninput="setComment(\'' + cid + '\', this.value)" onclick="event.stopPropagation();" ' +
       'style="flex:1; box-sizing:border-box; border:1px dashed var(--border-2); border-radius:10px; padding:10px 14px; background:none; color:var(--tx); font-size:12.5px; outline:none;">' +
-    '<button class="btn-ghost" onclick="event.stopPropagation(); saveVenueComment(\'' + cid + '\', this)">Guardar</button>' +
-    '<button class="btn-ghost" title="Borrar comentario" onclick="event.stopPropagation(); clearVenueComment(\'' + cid + '\')" style="padding:8px 10px;"><span class="msr" style="font-size:16px;">delete</span></button>' +
+    '<button class="btn-ghost" onclick="event.stopPropagation(); saveVenueComment(\'' + cid + '\', this)">' + t('detail_save') + '</button>' +
+    '<button class="btn-ghost" title="' + (currentLang === 'en' ? 'Delete comment' : 'Borrar comentario') + '" onclick="event.stopPropagation(); clearVenueComment(\'' + cid + '\')" style="padding:8px 10px;"><span class="msr" style="font-size:16px;">delete</span></button>' +
     '</div>';
 
   return '<div style="padding:0 24px 20px; background:var(--row-hover); border-top:1px solid var(--border);">' +
     '<div style="background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-top:4px;">' + head + body + linksRow + fichaRow + '</div>' +
     llmDetailBlock(vm.llm_visibility) + ondemandBar(c) + commentBox + '</div>';
 }
-/* Botones "analizar bajo demanda" para sedes fuera del top-5 automático.
-   Solo tienen sentido en sedes con ficha de Google. */
 function ondemandBar(c) {
   var vm = c.venue_metrics || {};
   var det = vm.presence_detail || {};
@@ -894,21 +1223,21 @@ function ondemandBar(c) {
   var btns = [];
   if (!vm.llm_visibility) {
     btns.push('<button class="btn-ghost" id="odllm-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLLM(\'' + cid + '\', this)">' +
-      '<span class="msr" style="font-size:16px;">smart_toy</span>Analizar visibilidad IA</button>');
+      '<span class="msr" style="font-size:16px;">smart_toy</span>' + t('llm_ondemand') + '</button>');
   }
   var al = vm.action_links_google;
   if (!al || al.value === 'N/D' || !al.value) {
     btns.push('<button class="btn-ghost" id="odal-' + cid + '" onclick="event.stopPropagation(); analyzeVenueLinks(\'' + cid + '\', this)">' +
-      '<span class="msr" style="font-size:16px;">link</span>Analizar action links</button>');
+      '<span class="msr" style="font-size:16px;">link</span>' + t('links_ondemand') + '</button>');
   }
   if (!btns.length) return '';
   return '<div style="display:flex; gap:8px; align-items:center; margin-top:12px; flex-wrap:wrap;">' + btns.join('') + '</div>';
 }
 function _venueCluster(cid) { return (lastResult.audit.clusters || []).find(function(x) { return x.cluster_id === cid; }); }
 function analyzeVenueLLM(cid, btn) {
-  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  if (!lastAuditId) { alert(t('llm_no_history')); return; }
   var orig = btn.innerHTML; btn.disabled = true;
-  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando IA…';
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>' + t('llm_ondemand_loading');
   var cat = ((lastResult.audit.summary || {}).llm_visibility || {}).category || '';
   fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/llm', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ category: cat })
@@ -918,42 +1247,40 @@ function analyzeVenueLLM(cid, btn) {
       lastResult.audit.summary = lastResult.audit.summary || {}; lastResult.audit.summary.llm_visibility = d.summary_llm;
       renderResults();
     })
-    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudo analizar la visibilidad en IA: ' + err.message); });
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert(t('llm_error') + err.message); });
 }
 function analyzeVenueLinks(cid, btn) {
-  if (!lastAuditId) { alert('Sin histórico: no se puede analizar bajo demanda.'); return; }
+  if (!lastAuditId) { alert(t('llm_no_history')); return; }
   var orig = btn.innerHTML; btn.disabled = true;
-  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>Analizando links…';
+  btn.innerHTML = '<span class="msr spin" style="font-size:16px;">progress_activity</span>' + t('links_ondemand_loading');
   fetch('/venue/' + lastAuditId + '/' + encodeURIComponent(cid) + '/action-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
     .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); })
     .then(function(d) {
       var c = _venueCluster(cid); if (c) { c.venue_metrics = c.venue_metrics || {}; c.venue_metrics.action_links_google = d.action_links_google; }
       renderVenues();
     })
-    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert('No se pudieron analizar los action links: ' + err.message); });
+    .catch(function(err) { btn.disabled = false; btn.innerHTML = orig; alert(t('links_error') + err.message); });
 }
 function llmDetailBlock(v) {
   if (!v || !v.runs) return '';
   var runs = v.runs.map(function(r, i) {
     var label, bg, color, tip;
-    if (r.appears === null || r.appears === undefined) { label = '?'; bg = 'var(--surface-2)'; color = 'var(--tx-3)'; tip = 'sin dato (fallo de red)'; }
-    else if (!r.appears) { label = '✕'; bg = 'var(--bad-soft)'; color = 'var(--bad)'; tip = 'no aparece'; }
-    else if (r.position != null) { label = r.position + 'º'; bg = 'var(--warn-soft)'; color = 'var(--warn)'; tip = 'aparece en posición ' + r.position; }
-    else { label = '✓'; bg = 'var(--ok-soft)'; color = 'var(--ok)'; tip = 'aparece (citada en el texto)'; }
-    return '<span title="Repetición ' + (i + 1) + ': ' + tip + '" style="min-width:26px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10.5px; font-weight:700; padding:0 5px; background:' + bg + '; color:' + color + ';">' + label + '</span>';
+    if (r.appears === null || r.appears === undefined) { label = '?'; bg = 'var(--surface-2)'; color = 'var(--tx-3)'; tip = currentLang === 'en' ? 'no data (network error)' : 'sin dato (fallo de red)'; }
+    else if (!r.appears) { label = '✕'; bg = 'var(--bad-soft)'; color = 'var(--bad)'; tip = currentLang === 'en' ? 'does not appear' : 'no aparece'; }
+    else if (r.position != null) { label = r.position + 'º'; bg = 'var(--warn-soft)'; color = 'var(--warn)'; tip = (currentLang === 'en' ? 'appears at position ' : 'aparece en posición ') + r.position; }
+    else { label = '✓'; bg = 'var(--ok-soft)'; color = 'var(--ok)'; tip = currentLang === 'en' ? 'appears (mentioned in text)' : 'aparece (citada en el texto)'; }
+    return '<span title="' + (currentLang === 'en' ? 'Repetition ' : 'Repetición ') + (i + 1) + ': ' + tip + '" style="min-width:26px; height:22px; border-radius:6px; display:grid; place-items:center; font-size:10.5px; font-weight:700; padding:0 5px; background:' + bg + '; color:' + color + ';">' + label + '</span>';
   }).join('');
   var hits = v.hits || 0, total = v.runs.length;
   return '<div style="display:flex; align-items:center; gap:8px; margin-top:12px; background:var(--acc-soft); border:1px solid var(--acc); border-radius:10px; padding:10px 14px; font-size:12.5px; flex-wrap:wrap;">' +
     '<span class="msr" style="font-size:18px; color:var(--acc);">smart_toy</span><strong style="color:var(--tx);">ChatGPT</strong>' +
     '<span style="font-style:italic; color:var(--tx-2);">"' + esc(v.prompt || '') + '"</span>' +
     '<span style="display:flex; gap:4px;">' + runs + '</span>' +
-    '<span class="muted" style="margin-left:auto;">aparece en ' + hits + ' de ' + total + ' repeticiones</span></div>';
+    '<span class="muted" style="margin-left:auto;">' + t('llm_appears_count', { hits: hits, total: total }) + '</span></div>';
 }
 function detailCell(value, verdict) {
   var s = cellStyle(verdict);
   var icon = s[2] ? '<span class="msr" style="font-size:14px; color:' + s[3] + '; flex-shrink:0; margin-top:1px;">' + s[2] + '</span>' : '';
-  // min-width:0 + overflow-wrap: sin esto una URL larga en la fila Web ensancha
-  // la columna 1fr y desalinea toda la rejilla.
   return '<span style="padding:9px 12px; background:' + s[0] + '; color:' + s[1] + '; display:flex; align-items:flex-start; gap:5px; min-width:0; overflow-wrap:anywhere; word-break:break-word;">' + icon + '<span>' + esc(value) + '</span></span>';
 }
 
@@ -970,7 +1297,7 @@ function updateDiscardedCount() {
     var c = (lastResult.audit.clusters || []).find(function(x) { return x.cluster_id === id; });
     return c && (c.sources_present || []).indexOf('google') !== -1;
   }).length;
-  document.getElementById('discarded-count').textContent = n ? ('· ' + n + ' sede(s) descartadas del informe') : '';
+  document.getElementById('discarded-count').textContent = n ? t('venues_discarded', { n: n }) : '';
 }
 
 /* ── Datos crudos por fuente ── */
@@ -979,7 +1306,7 @@ function rawRecordsFor(source) {
     .map(function(c) { return c.by_source[source]; });
 }
 function renderRawTabs() {
-  var sources = [['google', 'Google'], ['apple', 'Apple'], ['azure', 'Bing'], ['official', 'Oficial']];
+  var sources = [['google', 'Google'], ['apple', 'Apple'], ['azure', 'Bing'], ['official', t('raw_tab_official')]];
   document.getElementById('raw-tabs').innerHTML = sources.map(function(s) {
     var n = rawRecordsFor(s[0]).length;
     var active = rawTab === s[0];
@@ -989,8 +1316,8 @@ function renderRawTabs() {
 }
 function renderRawBody() {
   var recs = rawRecordsFor(rawTab);
-  if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:24px 0; text-align:center;">No se aportaron datos de esta fuente en esta auditoría.</div>'; return; }
-  var head = ['Nombre', 'Dirección', 'Teléfono', 'Web', 'Rating', 'Reseñas', 'Horarios', 'Ficha'];
+  if (!recs.length) { document.getElementById('raw-body').innerHTML = '<div class="muted" style="padding:24px 0; text-align:center;">' + t('raw_no_data') + '</div>'; return; }
+  var head = [t('raw_col_name'), t('raw_col_address'), t('raw_col_phone'), t('raw_col_website'), t('raw_col_rating'), t('raw_col_reviews'), t('raw_col_hours'), t('raw_col_sheet')];
   var rows = recs.map(function(r) {
     var hours = formatHours(r.opening_hours);
     var web = r.website_display || r.website;
@@ -1002,7 +1329,7 @@ function renderRawBody() {
       td(r.rating == null ? '—' : r.rating) +
       td(fmtNum(r.review_count)) +
       td(hours) +
-      td(r.verify_url ? '<a href="' + safeHref(r.verify_url) + '" target="_blank" rel="noopener">Abrir</a>' : '—', '', true) +
+      td(r.verify_url ? '<a href="' + safeHref(r.verify_url) + '" target="_blank" rel="noopener">' + t('raw_open') + '</a>' : '—', '', true) +
       '</tr>';
   }).join('');
   document.getElementById('raw-body').innerHTML =
@@ -1013,8 +1340,9 @@ function td(html, style, isHtml) { return '<td style="padding:9px 12px; font-siz
 /* ── PDF ── */
 function exportPDF() {
   var btn = document.getElementById('pdf-btn');
-  if (!lastResult || !lastResult.audit) { alert('Primero ejecuta una auditoría.'); return; }
-  btn.disabled = true; btn.innerHTML = '<span class="msr spin" style="font-size:18px;">progress_activity</span>Generando…';
+  if (!lastResult || !lastResult.audit) { alert(t('pdf_no_audit')); return; }
+  btn.disabled = true;
+  document.getElementById('pdf-btn-text').textContent = t('pdf_generating');
   var payload = {
     name: lastQuery.name, city: lastQuery.city,
     official_comment: officialCommentEdit,
@@ -1024,22 +1352,26 @@ function exportPDF() {
     site_analysis: lastResult.site_analysis || [],
     locator_report: lastResult.locator_report || null,
     deleted_cluster_ids: Object.keys(deletedClusterIds),
-    row_comments: commentEdits
+    row_comments: commentEdits,
+    lang: currentLang
   };
   fetch('/report/from_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
     .then(function(r) { if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || 'Error ' + r.status); }); return r.blob(); })
     .then(function(blob) {
       var url = URL.createObjectURL(blob); var a = document.createElement('a');
-      a.href = url; a.download = 'auditoria_' + (lastQuery.name || 'prospect').replace(/\s+/g, '_') + '.pdf';
+      a.href = url; a.download = t('pdf_filename', { name: (lastQuery.name || 'prospect').replace(/\s+/g, '_') });
       document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     })
-    .catch(function(err) { alert('Error generando el PDF: ' + err.message); })
-    .finally(function() { btn.disabled = false; btn.innerHTML = '<span class="msr" style="font-size:18px;">picture_as_pdf</span>Exportar informe PDF'; });
+    .catch(function(err) { alert(t('pdf_error') + err.message); })
+    .finally(function() {
+      btn.disabled = false;
+      document.getElementById('pdf-btn-text').textContent = t('results_pdf_btn');
+    });
 }
 
 /* ── Reabrir del histórico ── */
 function openAudit(id) {
-  fetch('/audits/' + id).then(function(r) { if (!r.ok) throw new Error('no encontrada'); return r.json(); })
+  fetch('/audits/' + id).then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
     .then(function(rec) {
       lastResult = rec.snapshot || {};
       lastResult._created_rel = relTime(rec.created_at);
@@ -1052,13 +1384,14 @@ function openAudit(id) {
       enableNav('nav-results');
       renderResults(); showScreen('results');
     })
-    .catch(function() { alert('No se pudo abrir esa auditoría.'); });
+    .catch(function() { alert(t('open_audit_error')); });
 }
 
 /* ── init ── */
 document.getElementById('prospect-name').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
 document.getElementById('prospect-city').addEventListener('keydown', function(e) { if (e.key === 'Enter') startAudit(); });
 loadPricing();
+applyI18n();
 showScreen('input');
 </script>
 </body>

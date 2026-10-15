@@ -196,3 +196,23 @@ def test_same_address_different_format_no_r8():
     a = _rec('apple', name='Foo', address='Calle de Alcalá 21, Madrid, ES', lat=41.0, lng=2.00001)
     flags = inconsistencies._flags_for_cluster(_cluster([g, a]))
     assert not any(f['rule'] == 'R8' for f in flags)
+
+
+def test_flags_carry_translation_key_and_params_alongside_spanish_message():
+    a = _rec('google', name='Foo', address='X', lat=1.0, lng=1.0, phone='932123456')
+    b = _rec('official', name='Foo', address='X', lat=1.0, lng=1.0, phone='934999999')
+    r5 = next(f for f in inconsistencies._flags_for_cluster(_cluster([a, b])) if f['rule'] == 'R5')
+    assert r5['message'].startswith('Teléfono distinto')
+    assert type(r5['message']) is str  # plain str, so it serializes/persists like before
+    assert r5['msg_key'] == 'flag_conflict_field'
+    assert r5['msg_params']['field'] == 'phone'
+    assert r5['msg_params']['anchor'] == 'google' and r5['msg_params']['other'] == 'official'
+
+
+def test_hours_flag_params_use_day_index_not_spanish_day_name():
+    a = _rec('google', name='Foo', address='X', lat=1.0, lng=1.0, opening_hours=['Sunday: Closed'])
+    b = _rec('official', name='Foo', address='X', lat=1.0, lng=1.0, opening_hours=['Domingo: 10:00–20:00'])
+    r14b = next(f for f in inconsistencies._flags_for_cluster(_cluster([a, b])) if f['rule'] == 'R14b')
+    assert r14b['msg_key'] == 'flag_r14b'
+    assert r14b['msg_params']['day'] == 6
+    assert r14b['msg_params']['anchor_closed'] is True and r14b['msg_params']['other_closed'] is False
